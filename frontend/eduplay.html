@@ -222,161 +222,343 @@
         .md li {
             margin: 6px 0
         }
+
+        .input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .speech-input {
+            background: #f9f9f9;
+            border: 2px solid #dcd3be;
+            border-radius: 16px;
+            padding: 16px 16px 50px 16px;
+            position: relative;
+            min-height: 80px;
+        }
+
+        .speech-display {
+            font-size: 20px;
+            color: #333;
+            min-height: 40px;
+            line-height: 1.3;
+        }
+
+        .speech-hint {
+            position: absolute;
+            bottom: 12px;
+            left: 16px;
+            right: 16px;
+            font-size: 14px;
+        }
+
+        .speech-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .btn-stop {
+            background: #e03131;
+            color: white;
+            border: 0;
+            padding: 14px 18px;
+            border-radius: 16px;
+            font-size: 18px;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .btn-stop:enabled {
+            opacity: 1;
+        }
+
+        .btn-stop:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
     </style>
     <!-- Markdown renderer (subset). Si prefieres parser propio, quita este script y usa un renderizador seguro a medida. -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body>
-    <main class="app" role="main" aria-label="AI EduPlay">
-        <header>
-            <h1>🧸 AI EduPlay</h1>
-            <div class="pill" id="status">Modo adaptativo con IA</div>
-        </header>
+<main class="app" role="main" aria-label="AI EduPlay">
+    <header>
+        <h1>🧸 AI EduPlay</h1>
+        <div class="pill" id="status">Modo adaptativo con IA</div>
+    </header>
 
-        <section class="screen" id="screen"></section>
+    <section class="screen" id="screen"></section>
 
-        <footer>
-            <div class="levels" id="levels">➕ M1 | ✏️ E1 | 🎤 H1</div>
-            <button class="small" id="btnHome">Inicio</button>
-        </footer>
-    </main>
+    <footer>
+        <div class="levels" id="levels">Adaptándose...</div>
+        <button class="small" id="btnHome">Inicio</button>
+    </footer>
+</main>
 
-    <script>
-        // ===== Config IA (backend separado) =====
-        const USE_AI = true;
-        const API_URL = 'http://localhost:3001/api/generate';
+<script>
+    // ===== Config IA (backend separado) =====
+    const USE_AI = true;
+    const API_URL = 'http://localhost:3001/api/generate';
 
-        async function generateWithAI(prompt, level = 1) {
-            if (!USE_AI) return null;
-            try {
-                const res = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt, level })
-                });
-                if (!res.ok) throw new Error('IA no disponible');
-                const data = await res.json();
-                return (data.text || '').trim();
-            } catch (e) {
-                console.warn('IA error', e);
-                return null;
-            }
+    async function generateWithAI(prompt) {
+        if (!USE_AI) return null;
+        try {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt })
+            });
+            if (!res.ok) throw new Error('IA no disponible');
+            const data = await res.json();
+            return (data.text || '').trim();
+        } catch (e) {
+            console.warn('IA error', e);
+            return null;
         }
+    }
 
-        // Markdown seguro (marca básica). Si tu despliegue exige sanitización estricta, añade DOMPurify.
-        marked.setOptions({ mangle: false, headerIds: false, breaks: true });
-        function renderMarkdown(text) {
-            if (!text) return '';
-            return `<div class="md">${marked.parse(text)}</div>`;
-        }
-        async function aiTip(prompt, level = 1) {
-            const t = await generateWithAI(prompt, level);
-            return t ? renderMarkdown(t) : '';
-        }
+    // Markdown seguro (ya integrado). Si se requiere sanitizar, integrar DOMPurify.
+    marked.setOptions({ mangle: false, headerIds: false, breaks: true });
+    function renderMarkdown(text) {
+        if (!text) return '';
+        return `<div class="md">${marked.parse(text)}</div>`;
+    }
+    async function aiTip(prompt) {
+        const t = await generateWithAI(prompt);
+        return t ? renderMarkdown(t) : '';
+    }
 
-        // ===== Estado adaptativo por sección =====
-        const state = {
-            level: { math: 1, write: 1, speak: 1 },       // nivel inicia en 1
-            history: { math: [], write: [], speak: [] },  // últimos 10 intentos (1/0)
-            lastTarget: { write: null, speak: null },     // evitar repeticiones
-            lastMath: null
+    // ===== Estado simplificado - solo memoria de interacciones =====
+    const state = {
+        // Memoria de últimas 10 interacciones para cada sección
+        interactions: {
+            math: [],
+            write: [],
+            speak: []
+        }
+    };
+
+    const INTERACTION_LIMIT = 10; // Guardamos las últimas 10 interacciones
+
+    const screen = document.getElementById('screen');
+    const btnHome = document.getElementById('btnHome');
+    const levelsBox = document.getElementById('levels');
+    btnHome.addEventListener('click', renderHome);
+
+    function updateStatusUI() {
+        const totalInteractions = Object.values(state.interactions).reduce((sum, arr) => sum + arr.length, 0);
+        levelsBox.textContent = `${totalInteractions} interacciones registradas`;
+    }
+
+    function saveInteraction(section, challenge, userResponse, isCorrect) {
+        const interaction = {
+            challenge,
+            userResponse,
+            isCorrect,
+            timestamp: Date.now()
         };
 
-        const screen = document.getElementById('screen');
-        const btnHome = document.getElementById('btnHome');
-        const levelsBox = document.getElementById('levels');
-        btnHome.addEventListener('click', renderHome);
-
-        function updateLevelsUI() {
-            levelsBox.textContent = `➕ M${state.level.math} | ✏️ E${state.level.write} | 🎤 H${state.level.speak}`;
+        state.interactions[section].push(interaction);
+        if (state.interactions[section].length > INTERACTION_LIMIT) {
+            state.interactions[section].shift(); // Mantener solo las últimas 10
         }
+        updateStatusUI();
+    }
 
-        function pushHistory(section, ok) {
-            const arr = state.history[section];
-            arr.push(ok ? 1 : 0);
-            if (arr.length > 10) arr.shift(); // ventana deslizante
-            if (arr.length === 10) {
-                updateLevelWithAI(section, [...arr]); // copia para evitar mutación
+    // ===== Generación dinámica de contenido con IA =====
+    async function generateMathProblem() {
+        const interactions = state.interactions.math;
+        const interactionContext = interactions.length > 0
+            ? `Historial de últimas interacciones matemáticas: ${JSON.stringify(interactions)}`
+            : "Sin historial previo en matemáticas.";
+
+        const prompt = `Eres un tutor de matemáticas adaptativo para niños de 5-12 años.
+
+${interactionContext}
+
+Basándote en el historial de respuestas (si existe), ajusta automáticamente la dificultad:
+- Si el niño acierta consistentemente, incrementa la dificultad
+- Si falla mucho, simplifica los problemas
+- Si no hay historial, empieza con nivel básico
+
+Genera un problema matemático apropiado. Responde SOLO en formato JSON:
+{
+  "question": "problema matemático",
+  "answer": número_respuesta_correcta,
+  "distractors": [num1, num2, num3, num4, num5]
+}
+
+Progresión sugerida de dificultad:
+- Principiante: sumas simples 1-10
+- Intermedio: sumas/restas hasta 20, introducir multiplicación simple
+- Avanzado: operaciones con paréntesis, multiplicación/división, números más grandes
+
+Evita repetir problemas similares del historial.`;
+
+        try {
+            const response = await generateWithAI(prompt);
+            const problemData = JSON.parse(response);
+            return problemData;
+        } catch (e) {
+            console.warn('Error generando problema con IA, usando fallback:', e);
+            return generateFallbackMathProblem();
+        }
+    }
+
+    function generateFallbackMathProblem() {
+        // Fallback simple basado en el rendimiento reciente
+        const recentCorrect = state.interactions.math.slice(-5).filter(i => i.isCorrect).length;
+        const max = recentCorrect >= 4 ? 20 : (recentCorrect >= 2 ? 10 : 5);
+
+        const a = Math.floor(Math.random() * max);
+        const b = Math.floor(Math.random() * max);
+        const answer = a + b;
+        const distractors = [];
+        for (let i = 0; i < 5; i++) {
+            let distractor;
+            do {
+                distractor = answer + Math.floor(Math.random() * 10) - 5;
+            } while (distractor === answer || distractor < 0 || distractors.includes(distractor));
+            distractors.push(distractor);
+        }
+        return {
+            question: `${a} + ${b}`,
+            answer,
+            distractors
+        };
+    }
+
+    async function generateWord(section) {
+        const interactions = state.interactions[section];
+        const interactionContext = interactions.length > 0
+            ? `Historial de últimas interacciones de ${section}: ${JSON.stringify(interactions)}`
+            : `Sin historial previo en ${section}.`;
+
+        const activityType = section === 'write' ? 'escritura' : 'pronunciación';
+
+        const prompt = `Eres un tutor de ${activityType} adaptativo para niños de 5-12 años.
+
+${interactionContext}
+
+Basándote en el historial de respuestas (si existe), ajusta automáticamente la dificultad:
+- Si el niño acierta consistentemente, incrementa la dificultad de las palabras
+- Si falla mucho, usa palabras más simples
+- Si no hay historial, empieza con palabras básicas
+
+INSTRUCCIONES CRÍTICAS:
+- Responde ÚNICAMENTE con una palabra válida en español
+- NO incluyas explicaciones, frases o texto adicional
+- La palabra debe tener entre 3 y 12 letras
+- Debe ser una palabra común que los niños puedan entender
+
+Ejemplos de respuestas correctas: "casa", "perro", "sol"
+Ejemplos de respuestas INCORRECTAS: "intenta contar paso a paso", "tú puedes"
+
+Genera una palabra apropiada para practicar ${activityType}:`;
+
+        try {
+            const response = await generateWithAI(prompt);
+            if (!response) {
+                return generateFallbackWord(section);
             }
-            updateLevelsUI();
-        }
 
-        async function updateLevelWithAI(section, hist) {
-            const prompt = `Eres un tutor infantil. Analiza estos 10 intentos de la sección ${section} (1=acierto, 0=fallo): ${JSON.stringify(hist)}.
-Devuelve SOLO un número de nivel entre 1 (muy básico) y 5 (avanzado).`;
-            const txt = await generateWithAI(prompt, state.level[section]);
+            // Limpiar y validar la respuesta
+            let word = response.toLowerCase().trim();
 
-            let newLevel = null;
-            if (txt) {
-                const m = txt.match(/(?<!\d)[1-5](?!\d)/); // primer dígito aislado 1..5
-                if (m) newLevel = parseInt(m[0]);
+            // Remover cualquier texto después de espacios, puntos, comas, etc.
+            word = word.split(/[\s.,;:!?]/)[0];
+
+            // Mantener solo letras españolas
+            word = word.replace(/[^a-záéíóúñü]/g, '');
+
+            // Validar que sea una palabra válida (3-12 caracteres)
+            if (word.length >= 3 && word.length <= 12) {
+                return word;
+            } else {
+                console.warn('Palabra generada por IA inválida:', response, 'usando fallback');
+                return generateFallbackWord(section);
             }
+        } catch (e) {
+            console.warn('Error generando palabra con IA, usando fallback:', e);
+            return generateFallbackWord(section);
+        }
+    }
 
-            // Fallback local si la IA no devuelve número claro
-            if (newLevel === null) {
-                const sum = hist.reduce((a, b) => a + b, 0);
-                if (sum >= 8) newLevel = Math.min(5, state.level[section] + 1);
-                else if (sum <= 3) newLevel = Math.max(1, state.level[section] - 1);
-                else newLevel = state.level[section];
-            }
+    function generateFallbackWord(section) {
+        // Fallback basado en el rendimiento reciente
+        const recentCorrect = state.interactions[section].slice(-5).filter(i => i.isCorrect).length;
 
-            state.level[section] = newLevel;
-            state.history[section] = []; // resetea ventana para los próximos 10
-            updateLevelsUI();
+        let wordPool;
+        if (recentCorrect >= 4) {
+            wordPool = ['mariposa', 'guitarra', 'ferrocarril', 'zanahoria', 'helicóptero'];
+        } else if (recentCorrect >= 2) {
+            wordPool = ['perro', 'gato', 'flor', 'casa', 'libro', 'coche'];
+        } else {
+            wordPool = ['sol', 'mar', 'pan', 'luz', 'paz'];
         }
 
-        // ===== Utilidades =====
-        const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-        const pick = (arr) => arr[rand(0, arr.length - 1)];
-        function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
+        const recentWords = state.interactions[section].slice(-3).map(i => i.challenge);
+        const availableWords = wordPool.filter(w => !recentWords.includes(w));
 
-        // ===== Inicio =====
-        function renderHome() {
-            screen.innerHTML = '';
-            updateLevelsUI();
+        return availableWords.length > 0
+            ? availableWords[Math.floor(Math.random() * availableWords.length)]
+            : wordPool[Math.floor(Math.random() * wordPool.length)];
+    }
 
-            const title = document.createElement('div');
-            title.className = 'card title';
-            title.textContent = 'Elige una actividad para practicar';
+    // ===== Utilidades =====
+    function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
 
-            const grid = document.createElement('div');
-            grid.className = 'grid3';
-            grid.appendChild(bigButton('➕', 'Matemáticas', 'btn-math', renderMath));
-            grid.appendChild(bigButton('✏️', 'Escritura', 'btn-write', renderWriting));
-            grid.appendChild(bigButton('🎤', 'Habla', 'btn-speak', renderSpeech));
+    // ===== Inicio =====
+    function renderHome() {
+        screen.innerHTML = '';
+        updateStatusUI();
 
-            const gridWrap = document.createElement('div');
-            gridWrap.className = 'card section';
-            gridWrap.appendChild(grid);
+        const title = document.createElement('div');
+        title.className = 'card title';
+        title.textContent = 'Elige una actividad para practicar';
 
-            screen.appendChild(title);
-            screen.appendChild(gridWrap);
-        }
+        const grid = document.createElement('div');
+        grid.className = 'grid3';
+        grid.appendChild(bigButton('➕', 'Matemáticas', 'btn-math', renderMath));
+        grid.appendChild(bigButton('✏️', 'Escritura', 'btn-write', renderWriting));
+        grid.appendChild(bigButton('🎤', 'Habla', 'btn-speak', renderSpeech));
 
-        function bigButton(emoji, label, cls, onClick) {
-            const b = document.createElement('button');
-            b.className = `big-btn ${cls}`;
-            b.onclick = onClick;
-            b.innerHTML = `<div style="font-size:38px">${emoji}</div><div>${label}</div>`;
-            return b;
-        }
+        const gridWrap = document.createElement('div');
+        gridWrap.className = 'card section';
+        gridWrap.appendChild(grid);
 
-        // ===== Matemáticas (por nivel y sin repetir consecutivo) =====
-        function renderMath() {
-            screen.innerHTML = '';
-            const lv = state.level.math;
+        screen.appendChild(title);
+        screen.appendChild(gridWrap);
+    }
 
-            const wrap = document.createElement('div');
-            wrap.className = 'card section';
+    function bigButton(emoji, label, cls, onClick) {
+        const b = document.createElement('button');
+        b.className = `big-btn ${cls}`;
+        b.onclick = onClick;
+        b.innerHTML = `<div style="font-size:38px">${emoji}</div><div>${label}</div>`;
+        return b;
+    }
 
-            let p = makeMathProblem(lv);
-            let guard = 0;
-            while (state.lastMath && state.lastMath.question === p.question && guard < 5) {
-                guard++; p = makeMathProblem(lv);
-            }
-            state.lastMath = { question: p.question };
+    // ===== Matemáticas =====
+    async function renderMath() {
+        screen.innerHTML = '';
 
+        const wrap = document.createElement('div');
+        wrap.className = 'card section';
+
+        // Mostrar indicador de carga
+        wrap.innerHTML = '<div class="prompt">🧠 La IA está generando un problema personalizado...</div>';
+        screen.appendChild(wrap);
+
+        try {
+            const p = await generateMathProblem();
+
+            wrap.innerHTML = '';
             const prompt = document.createElement('div');
             prompt.className = 'prompt';
             prompt.innerHTML = `¿Cuánto es <b>${p.question}</b>?`;
@@ -390,151 +572,116 @@ Devuelve SOLO un número de nivel entre 1 (muy básico) y 5 (avanzado).`;
                 btn.textContent = v;
                 btn.onclick = async () => {
                     const ok = Number(v) === Number(p.answer);
+
+                    // Guardar interacci��n
+                    saveInteraction('math', p.question, v, ok);
+
                     const fb = document.createElement('div');
                     fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
                     fb.innerHTML = ok ? `✅ ¡Muy bien! ${v} es correcto 🎉` : `❌ Casi. Intenta otra vez.`;
                     wrap.appendChild(fb);
 
                     const tip = await aiTip(
-                        ok ? `Refuerzo positivo por acertar ${p.question}`
-                            : `Pista breve para que un niño resuelva ${p.question} sin dar la respuesta`,
-                        lv
+                        ok ? `Refuerzo positivo breve por acertar ${p.question}`
+                            : `Pista muy breve para ayudar con ${p.question} sin dar la respuesta`
                     );
                     if (tip) wrap.insertAdjacentHTML('beforeend', tip);
 
-                    pushHistory('math', ok);
-                    setTimeout(renderMath, 1300);
+                    setTimeout(renderMath, 1500);
                 };
                 choices.appendChild(btn);
             });
 
             wrap.appendChild(prompt);
             wrap.appendChild(choices);
-            screen.appendChild(wrap);
+        } catch (e) {
+            wrap.innerHTML = '<div class="feedback bad">Error generando problema. Int��ntalo de nuevo.</div>';
+            setTimeout(renderMath, 2000);
         }
+    }
 
-        function makeMathProblem(level) {
-            if (level <= 2) {
-                const max = level === 1 ? 5 : 10;
-                const a = rand(0, max), b = rand(0, max), ans = a + b;
-                return { question: `${a} + ${b}`, answer: ans, distractors: spreadNumbers(ans, 0, max + 5, 5) };
-            }
-            const type = pick(['+', '-', 'missing', 'two']);
-            if (type === 'two') {
-                let a = rand(0, 15), b = rand(0, 10), c = rand(0, 10);
-                const sign = Math.random() < 0.5 ? '+' : '-';
-                let first = sign === '+' ? a + b : a - b;
-                if (first < 0) { a = b + rand(0, 3); first = a - b; }
-                const ans = first + c;
-                return { question: `(${a} ${sign} ${b}) + ${c}`, answer: ans, distractors: spreadNumbers(ans, 0, 30, 5) };
-            }
-            if (type === 'missing') {
-                const op = Math.random() < 0.5 ? '+' : '-';
-                let a = rand(0, 15), b = rand(0, 10);
-                let c = op === '+' ? a + b : a - b;
-                if (c < 0) { a = b + rand(0, 3); c = a - b; }
-                const ans = op === '+' ? c - a : a - c;
-                return { question: op === '+' ? `${a} + ? = ${c}` : `${a} - ? = ${c}`, answer: ans, distractors: spreadNumbers(ans, 0, 20, 5) };
-            }
-            const op = Math.random() < 0.5 ? '+' : '-';
-            let a = rand(0, 15), b = rand(0, 15);
-            let ans = op === '+' ? a + b : a - b;
-            if (ans < 0) { a = b + rand(0, 3); ans = a - b; }
-            return { question: `${a} ${op} ${b}`, answer: ans, distractors: spreadNumbers(ans, 0, 25, 5) };
-        }
+    // ===== Escritura =====
+    async function renderWriting() {
+        screen.innerHTML = '';
 
-        function spreadNumbers(center, min, max, count) {
-            const set = new Set();
-            while (set.size < count) {
-                const n = rand(min, max);
-                if (n !== center) set.add(n);
-            }
-            return Array.from(set);
-        }
+        const box = document.createElement('div');
+        box.className = 'card section';
+        box.innerHTML = '<div class="prompt">🧠 La IA está seleccionando una palabra personalizada...</div>';
+        screen.appendChild(box);
 
-        // ===== Escritura (listas por nivel, evita repetir) =====
-        const WORDS = {
-            1: ['sol', 'mar', 'pan', 'gato', 'casa'],
-            2: ['perro', 'flor', 'nube', 'luna', 'silla'],
-            3: ['plato', 'brazo', 'trineo', 'libro', 'coche'],
-            4: ['carro', 'llave', 'burro', 'cereza', 'pared'],
-            5: ['mariposa', 'jirafa', 'zanahoria', 'herrero', 'camino']
-        };
+        try {
+            const target = await generateWord('write');
 
-        function renderWriting() {
-            screen.innerHTML = '';
-            const lv = state.level.write;
-
-            // elige una palabra distinta a la anterior
-            let target = pick(WORDS[lv] || WORDS[1]);
-            let guard = 0; while (state.lastTarget.write === target && guard < 5) { target = pick(WORDS[lv] || WORDS[1]); guard++; }
-            state.lastTarget.write = target;
-
-            const box = document.createElement('div'); box.className = 'card section';
             box.innerHTML = `
-        <div class="prompt">Escribe la palabra: <b>${target}</b></div>
-        <input id='writeInput' class='input' type='text' placeholder='Escribe aquí...'>
-        <button class='small' id='checkBtn'>Comprobar ✅</button>
-      `;
-            screen.appendChild(box);
+                <div class="prompt">Escribe la palabra: <b>${target}</b></div>
+                <input id='writeInput' class='input' type='text' placeholder='Escribe aquí...'>
+                <button class='small' id='checkBtn'>Comprobar ✅</button>
+            `;
+
+            document.getElementById('writeInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') document.getElementById('checkBtn').click();
+            });
 
             document.getElementById('checkBtn').onclick = async () => {
                 const v = document.getElementById('writeInput').value.trim().toLowerCase();
                 const ok = v === target;
 
-                const fb = document.createElement('div'); fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
+                // Guardar interacción
+                saveInteraction('write', target, v, ok);
+
+                const fb = document.createElement('div');
+                fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
                 fb.innerHTML = ok ? '✅ ¡Perfecto!' : `❌ Se escribe <b>${target}</b>`;
                 box.appendChild(fb);
 
                 const tip = await aiTip(
-                    ok ? `Refuerzo positivo para un niño (5-10) por escribir bien "${target}" en 1 frase.`
-                        : `Corrección amable y corta: escribió "${v}", lo correcto es "${target}". No des sermón.`,
-                    lv
+                    ok ? `Refuerzo positivo breve por escribir bien "${target}"`
+                        : `Corrección amable: escribió "${v}", lo correcto es "${target}"`
                 );
                 if (tip) box.insertAdjacentHTML('beforeend', tip);
 
-                pushHistory('write', ok);
-                setTimeout(renderWriting, 1400);
+                setTimeout(renderWriting, 1500);
             };
+        } catch (e) {
+            box.innerHTML = '<div class="feedback bad">Error generando palabra. Inténtalo de nuevo.</div>';
+            setTimeout(renderWriting, 2000);
         }
+    }
 
-        // ===== Habla (palabras por nivel, evita repetir) =====
-        const SPEAK = {
-            1: ['sol', 'casa', 'pan', 'luna', 'gato'],
-            2: ['pera', 'taza', 'loro', 'nube', 'pato'],
-            3: ['risa', 'roca', 'caro', 'pero', 'barco'],
-            4: ['carro', 'perro', 'barro', 'parra', 'tierra'],
-            5: ['ferrocarril', 'mariposa', 'guitarra', 'arriba', 'herrero']
-        };
+    // ===== Habla =====
+    async function renderSpeech() {
+        screen.innerHTML = '';
 
-        function renderSpeech() {
-            screen.innerHTML = '';
-            const lv = state.level.speak;
+        const box = document.createElement('div');
+        box.className = 'card section';
+        box.innerHTML = '<div class="prompt">🧠 La IA está seleccionando una palabra personalizada...</div>';
+        screen.appendChild(box);
 
-            // elige una palabra distinta a la anterior
-            let target = pick(SPEAK[lv] || SPEAK[1]);
-            let guard = 0; while (state.lastTarget.speak === target && guard < 5) { target = pick(SPEAK[lv] || SPEAK[1]); guard++; }
-            state.lastTarget.speak = target;
+        try {
+            const target = await generateWord('speak');
 
             const support = ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
-            const box = document.createElement('div'); box.className = 'card section';
+
             box.innerHTML = `
-        <div class='prompt'>Di la palabra: <b>${target}</b></div>
-        <div style='display:flex; flex-wrap:wrap; gap:10px; align-items:center'>
-          <button class='small' id='speakBtn' ${!support ? 'disabled' : ''}>🎤 Hablar</button>
-          <span class='pill'>Pista: ${target.split('').join('-')}</span>
-        </div>
-        <div id='speechResult' class='feedback'></div>
-      `;
-            screen.appendChild(box);
+                <div class="prompt">Di la palabra: <b>${target}</b></div>
+                <div class="input-container">
+                    <div class="speech-input">
+                        <div id="speechDisplay" class="speech-display">Presiona el botón y di la palabra</div>
+                        <div class="speech-hint">
+                            <span class="pill">Pista: ${target.split('').join('-')}</span>
+                        </div>
+                    </div>
+                </div>
+                <button class='small' id='speakBtn' ${!support ? 'disabled' : ''}>🎤 Empezar a hablar</button>
+                <div id='speechResult' class='feedback'></div>
+            `;
 
             if (!support) {
-                document.getElementById('speechResult').textContent = '⚠️ Micrófono no disponible en este navegador.';
+                document.getElementById('speechResult').innerHTML = '<div class="feedback bad">⚠️ Micrófono no disponible en este navegador.</div>';
                 return;
             }
 
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            let recog = new SR(); recog.lang = 'es-ES'; recog.interimResults = false; recog.maxAlternatives = 1;
 
             async function ensureMicPermission() {
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
@@ -544,39 +691,87 @@ Devuelve SOLO un número de nivel entre 1 (muy básico) y 5 (avanzado).`;
 
             document.getElementById('speakBtn').onclick = async () => {
                 const result = document.getElementById('speechResult');
-                try { await ensureMicPermission(); }
-                catch { result.textContent = '⚠️ Permiso de micrófono denegado.'; return; }
+                const display = document.getElementById('speechDisplay');
+                const btn = document.getElementById('speakBtn');
 
-                result.textContent = '👂 Te escucho...';
+                try {
+                    await ensureMicPermission();
+                } catch {
+                    result.innerHTML = '<div class="feedback bad">⚠️ Permiso de micrófono denegado.</div>';
+                    return;
+                }
+
+                // Crear nueva instancia del reconocedor para evitar concatenación
+                const recog = new SR();
+                recog.lang = 'es-ES';
+                recog.interimResults = false;
+                recog.maxAlternatives = 1;
+
+                // Actualizar UI durante grabación
+                btn.disabled = true;
+                btn.textContent = '🔴 Escuchando...';
+                display.textContent = '👂 Te estoy escuchando, di la palabra ahora...';
+                result.innerHTML = '';
 
                 recog.onresult = async (e) => {
                     const said = e.results[0][0].transcript.trim().toLowerCase();
                     const ok = said === target;
+
+                    // Restaurar botón
+                    btn.disabled = false;
+                    btn.textContent = '🎤 Empezar a hablar';
+                    display.textContent = `Dijiste: "${said}"`;
+
+                    // Guardar interacción
+                    saveInteraction('speak', target, said, ok);
+
                     result.className = 'feedback ' + (ok ? 'ok' : 'bad');
                     result.innerHTML = ok
-                        ? `✅ ¡Muy bien! Dijiste <b>${target}</b> 🎉`
-                        : `❌ Dijiste: <b>${said}</b>. Intenta decir: <b>${target}</b>`;
+                        ? `✅ ¡Muy bien! Dijiste <b>${target}</b> correctamente 🎉`
+                        : `❌ Dijiste "${said}". Intenta decir <b>${target}</b>`;
 
                     const tip = await aiTip(
-                        ok ? `Refuerzo positivo por pronunciar bien "${target}" en 1 frase.`
-                            : `Anima al niño a repetir "${target}" con una pista muy breve.`,
-                        lv
+                        ok ? `Refuerzo positivo breve por pronunciar bien "${target}"`
+                            : `Anima brevemente al niño a repetir "${target}"`
                     );
                     if (tip) box.insertAdjacentHTML('beforeend', tip);
 
-                    pushHistory('speak', ok);
-                    setTimeout(renderSpeech, 1500);
+                    setTimeout(renderSpeech, 2000);
                 };
 
-                recog.onerror = () => { result.className = 'feedback bad'; result.textContent = '⚠️ No pude escucharte. Intenta otra vez.'; };
+                recog.onerror = (e) => {
+                    btn.disabled = false;
+                    btn.textContent = '🎤 Empezar a hablar';
+                    display.textContent = 'Error al escuchar. Intenta de nuevo.';
+                    result.innerHTML = '<div class="feedback bad">⚠️ No pude escucharte. Verifica tu micrófono e intenta otra vez.</div>';
+                };
 
-                try { recog.start(); } catch { }
+                recog.onend = () => {
+                    btn.disabled = false;
+                    btn.textContent = '🎤 Empezar a hablar';
+                    if (display.textContent === '👂 Te estoy escuchando, di la palabra ahora...') {
+                        display.textContent = 'No se detectó audio. Intenta otra vez.';
+                    }
+                };
+
+                try {
+                    recog.start();
+                } catch (e) {
+                    btn.disabled = false;
+                    btn.textContent = '🎤 Empezar a hablar';
+                    display.textContent = 'Error al iniciar grabación';
+                    result.innerHTML = '<div class="feedback bad">⚠️ Error al acceder al micrófono.</div>';
+                }
             };
+        } catch (e) {
+            box.innerHTML = '<div class="feedback bad">Error generando palabra. Inténtalo de nuevo.</div>';
+            setTimeout(renderSpeech, 2000);
         }
+    }
 
-        // ==== Start ====
-        renderHome();
-    </script>
+    // ==== Start ====
+    renderHome();
+</script>
 </body>
 
 </html>

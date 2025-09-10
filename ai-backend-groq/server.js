@@ -20,7 +20,7 @@ app.get('/api/generate', (_req, res) =>
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const BodySchema = z.object({
-    prompt: z.string().min(1).max(500),
+    prompt: z.string().min(1).max(5000), // Aumentado de 500 a 5000 caracteres
     level: z.number().min(1).max(5).optional()
 });
 
