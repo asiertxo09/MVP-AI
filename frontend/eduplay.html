@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI EduPlay — Accesible</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Poppins', sans-serif;
+            margin: 0;
+            background: #fefcf6;
+            color: #222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .app {
+            width: 95%;
+            max-width: 800px;
+            background: #fff;
+            border-radius: 24px;
+            padding: 20px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2em;
+            margin: 0 0 10px;
+        }
+
+        h2 {
+            font-size: 1.2em;
+            margin: 0;
+            text-align: center;
+            color: #666;
+        }
+
+        .grid3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .big-btn {
+            font-size: 1.3em;
+            padding: 20px;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .big-btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-math {
+            background: #c8f7c5;
+        }
+
+        .btn-write {
+            background: #ffe2b3;
+        }
+
+        .btn-speak {
+            background: #cce5ff;
+        }
+
+        .big-btn span {
+            font-size: 2em;
+        }
+
+        .card {
+            background: #fafafa;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 10px;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        input {
+            font-size: 1.2em;
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+
+        button.small {
+            font-size: 1em;
+            margin-top: 10px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: none;
+            background: #1c7ed6;
+            color: white;
+            cursor: pointer;
+        }
+
+        .feedback {
+            font-size: 1.4em;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        .ok {
+            color: #2b8a3e;
+        }
+
+        .bad {
+            color: #e03131;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <h1>🧸 AI EduPlay</h1>
+        <h2>Aprende jugando con tu amigo Edu</h2>
+
+        <div class="grid3">
+            <button class="big-btn btn-math" onclick="renderMath()">
+                <span>➕</span> Matemáticas
+            </button>
+            <button class="big-btn btn-write" onclick="renderWriting()">
+                <span>✏️</span> Escritura
+            </button>
+            <button class="big-btn btn-speak" onclick="renderSpeech()">
+                <span>🎤</span> Habla
+            </button>
+        </div>
+
+        <div id="output" class="card">👋 Hola, elige una actividad</div>
+    </div>
+
+    <script>
+        const USE_AI = true;
+        const API_URL = "http://localhost:3001/api/generate";
+        const output = document.getElementById('output');
+
+        async function generateWithAI(prompt, level = 1) {
+            if (!USE_AI) return null;
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, level })
+                });
+                const data = await res.json();
+                return data.text || null;
+            } catch { return null; }
+        }
+
+        async function aiTip(prompt, level = 1) {
+            const t = await generateWithAI(prompt, level);
+            return t ? `<br><em>${t}</em>` : '';
+        }
+
+        // === Matemáticas ===
+        function renderMath() {
+            const a = Math.floor(Math.random() * 5) + 1;
+            const b = Math.floor(Math.random() * 5) + 1;
+            const ans = a + b;
+            output.innerHTML = `¿Cuánto es <b>${a} + ${b}</b>?<br>
+        <input id='ans' type='number'><br>
+        <button class='small' onclick='checkMath(${ans},${a},${b})'>Comprobar</button>`;
+        }
+        async function checkMath(ans, a, b) {
+            const val = Number(document.getElementById('ans').value);
+            if (val === ans) {
+                let fb = `<div class='feedback ok'>✅ ¡Muy bien!</div>`;
+                fb += await aiTip(`Refuerzo positivo para ${a}+${b}`);
+                output.innerHTML += fb;
+            } else {
+                let fb = `<div class='feedback bad'>❌ Intenta otra vez</div>`;
+                fb += await aiTip(`Pista para ${a}+${b}`);
+                output.innerHTML += fb;
+            }
+        }
+
+        // === Escritura ===
+        const WORD = "gato";
+        function renderWriting() {
+            output.innerHTML = `Escribe la palabra: <b>${WORD}</b><br>
+        <input id='write' type='text'><br>
+        <button class='small' onclick='checkWriting()'>Comprobar</button>`;
+        }
+        async function checkWriting() {
+            const val = document.getElementById('write').value.trim().toLowerCase();
+            if (val === WORD) {
+                let fb = `<div class='feedback ok'>✅ ¡Perfecto!</div>`;
+                fb += await aiTip(`Refuerzo positivo por escribir bien "${WORD}"`);
+                output.innerHTML += fb;
+            } else {
+                let fb = `<div class='feedback bad'>❌ Se escribe <b>${WORD}</b></div>`;
+                fb += await aiTip(`Corrección amable: el niño escribió "${val}" en vez de "${WORD}"`);
+                output.innerHTML += fb;
+            }
+        }
+
+        // === Habla ===
+        
+        const SPEAK_WORDS = ["gato", "casa", "sol", "luna", "perro", "mesa"];
+
+            function renderSpeech() {
+                if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+                    output.innerHTML = '⚠️ Tu navegador no soporta reconocimiento de voz';
+                    return;
+                }
+                // Elegimos una palabra al azar
+                const target = SPEAK_WORDS[Math.floor(Math.random() * SPEAK_WORDS.length)];
+
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const recog = new SR();
+                recog.lang = 'es-ES';
+                recog.interimResults = false;
+                recog.maxAlternatives = 1;
+
+                // Mostrar la palabra que debe decir el niño
+                output.innerHTML = `
+      <div style="font-size:2em; margin-bottom:10px;">Di la palabra: <b>${target}</b></div>
+      <button class='small' onclick='startRecognition()'>🎤 Hablar</button>
+      <div id='speechResult'></div>
+    `;
+
+                window.startRecognition = () => { recog.start(); };
+
+                recog.onresult = async (e) => {
+                    const said = e.results[0][0].transcript.trim().toLowerCase();
+                    let fb = "";
+                    if (said === target) {
+                        fb = `<div class='feedback ok'>✅ ¡Muy bien! Dijiste <b>${target}</b> 🎉</div>`;
+                        fb += await aiTip(`Refuerzo positivo por pronunciar bien la palabra "${target}"`);
+                    } else {
+                        fb = `<div class='feedback bad'>❌ Dijiste: <b>${said}</b><br>
+              Intenta otra vez: <b>${target}</b><br>
+              Pista: ${target.split("").join("-")}</div>`;
+                        fb += await aiTip(`Motiva al niño a volver a decir "${target}" correctamente`);
+                    }
+                    document.getElementById('speechResult').innerHTML = fb;
+                };
+
+                recog.onerror = () => {
+                    document.getElementById('speechResult').innerHTML =
+                        "<div class='feedback bad'>⚠️ No se pudo escuchar. Intenta de nuevo.</div>";
+                };
+            }
+    </script>
+</body>
+
+</html>
