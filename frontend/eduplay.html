@@ -4,150 +4,248 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI EduPlay — Accesible</title>
+    <title>AI EduPlay — Adaptativo con IA (Groq)</title>
     <style>
+        :root {
+            --bg: #fefcf6;
+            --card: #ffffff;
+            --soft: #faf7ef;
+            --ink: #222;
+            --ok: #2b8a3e;
+            --bad: #e03131;
+            --blue: #1c7ed6;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
         body {
-            font-family: 'Comic Sans MS', 'Poppins', sans-serif;
+            height: 100%
+        }
+
+        body {
             margin: 0;
-            background: #fefcf6;
-            color: #222;
+            min-height: 100vh;
             display: flex;
-            justify-content: center;
             align-items: center;
-            height: 100vh;
+            justify-content: center;
+            background: var(--bg);
+            color: var(--ink);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", sans-serif
         }
 
         .app {
-            width: 95%;
-            max-width: 800px;
-            background: #fff;
-            border-radius: 24px;
-            padding: 20px;
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+            width: min(1000px, 96vw);
+            height: min(92vh, 900px);
+            background: var(--card);
+            border-radius: 28px;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, .08);
+            overflow: hidden;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            border: 8px solid #f0e9d9
+        }
+
+        header {
+            padding: 18px 22px;
+            background: linear-gradient(90deg, #7ec8ff, #bfe4ff);
+            display: flex;
+            align-items: center;
+            justify-content: space-between
         }
 
         h1 {
-            text-align: center;
-            font-size: 2em;
-            margin: 0 0 10px;
+            margin: 0;
+            font-size: clamp(20px, 3.4vw, 28px);
+            color: #04324f;
+            display: flex;
+            align-items: center;
+            gap: 10px
         }
 
-        h2 {
-            font-size: 1.2em;
-            margin: 0;
-            text-align: center;
-            color: #666;
+        .screen {
+            padding: 24px;
+            overflow: auto;
+            display: grid;
+            gap: 24px
         }
 
         .grid3 {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin: 20px 0;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px
+        }
+
+        @media (max-width:820px) {
+            .grid3 {
+                grid-template-columns: 1fr
+            }
         }
 
         .big-btn {
-            font-size: 1.3em;
-            padding: 20px;
-            border: none;
-            border-radius: 16px;
+            border: 0;
+            border-radius: 22px;
+            padding: 26px;
+            font-size: clamp(18px, 3.4vw, 22px);
+            font-weight: 800;
+            color: #082a41;
             cursor: pointer;
-            font-weight: bold;
-            transition: transform 0.1s;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
-        }
-
-        .big-btn:active {
-            transform: scale(0.97);
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 6px 0 rgba(0, 0, 0, .06);
+            min-height: 120px
         }
 
         .btn-math {
-            background: #c8f7c5;
+            background: #c8f7c5
         }
 
         .btn-write {
-            background: #ffe2b3;
+            background: #ffe2b3
         }
 
         .btn-speak {
-            background: #cce5ff;
-        }
-
-        .big-btn span {
-            font-size: 2em;
+            background: #cce5ff
         }
 
         .card {
-            background: #fafafa;
+            background: var(--soft);
+            border: 2px solid #f0eadc;
+            border-radius: 20px;
+            padding: 20px
+        }
+
+        .title {
+            font-size: clamp(18px, 3.4vw, 22px);
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center
+        }
+
+        .prompt {
+            font-size: clamp(20px, 4vw, 26px);
+            text-align: center
+        }
+
+        .section {
+            display: grid;
+            gap: 18px
+        }
+
+        .input {
+            font-size: 24px;
+            padding: 14px 16px;
+            border: 3px solid #dcd3be;
             border-radius: 16px;
-            padding: 20px;
-            margin-top: 10px;
-            font-size: 1.2em;
-            text-align: center;
+            width: 100%;
         }
 
-        input {
-            font-size: 1.2em;
-            padding: 10px;
-            border: 2px solid #ccc;
-            border-radius: 12px;
-            margin-top: 10px;
+        .small {
+            font-size: 18px;
+            padding: 14px 18px;
+            border-radius: 16px;
+            border: 0;
+            background: var(--blue);
+            color: #fff;
+            cursor: pointer
         }
 
-        button.small {
-            font-size: 1em;
-            margin-top: 10px;
-            padding: 10px 16px;
-            border-radius: 12px;
-            border: none;
-            background: #1c7ed6;
-            color: white;
-            cursor: pointer;
+        .choices {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px
+        }
+
+        .choice {
+            font-size: 24px;
+            padding: 18px;
+            border-radius: 16px;
+            border: 2px solid #e7ddc8;
+            background: #fff;
+            cursor: pointer
         }
 
         .feedback {
-            font-size: 1.4em;
-            margin-top: 10px;
-            font-weight: bold;
+            font-weight: 900;
+            font-size: clamp(20px, 3.6vw, 26px);
+            margin-top: 8px
         }
 
         .ok {
-            color: #2b8a3e;
+            color: var(--ok)
         }
 
         .bad {
-            color: #e03131;
+            color: var(--bad)
+        }
+
+        footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 18px;
+            background: #f7f3ea;
+            border-top: 2px solid #efe6d3
+        }
+
+        .levels {
+            font-size: 15px;
+            background: #fff;
+            border: 2px solid #efe6d3;
+            border-radius: 999px;
+            padding: 8px 12px
+        }
+
+        .pill {
+            background: #eef7ff;
+            border: 2px solid #d7eaff;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 14px
+        }
+
+        .md p {
+            margin: 0 0 8px
+        }
+
+        .md ul {
+            margin: 8px 0 8px 18px
+        }
+
+        .md li {
+            margin: 6px 0
         }
     </style>
+    <!-- Markdown renderer (subset). Si prefieres parser propio, quita este script y usa un renderizador seguro a medida. -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body>
-    <div class="app">
-        <h1>🧸 AI EduPlay</h1>
-        <h2>Aprende jugando con tu amigo Edu</h2>
+    <main class="app" role="main" aria-label="AI EduPlay">
+        <header>
+            <h1>🧸 AI EduPlay</h1>
+            <div class="pill" id="status">Modo adaptativo con IA</div>
+        </header>
 
-        <div class="grid3">
-            <button class="big-btn btn-math" onclick="renderMath()">
-                <span>➕</span> Matemáticas
-            </button>
-            <button class="big-btn btn-write" onclick="renderWriting()">
-                <span>✏️</span> Escritura
-            </button>
-            <button class="big-btn btn-speak" onclick="renderSpeech()">
-                <span>🎤</span> Habla
-            </button>
-        </div>
+        <section class="screen" id="screen"></section>
 
-        <div id="output" class="card">👋 Hola, elige una actividad</div>
-    </div>
+        <footer>
+            <div class="levels" id="levels">➕ M1 | ✏️ E1 | 🎤 H1</div>
+            <button class="small" id="btnHome">Inicio</button>
+        </footer>
+    </main>
 
     <script>
+        // ===== Config IA (backend separado) =====
         const USE_AI = true;
-        const API_URL = "http://localhost:3001/api/generate";
-        const output = document.getElementById('output');
+        const API_URL = 'http://localhost:3001/api/generate';
 
         async function generateWithAI(prompt, level = 1) {
             if (!USE_AI) return null;
@@ -157,105 +255,327 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt, level })
                 });
+                if (!res.ok) throw new Error('IA no disponible');
                 const data = await res.json();
-                return data.text || null;
-            } catch { return null; }
+                return (data.text || '').trim();
+            } catch (e) {
+                console.warn('IA error', e);
+                return null;
+            }
         }
 
+        // Markdown seguro (marca básica). Si tu despliegue exige sanitización estricta, añade DOMPurify.
+        marked.setOptions({ mangle: false, headerIds: false, breaks: true });
+        function renderMarkdown(text) {
+            if (!text) return '';
+            return `<div class="md">${marked.parse(text)}</div>`;
+        }
         async function aiTip(prompt, level = 1) {
             const t = await generateWithAI(prompt, level);
-            return t ? `<br><em>${t}</em>` : '';
+            return t ? renderMarkdown(t) : '';
         }
 
-        // === Matemáticas ===
+        // ===== Estado adaptativo por sección =====
+        const state = {
+            level: { math: 1, write: 1, speak: 1 },       // nivel inicia en 1
+            history: { math: [], write: [], speak: [] },  // últimos 10 intentos (1/0)
+            lastTarget: { write: null, speak: null },     // evitar repeticiones
+            lastMath: null
+        };
+
+        const screen = document.getElementById('screen');
+        const btnHome = document.getElementById('btnHome');
+        const levelsBox = document.getElementById('levels');
+        btnHome.addEventListener('click', renderHome);
+
+        function updateLevelsUI() {
+            levelsBox.textContent = `➕ M${state.level.math} | ✏️ E${state.level.write} | 🎤 H${state.level.speak}`;
+        }
+
+        function pushHistory(section, ok) {
+            const arr = state.history[section];
+            arr.push(ok ? 1 : 0);
+            if (arr.length > 10) arr.shift(); // ventana deslizante
+            if (arr.length === 10) {
+                updateLevelWithAI(section, [...arr]); // copia para evitar mutación
+            }
+            updateLevelsUI();
+        }
+
+        async function updateLevelWithAI(section, hist) {
+            const prompt = `Eres un tutor infantil. Analiza estos 10 intentos de la sección ${section} (1=acierto, 0=fallo): ${JSON.stringify(hist)}.
+Devuelve SOLO un número de nivel entre 1 (muy básico) y 5 (avanzado).`;
+            const txt = await generateWithAI(prompt, state.level[section]);
+
+            let newLevel = null;
+            if (txt) {
+                const m = txt.match(/(?<!\d)[1-5](?!\d)/); // primer dígito aislado 1..5
+                if (m) newLevel = parseInt(m[0]);
+            }
+
+            // Fallback local si la IA no devuelve número claro
+            if (newLevel === null) {
+                const sum = hist.reduce((a, b) => a + b, 0);
+                if (sum >= 8) newLevel = Math.min(5, state.level[section] + 1);
+                else if (sum <= 3) newLevel = Math.max(1, state.level[section] - 1);
+                else newLevel = state.level[section];
+            }
+
+            state.level[section] = newLevel;
+            state.history[section] = []; // resetea ventana para los próximos 10
+            updateLevelsUI();
+        }
+
+        // ===== Utilidades =====
+        const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const pick = (arr) => arr[rand(0, arr.length - 1)];
+        function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+        // ===== Inicio =====
+        function renderHome() {
+            screen.innerHTML = '';
+            updateLevelsUI();
+
+            const title = document.createElement('div');
+            title.className = 'card title';
+            title.textContent = 'Elige una actividad para practicar';
+
+            const grid = document.createElement('div');
+            grid.className = 'grid3';
+            grid.appendChild(bigButton('➕', 'Matemáticas', 'btn-math', renderMath));
+            grid.appendChild(bigButton('✏️', 'Escritura', 'btn-write', renderWriting));
+            grid.appendChild(bigButton('🎤', 'Habla', 'btn-speak', renderSpeech));
+
+            const gridWrap = document.createElement('div');
+            gridWrap.className = 'card section';
+            gridWrap.appendChild(grid);
+
+            screen.appendChild(title);
+            screen.appendChild(gridWrap);
+        }
+
+        function bigButton(emoji, label, cls, onClick) {
+            const b = document.createElement('button');
+            b.className = `big-btn ${cls}`;
+            b.onclick = onClick;
+            b.innerHTML = `<div style="font-size:38px">${emoji}</div><div>${label}</div>`;
+            return b;
+        }
+
+        // ===== Matemáticas (por nivel y sin repetir consecutivo) =====
         function renderMath() {
-            const a = Math.floor(Math.random() * 5) + 1;
-            const b = Math.floor(Math.random() * 5) + 1;
-            const ans = a + b;
-            output.innerHTML = `¿Cuánto es <b>${a} + ${b}</b>?<br>
-        <input id='ans' type='number'><br>
-        <button class='small' onclick='checkMath(${ans},${a},${b})'>Comprobar</button>`;
-        }
-        async function checkMath(ans, a, b) {
-            const val = Number(document.getElementById('ans').value);
-            if (val === ans) {
-                let fb = `<div class='feedback ok'>✅ ¡Muy bien!</div>`;
-                fb += await aiTip(`Refuerzo positivo para ${a}+${b}`);
-                output.innerHTML += fb;
-            } else {
-                let fb = `<div class='feedback bad'>❌ Intenta otra vez</div>`;
-                fb += await aiTip(`Pista para ${a}+${b}`);
-                output.innerHTML += fb;
+            screen.innerHTML = '';
+            const lv = state.level.math;
+
+            const wrap = document.createElement('div');
+            wrap.className = 'card section';
+
+            let p = makeMathProblem(lv);
+            let guard = 0;
+            while (state.lastMath && state.lastMath.question === p.question && guard < 5) {
+                guard++; p = makeMathProblem(lv);
             }
+            state.lastMath = { question: p.question };
+
+            const prompt = document.createElement('div');
+            prompt.className = 'prompt';
+            prompt.innerHTML = `¿Cuánto es <b>${p.question}</b>?`;
+
+            const choices = document.createElement('div');
+            choices.className = 'choices';
+
+            shuffle([p.answer, ...p.distractors]).slice(0, 6).forEach(v => {
+                const btn = document.createElement('button');
+                btn.className = 'choice';
+                btn.textContent = v;
+                btn.onclick = async () => {
+                    const ok = Number(v) === Number(p.answer);
+                    const fb = document.createElement('div');
+                    fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
+                    fb.innerHTML = ok ? `✅ ¡Muy bien! ${v} es correcto 🎉` : `❌ Casi. Intenta otra vez.`;
+                    wrap.appendChild(fb);
+
+                    const tip = await aiTip(
+                        ok ? `Refuerzo positivo por acertar ${p.question}`
+                            : `Pista breve para que un niño resuelva ${p.question} sin dar la respuesta`,
+                        lv
+                    );
+                    if (tip) wrap.insertAdjacentHTML('beforeend', tip);
+
+                    pushHistory('math', ok);
+                    setTimeout(renderMath, 1300);
+                };
+                choices.appendChild(btn);
+            });
+
+            wrap.appendChild(prompt);
+            wrap.appendChild(choices);
+            screen.appendChild(wrap);
         }
 
-        // === Escritura ===
-        const WORD = "gato";
+        function makeMathProblem(level) {
+            if (level <= 2) {
+                const max = level === 1 ? 5 : 10;
+                const a = rand(0, max), b = rand(0, max), ans = a + b;
+                return { question: `${a} + ${b}`, answer: ans, distractors: spreadNumbers(ans, 0, max + 5, 5) };
+            }
+            const type = pick(['+', '-', 'missing', 'two']);
+            if (type === 'two') {
+                let a = rand(0, 15), b = rand(0, 10), c = rand(0, 10);
+                const sign = Math.random() < 0.5 ? '+' : '-';
+                let first = sign === '+' ? a + b : a - b;
+                if (first < 0) { a = b + rand(0, 3); first = a - b; }
+                const ans = first + c;
+                return { question: `(${a} ${sign} ${b}) + ${c}`, answer: ans, distractors: spreadNumbers(ans, 0, 30, 5) };
+            }
+            if (type === 'missing') {
+                const op = Math.random() < 0.5 ? '+' : '-';
+                let a = rand(0, 15), b = rand(0, 10);
+                let c = op === '+' ? a + b : a - b;
+                if (c < 0) { a = b + rand(0, 3); c = a - b; }
+                const ans = op === '+' ? c - a : a - c;
+                return { question: op === '+' ? `${a} + ? = ${c}` : `${a} - ? = ${c}`, answer: ans, distractors: spreadNumbers(ans, 0, 20, 5) };
+            }
+            const op = Math.random() < 0.5 ? '+' : '-';
+            let a = rand(0, 15), b = rand(0, 15);
+            let ans = op === '+' ? a + b : a - b;
+            if (ans < 0) { a = b + rand(0, 3); ans = a - b; }
+            return { question: `${a} ${op} ${b}`, answer: ans, distractors: spreadNumbers(ans, 0, 25, 5) };
+        }
+
+        function spreadNumbers(center, min, max, count) {
+            const set = new Set();
+            while (set.size < count) {
+                const n = rand(min, max);
+                if (n !== center) set.add(n);
+            }
+            return Array.from(set);
+        }
+
+        // ===== Escritura (listas por nivel, evita repetir) =====
+        const WORDS = {
+            1: ['sol', 'mar', 'pan', 'gato', 'casa'],
+            2: ['perro', 'flor', 'nube', 'luna', 'silla'],
+            3: ['plato', 'brazo', 'trineo', 'libro', 'coche'],
+            4: ['carro', 'llave', 'burro', 'cereza', 'pared'],
+            5: ['mariposa', 'jirafa', 'zanahoria', 'herrero', 'camino']
+        };
+
         function renderWriting() {
-            output.innerHTML = `Escribe la palabra: <b>${WORD}</b><br>
-        <input id='write' type='text'><br>
-        <button class='small' onclick='checkWriting()'>Comprobar</button>`;
+            screen.innerHTML = '';
+            const lv = state.level.write;
+
+            // elige una palabra distinta a la anterior
+            let target = pick(WORDS[lv] || WORDS[1]);
+            let guard = 0; while (state.lastTarget.write === target && guard < 5) { target = pick(WORDS[lv] || WORDS[1]); guard++; }
+            state.lastTarget.write = target;
+
+            const box = document.createElement('div'); box.className = 'card section';
+            box.innerHTML = `
+        <div class="prompt">Escribe la palabra: <b>${target}</b></div>
+        <input id='writeInput' class='input' type='text' placeholder='Escribe aquí...'>
+        <button class='small' id='checkBtn'>Comprobar ✅</button>
+      `;
+            screen.appendChild(box);
+
+            document.getElementById('checkBtn').onclick = async () => {
+                const v = document.getElementById('writeInput').value.trim().toLowerCase();
+                const ok = v === target;
+
+                const fb = document.createElement('div'); fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
+                fb.innerHTML = ok ? '✅ ¡Perfecto!' : `❌ Se escribe <b>${target}</b>`;
+                box.appendChild(fb);
+
+                const tip = await aiTip(
+                    ok ? `Refuerzo positivo para un niño (5-10) por escribir bien "${target}" en 1 frase.`
+                        : `Corrección amable y corta: escribió "${v}", lo correcto es "${target}". No des sermón.`,
+                    lv
+                );
+                if (tip) box.insertAdjacentHTML('beforeend', tip);
+
+                pushHistory('write', ok);
+                setTimeout(renderWriting, 1400);
+            };
         }
-        async function checkWriting() {
-            const val = document.getElementById('write').value.trim().toLowerCase();
-            if (val === WORD) {
-                let fb = `<div class='feedback ok'>✅ ¡Perfecto!</div>`;
-                fb += await aiTip(`Refuerzo positivo por escribir bien "${WORD}"`);
-                output.innerHTML += fb;
-            } else {
-                let fb = `<div class='feedback bad'>❌ Se escribe <b>${WORD}</b></div>`;
-                fb += await aiTip(`Corrección amable: el niño escribió "${val}" en vez de "${WORD}"`);
-                output.innerHTML += fb;
+
+        // ===== Habla (palabras por nivel, evita repetir) =====
+        const SPEAK = {
+            1: ['sol', 'casa', 'pan', 'luna', 'gato'],
+            2: ['pera', 'taza', 'loro', 'nube', 'pato'],
+            3: ['risa', 'roca', 'caro', 'pero', 'barco'],
+            4: ['carro', 'perro', 'barro', 'parra', 'tierra'],
+            5: ['ferrocarril', 'mariposa', 'guitarra', 'arriba', 'herrero']
+        };
+
+        function renderSpeech() {
+            screen.innerHTML = '';
+            const lv = state.level.speak;
+
+            // elige una palabra distinta a la anterior
+            let target = pick(SPEAK[lv] || SPEAK[1]);
+            let guard = 0; while (state.lastTarget.speak === target && guard < 5) { target = pick(SPEAK[lv] || SPEAK[1]); guard++; }
+            state.lastTarget.speak = target;
+
+            const support = ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+            const box = document.createElement('div'); box.className = 'card section';
+            box.innerHTML = `
+        <div class='prompt'>Di la palabra: <b>${target}</b></div>
+        <div style='display:flex; flex-wrap:wrap; gap:10px; align-items:center'>
+          <button class='small' id='speakBtn' ${!support ? 'disabled' : ''}>🎤 Hablar</button>
+          <span class='pill'>Pista: ${target.split('').join('-')}</span>
+        </div>
+        <div id='speechResult' class='feedback'></div>
+      `;
+            screen.appendChild(box);
+
+            if (!support) {
+                document.getElementById('speechResult').textContent = '⚠️ Micrófono no disponible en este navegador.';
+                return;
             }
-        }
 
-        // === Habla ===
-        
-        const SPEAK_WORDS = ["gato", "casa", "sol", "luna", "perro", "mesa"];
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            let recog = new SR(); recog.lang = 'es-ES'; recog.interimResults = false; recog.maxAlternatives = 1;
 
-            function renderSpeech() {
-                if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-                    output.innerHTML = '⚠️ Tu navegador no soporta reconocimiento de voz';
-                    return;
-                }
-                // Elegimos una palabra al azar
-                const target = SPEAK_WORDS[Math.floor(Math.random() * SPEAK_WORDS.length)];
+            async function ensureMicPermission() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                s.getTracks().forEach(t => t.stop());
+            }
 
-                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-                const recog = new SR();
-                recog.lang = 'es-ES';
-                recog.interimResults = false;
-                recog.maxAlternatives = 1;
+            document.getElementById('speakBtn').onclick = async () => {
+                const result = document.getElementById('speechResult');
+                try { await ensureMicPermission(); }
+                catch { result.textContent = '⚠️ Permiso de micrófono denegado.'; return; }
 
-                // Mostrar la palabra que debe decir el niño
-                output.innerHTML = `
-      <div style="font-size:2em; margin-bottom:10px;">Di la palabra: <b>${target}</b></div>
-      <button class='small' onclick='startRecognition()'>🎤 Hablar</button>
-      <div id='speechResult'></div>
-    `;
-
-                window.startRecognition = () => { recog.start(); };
+                result.textContent = '👂 Te escucho...';
 
                 recog.onresult = async (e) => {
                     const said = e.results[0][0].transcript.trim().toLowerCase();
-                    let fb = "";
-                    if (said === target) {
-                        fb = `<div class='feedback ok'>✅ ¡Muy bien! Dijiste <b>${target}</b> 🎉</div>`;
-                        fb += await aiTip(`Refuerzo positivo por pronunciar bien la palabra "${target}"`);
-                    } else {
-                        fb = `<div class='feedback bad'>❌ Dijiste: <b>${said}</b><br>
-              Intenta otra vez: <b>${target}</b><br>
-              Pista: ${target.split("").join("-")}</div>`;
-                        fb += await aiTip(`Motiva al niño a volver a decir "${target}" correctamente`);
-                    }
-                    document.getElementById('speechResult').innerHTML = fb;
+                    const ok = said === target;
+                    result.className = 'feedback ' + (ok ? 'ok' : 'bad');
+                    result.innerHTML = ok
+                        ? `✅ ¡Muy bien! Dijiste <b>${target}</b> 🎉`
+                        : `❌ Dijiste: <b>${said}</b>. Intenta decir: <b>${target}</b>`;
+
+                    const tip = await aiTip(
+                        ok ? `Refuerzo positivo por pronunciar bien "${target}" en 1 frase.`
+                            : `Anima al niño a repetir "${target}" con una pista muy breve.`,
+                        lv
+                    );
+                    if (tip) box.insertAdjacentHTML('beforeend', tip);
+
+                    pushHistory('speak', ok);
+                    setTimeout(renderSpeech, 1500);
                 };
 
-                recog.onerror = () => {
-                    document.getElementById('speechResult').innerHTML =
-                        "<div class='feedback bad'>⚠️ No se pudo escuchar. Intenta de nuevo.</div>";
-                };
-            }
+                recog.onerror = () => { result.className = 'feedback bad'; result.textContent = '⚠️ No pude escucharte. Intenta otra vez.'; };
+
+                try { recog.start(); } catch { }
+            };
+        }
+
+        // ==== Start ====
+        renderHome();
     </script>
 </body>
 
