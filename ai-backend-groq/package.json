@@ -2,8 +2,11 @@
   "name": "ai-backend-groq",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
+  "description": "Backend IA (Groq + HuggingFace) para AI EduPlay",
   "scripts": {
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
@@ -14,8 +17,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
     "groq-sdk": "^0.32.0",
+    "node-fetch": "^3.3.2",
     "zod": "^4.1.5"
-  },
-  "type": "module",
-  "description": ""
+  }
 }
