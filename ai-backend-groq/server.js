@@ -14,7 +14,7 @@ import { z } from 'zod';
 import Groq from 'groq-sdk';
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
 app.use(cors({ origin: true })); // en prod: { origin: 'https://tu-dominio' }
 app.use(rateLimit({ windowMs: 60_000, max: 60 }));
 
@@ -27,8 +27,8 @@ app.get('/favicon.ico', (_req,res)=> res.status(204).end());
 
 // === Configuración Groq + Hugging Face ===
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-let HF_API_KEY = (process.env.HUGGING_FACE_API_KEY || process.env.HF_API_KEY || '').trim().replace(/^['"]+|['"]+$/g,'');
-if (HF_API_KEY && /\s/.test(HF_API_KEY)) console.warn('[HF] Warning: API key contiene espacios.');
+let HF_API_KEY = (process.env.HUGGING_FACE_API_KEY || process.env.HF_API_KEY || '').trim().replace(/^["']+|["']+$/g,'');
+// Models for image
 const HF_IMAGE_MODELS = (process.env.HF_IMAGE_MODELS || 'stabilityai/stable-diffusion-xl-base-1.0')
     .split(',').map(m=>m.trim()).filter(Boolean);
 function getHFKey(){ return HF_API_KEY; }
@@ -45,7 +45,6 @@ app.get('/api/debug/image', (_req,res)=>{
 // === Schemas ===
 const BodySchema = z.object({ prompt: z.string().min(1).max(5000), level: z.number().min(1).max(5).optional() });
 const ImageSchema = z.object({ prompt: z.string().min(1).max(200), style: z.string().min(0).max(100).optional() });
-const AudioSchema = z.object({ audio: z.string().min(1) }); // audio base64
 
 // === extractText helper ===
 function extractText(completion){
@@ -171,35 +170,6 @@ app.get('/api/image', async (req, res) => {
         res.send(buffer);
     } catch (err) {
         res.status(500).json({ error: 'Image generation failed', details: err.message });
-    }
-});
-
-// === Transcripción de audio con Whisper ===
-app.post('/api/transcribe', async (req, res) => {
-    try {
-        const { audio } = AudioSchema.parse(req.body);
-        const audioBuffer = Buffer.from(audio, 'base64');
-        if (!getHFKey()) throw new Error('Hugging Face API key ausente');
-        const response = await fetch(
-            'https://api-inference.huggingface.co/models/openai/whisper-small',
-            {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${getHFKey()}`,
-                    'Content-Type': 'audio/webm'
-                },
-                body: audioBuffer
-            }
-        );
-        if (!response.ok) {
-            const err = await response.text();
-            throw new Error(`Whisper HF error (${response.status}): ${err}`);
-        }
-        const data = await response.json();
-        res.json({ text: data.text || '' });
-    } catch (err) {
-        console.error('Error en /api/transcribe:', err.message);
-        res.status(500).json({ error: 'Transcription failed', details: err.message });
     }
 });
 
