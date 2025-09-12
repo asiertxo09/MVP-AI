@@ -832,7 +832,6 @@ Genera una palabra apropiada para practicar ${activityType}:`;
             <div id='imgResult'></div>
         `;
         screen.appendChild(box);
-
         const BAD = ['violencia', 'sangre', 'arma', 'matar', 'desnudo'];
 
         document.getElementById('imgBtn').onclick = async () => {
@@ -845,7 +844,7 @@ Genera una palabra apropiada para practicar ${activityType}:`;
                 return;
             }
             result.innerHTML = '⌛ Generando imagen...';
-            const blob = await generateImage(prompt, style);
+            const blob = await generateImage(prompt, style):
             if (!blob) {
                 result.innerHTML = '<div class="feedback bad">Error generando imagen.</div>';
                 return;
