@@ -24,6 +24,10 @@ const BodySchema = z.object({
     level: z.number().min(1).max(5).optional()
 });
 
+const AudioSchema = z.object({
+    audio: z.string().min(1) // audio codificado en base64
+});
+
 // Función para extraer texto de distintas formas posibles
 function extractText(completion) {
     // 1) chat.completions estilo OpenAI
@@ -82,6 +86,37 @@ app.post('/api/generate', async (req, res) => {
     } catch (err) {
         console.error('Error en /api/generate:', err);
         res.status(400).json({ error: 'Bad request or Groq error' });
+    }
+});
+
+// Transcripción de audio con Whisper
+app.post('/api/transcribe', async (req, res) => {
+    try {
+        const { audio } = AudioSchema.parse(req.body);
+        const audioBuffer = Buffer.from(audio, 'base64');
+
+        const response = await fetch(
+            'https://api-inference.huggingface.co/models/openai/whisper-small',
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${process.env.HF_API_KEY}`,
+                    'Content-Type': 'audio/webm'
+                },
+                body: audioBuffer
+            }
+        );
+
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(err);
+        }
+
+        const data = await response.json();
+        res.json({ text: data.text || '' });
+    } catch (err) {
+        console.error('Error en /api/transcribe:', err);
+        res.status(500).json({ error: 'Transcription failed' });
     }
 });
 

@@ -113,6 +113,14 @@
             background: #cce5ff
         }
 
+        .btn-draw {
+            background: #ffd6e0
+        }
+
+        .btn-transcribe {
+            background: #e6d0ff
+        }
+
         .card {
             background: var(--soft);
             border: 2px solid #f0eadc;
@@ -304,6 +312,8 @@
     // ===== Config IA (backend separado) =====
     const USE_AI = true;
     const API_URL = 'http://localhost:3001/api/generate';
+    const IMAGE_URL = 'http://localhost:5001/image';
+    const TRANSCRIBE_URL = 'http://localhost:3001/api/transcribe';
 
     async function generateWithAI(prompt) {
         if (!USE_AI) return null;
@@ -319,6 +329,37 @@
         } catch (e) {
             console.warn('IA error', e);
             return null;
+        }
+    }
+
+    async function generateImage(prompt, style) {
+        try {
+            const res = await fetch(IMAGE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, style })
+            });
+            if (!res.ok) throw new Error('falló');
+            return await res.blob();
+        } catch (e) {
+            console.warn('img error', e);
+            return null;
+        }
+    }
+
+    async function transcribeAudio(audio) {
+        try {
+            const res = await fetch(TRANSCRIBE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audio })
+            });
+            if (!res.ok) throw new Error('transcribe fail');
+            const data = await res.json();
+            return data.text;
+        } catch (e) {
+            console.warn('transcribe error', e);
+            return '';
         }
     }
 
@@ -527,6 +568,8 @@ Genera una palabra apropiada para practicar ${activityType}:`;
         grid.appendChild(bigButton('➕', 'Matemáticas', 'btn-math', renderMath));
         grid.appendChild(bigButton('✏️', 'Escritura', 'btn-write', renderWriting));
         grid.appendChild(bigButton('🎤', 'Habla', 'btn-speak', renderSpeech));
+        grid.appendChild(bigButton('🖼️', 'Dibuja', 'btn-draw', renderDraw));
+        grid.appendChild(bigButton('🎧', 'Transcribe', 'btn-transcribe', renderTranscribe));
 
         const gridWrap = document.createElement('div');
         gridWrap.className = 'card section';
@@ -767,6 +810,114 @@ Genera una palabra apropiada para practicar ${activityType}:`;
             box.innerHTML = '<div class="feedback bad">Error generando palabra. Inténtalo de nuevo.</div>';
             setTimeout(renderSpeech, 2000);
         }
+    }
+
+    // ===== Dibuja con IA =====
+    async function renderDraw() {
+        screen.innerHTML = '';
+
+        const box = document.createElement('div');
+        box.className = 'card section';
+        box.innerHTML = `
+            <div class="prompt">Describe lo que quieres ver:</div>
+            <input id='imgPrompt' class='input' type='text' placeholder='Un perro astronauta...'>
+            <div class="prompt">Elige un estilo:</div>
+            <select id='imgStyle' class='input'>
+                <option value='dibujo infantil'>Dibujo infantil</option>
+                <option value='acuarela'>Acuarela</option>
+                <option value='cómic'>Cómic</option>
+                <option value='realista suave'>Realista suave</option>
+            </select>
+            <button class='small' id='imgBtn'>Generar 🎨</button>
+            <div id='imgResult'></div>
+        `;
+        screen.appendChild(box);
+
+        const BAD = ['violencia', 'sangre', 'arma', 'matar', 'desnudo'];
+
+        document.getElementById('imgBtn').onclick = async () => {
+            const prompt = document.getElementById('imgPrompt').value.trim();
+            const style = document.getElementById('imgStyle').value;
+            const result = document.getElementById('imgResult');
+            if (!prompt) return;
+            if (BAD.some(b => prompt.toLowerCase().includes(b))) {
+                result.innerHTML = '<div class="feedback bad">Palabras no permitidas.</div>';
+                return;
+            }
+            result.innerHTML = '⌛ Generando imagen...';
+            const blob = await generateImage(prompt, style);
+            if (!blob) {
+                result.innerHTML = '<div class="feedback bad">Error generando imagen.</div>';
+                return;
+            }
+            const url = URL.createObjectURL(blob);
+            result.innerHTML = `<img src="${url}" alt="Imagen generada" style="max-width:100%;border-radius:16px;">`;
+        };
+    }
+
+    // ===== Transcripción con Whisper =====
+    async function renderTranscribe() {
+        screen.innerHTML = '';
+
+        const box = document.createElement('div');
+        box.className = 'card section';
+        box.innerHTML = `
+            <div class="prompt">Graba tu voz y la IA la escribirá</div>
+            <div class="input-container">
+                <div class="speech-input">
+                    <div id="transDisplay" class="speech-display">Presiona grabar y habla...</div>
+                </div>
+            </div>
+            <div class="speech-controls">
+                <button class='small' id='startRec'>🎙️ Grabar</button>
+                <button class='btn-stop' id='stopRec' disabled>⏹️</button>
+            </div>
+            <div id='transResult' class='feedback'></div>
+        `;
+        screen.appendChild(box);
+
+        const startBtn = document.getElementById('startRec');
+        const stopBtn = document.getElementById('stopRec');
+        const display = document.getElementById('transDisplay');
+        const result = document.getElementById('transResult');
+
+        let recorder;
+        let chunks = [];
+
+        startBtn.onclick = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recorder = new MediaRecorder(stream);
+                chunks = [];
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    display.textContent = '⌛ Transcribiendo...';
+                    const buffer = await blob.arrayBuffer();
+                    const b64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+                    const text = await transcribeAudio(b64);
+                    result.className = 'feedback ok';
+                    result.textContent = text ? `Transcripción: ${text}` : 'Sin resultado';
+                };
+                recorder.start();
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                display.textContent = '🎙️ Grabando...';
+                result.textContent = '';
+            } catch (e) {
+                result.className = 'feedback bad';
+                result.textContent = 'No se pudo acceder al micrófono';
+            }
+        };
+
+        stopBtn.onclick = () => {
+            if (recorder && recorder.state === 'recording') {
+                recorder.stop();
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                display.textContent = 'Procesando audio...';
+            }
+        };
     }
 
     // ==== Start ====
