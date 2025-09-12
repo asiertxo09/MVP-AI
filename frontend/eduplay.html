@@ -312,7 +312,7 @@
     // ===== Config IA (backend separado) =====
     const USE_AI = true;
     const API_URL = 'http://localhost:3001/api/generate';
-    const IMAGE_URL = 'http://localhost:3001/api/image';
+    const IMAGE_URL = 'http://localhost:5001/image';
     const TRANSCRIBE_URL = 'http://localhost:3001/api/transcribe';
 
     async function generateWithAI(prompt) {
@@ -332,12 +332,12 @@
         }
     }
 
-    async function generateImage(prompt) {
+    async function generateImage(prompt, style) {
         try {
             const res = await fetch(IMAGE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
+                body: JSON.stringify({ prompt, style })
             });
             if (!res.ok) throw new Error('falló');
             return await res.blob();
@@ -821,17 +821,30 @@ Genera una palabra apropiada para practicar ${activityType}:`;
         box.innerHTML = `
             <div class="prompt">Describe lo que quieres ver:</div>
             <input id='imgPrompt' class='input' type='text' placeholder='Un perro astronauta...'>
+            <div class="prompt">Elige un estilo:</div>
+            <select id='imgStyle' class='input'>
+                <option value='dibujo infantil'>Dibujo infantil</option>
+                <option value='acuarela'>Acuarela</option>
+                <option value='cómic'>Cómic</option>
+                <option value='realista suave'>Realista suave</option>
+            </select>
             <button class='small' id='imgBtn'>Generar 🎨</button>
             <div id='imgResult'></div>
         `;
         screen.appendChild(box);
+        const BAD = ['violencia', 'sangre', 'arma', 'matar', 'desnudo'];
 
         document.getElementById('imgBtn').onclick = async () => {
             const prompt = document.getElementById('imgPrompt').value.trim();
+            const style = document.getElementById('imgStyle').value;
             const result = document.getElementById('imgResult');
             if (!prompt) return;
+            if (BAD.some(b => prompt.toLowerCase().includes(b))) {
+                result.innerHTML = '<div class="feedback bad">Palabras no permitidas.</div>';
+                return;
+            }
             result.innerHTML = '⌛ Generando imagen...';
-            const blob = await generateImage(prompt);
+            const blob = await generateImage(prompt, style):
             if (!blob) {
                 result.innerHTML = '<div class="feedback bad">Error generando imagen.</div>';
                 return;

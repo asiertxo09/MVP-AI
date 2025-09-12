@@ -78,96 +78,20 @@ app.post('/api/generate', async (req,res)=>{
   }
 });
 
-// GLOBAL image cache (ensure defined early)
-const imageCache = globalThis.__IMAGE_CACHE || (globalThis.__IMAGE_CACHE = new Map());
+const AudioSchema = z.object({
+    audio: z.string().min(1) // audio codificado en base64
+});
 
-// Utilidad de espera
-function delay(ms){ return new Promise(r=>setTimeout(r, ms)); }
-
-// Generación de imágenes con Stable Diffusion (multi-model fallback + retries)
-async function generateImageWithHF(prompt, opts = {}) {
-  const { style = 'educational', enhance = true } = opts;
-  if (!getHFKey()) throw new Error('Hugging Face API key no configurada');
-  const cacheKey = `${style}|${enhance}|${prompt}`;
-  if (imageCache.has(cacheKey)) {
-    return { buffer: imageCache.get(cacheKey), fromCache: true, model: 'cache' };
-  }
-  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  const timeoutMs = Number(process.env.HF_TIMEOUT_MS || 45_000);
-  if (controller) setTimeout(()=>controller.abort(), timeoutMs).unref?.();
-
-  const headersBase = {
-    Authorization: `Bearer ${getHFKey()}`,
-    'Content-Type': 'application/json',
-    Accept: 'image/png',
-    'User-Agent': 'mvp-ai-eduplay/1.0'
-  };
-
-  const retriableStatus = new Set([408, 429, 500, 502, 503, 504, 524]);
-  const resultsErrors = [];
-
-  for (const model of HF_IMAGE_MODELS) {
-    const url = `https://api-inference.huggingface.co/models/${model}`;
-    const maxAttempts = 3;
-    for (let attempt=1; attempt<=maxAttempts; attempt++) {
-      try {
-        const started = Date.now();
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: headersBase,
-          body: JSON.stringify({ inputs: prompt }),
-          signal: controller?.signal
-        });
-
-        const ct = response.headers.get('content-type') || '';
-        if (!response.ok) {
-          // Obtener texto seguro (limitado)
-          let errPayload = '';
-          try { errPayload = await response.text(); } catch {}
-          const shortErr = errPayload.slice(0,400);
-          console.error(`[HF][Image] ${model} intento ${attempt}/${maxAttempts} status ${response.status} ct=${ct} cuerpo=${shortErr}`);
-          // Warmup: HF suele devolver 503 con mensaje de carga
-          if (response.status === 503 && /loading/i.test(shortErr)) {
-            await delay(1500 * attempt); // backoff
-            continue; // reintentar mismo modelo
-          }
-          if (retriableStatus.has(response.status) && attempt < maxAttempts) {
-            await delay(1000 * attempt);
-            continue; // reintentar
-          }
-          // status no recuperable -> pasar al siguiente modelo
-          resultsErrors.push({ model, status: response.status, body: shortErr });
-          break; // salir del bucle de attempts para este modelo
-        }
-
-        // Éxito esperado: contenido binario imagen
-        if (!ct.includes('image')) {
-          // Puede venir JSON con error aunque sea 200 (raro, pero defensivo)
-          let text='';
-            try { text = await response.text(); } catch {}
-          console.warn(`[HF][Image] ${model} devolvió 200 pero content-type no es imagen. ct=${ct} body=${text.slice(0,300)}`);
-          resultsErrors.push({ model, status: 200, body: text });
-          break; // probar siguiente modelo
-        }
-
-        const arrayBuf = await response.arrayBuffer();
-        const buffer = Buffer.from(arrayBuf);
-        imageCache.set(cacheKey, buffer);
-        console.log(`[HF][Image] OK modelo=${model} bytes=${buffer.length} ms=${Date.now()-started}`);
-        return { buffer, fromCache: false, model };
-      } catch (err) {
-        const aborted = err?.name === 'AbortError';
-        console.error(`[HF][Image] Error fetch modelo=${model} intento=${attempt}:`, err.message);
-        if (aborted) {
-          resultsErrors.push({ model, status: 'aborted', body: 'timeout' });
-          break; // no más intentos en este modelo
-        }
-        if (attempt < maxAttempts) {
-          await delay(800 * attempt);
-          continue; // reintentar
-        }
-        resultsErrors.push({ model, status: 'fetch-error', body: err.message });
-      }
+// Función para extraer texto de distintas formas posibles
+function extractText(completion) {
+    // 1) chat.completions estilo OpenAI
+    const c = completion?.choices?.[0];
+    if (c?.message?.content && typeof c.message.content === 'string') {
+        return c.message.content.trim();
+    }
+    // 2) algunas implementaciones devuelven .text
+    if (typeof c?.text === 'string' && c.text.trim()) {
+        return c.text.trim();
     }
   }
   // Si llegamos aquí, todos fallaron
@@ -268,6 +192,37 @@ app.post('/api/transcribe', async (req, res) => {
     } catch (err) {
         console.error('Error en /api/transcribe:', err.message);
         res.status(500).json({ error: 'Transcription failed', details: err.message });
+    }
+});
+
+// Transcripción de audio con Whisper
+app.post('/api/transcribe', async (req, res) => {
+    try {
+        const { audio } = AudioSchema.parse(req.body);
+        const audioBuffer = Buffer.from(audio, 'base64');
+
+        const response = await fetch(
+            'https://api-inference.huggingface.co/models/openai/whisper-small',
+            {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${process.env.HF_API_KEY}`,
+                    'Content-Type': 'audio/webm'
+                },
+                body: audioBuffer
+            }
+        );
+
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(err);
+        }
+
+        const data = await response.json();
+        res.json({ text: data.text || '' });
+    } catch (err) {
+        console.error('Error en /api/transcribe:', err);
+        res.status(500).json({ error: 'Transcription failed' });
     }
 });
 
