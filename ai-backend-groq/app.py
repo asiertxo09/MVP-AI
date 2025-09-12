@@ -129,9 +129,6 @@ def generate_image():
             # Fallback if Groq returned empty/garbled
             if not aug_prompt or len(aug_prompt) < 4:
                 aug_prompt = combined
-            # Keep it concise
-            if len(aug_prompt) > 200:
-                aug_prompt = aug_prompt[:200]
             print("augmented prompt:", aug_prompt)
         except Exception as e:
             print("[Flask][Groq] error", e)
