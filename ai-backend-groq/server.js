@@ -1,10 +1,10 @@
-// server.js (v2 robusto)
+// server.js (versión corregida)
 import 'dotenv/config';
 // Polyfill fetch para Node <18
 if (typeof fetch === 'undefined') {
-  const { default: fetchFn } = await import('node-fetch');
-  globalThis.fetch = fetchFn;
-  console.log('[INIT] node-fetch polyfill cargado');
+    const { default: fetchFn } = await import('node-fetch');
+    globalThis.fetch = fetchFn;
+    console.log('[INIT] node-fetch polyfill cargado');
 }
 
 import express from 'express';
@@ -25,120 +25,127 @@ app.get('/api/generate', (_req, res) =>
 );
 app.get('/favicon.ico', (_req,res)=> res.status(204).end());
 
-// === (Reintroducido) Configuración Groq + Hugging Face y esquemas Zod ===
+// === Configuración Groq + Hugging Face ===
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 let HF_API_KEY = (process.env.HUGGING_FACE_API_KEY || process.env.HF_API_KEY || '').trim().replace(/^['"]+|['"]+$/g,'');
 if (HF_API_KEY && /\s/.test(HF_API_KEY)) console.warn('[HF] Warning: API key contiene espacios.');
 const HF_IMAGE_MODELS = (process.env.HF_IMAGE_MODELS || 'stabilityai/stable-diffusion-xl-base-1.0')
-  .split(',').map(m=>m.trim()).filter(Boolean);
+    .split(',').map(m=>m.trim()).filter(Boolean);
 function getHFKey(){ return HF_API_KEY; }
 console.log(`[HF] Key detectada: ${HF_API_KEY ? 'sí' : 'no'} (longitud: ${HF_API_KEY ? HF_API_KEY.length : 0})`);
 console.log('[HF] Modelos:', HF_IMAGE_MODELS);
 const USE_LOCAL_SDXL = !!process.env.LOCAL_SDXL_URL; // ej: http://localhost:5005/sdxl
 if (USE_LOCAL_SDXL) console.log('[SDXL][Local] Activado. Endpoint:', process.env.LOCAL_SDXL_URL);
+
 // Debug modelos imagen
 app.get('/api/debug/image', (_req,res)=>{
-  res.json({ models: HF_IMAGE_MODELS, useLocal: USE_LOCAL_SDXL, hasHFKey: !!HF_API_KEY });
+    res.json({ models: HF_IMAGE_MODELS, useLocal: USE_LOCAL_SDXL, hasHFKey: !!HF_API_KEY });
 });
 
-// === Schemas (restaurados) ===
+// === Schemas ===
 const BodySchema = z.object({ prompt: z.string().min(1).max(5000), level: z.number().min(1).max(5).optional() });
-const ImageSchema = z.object({ prompt: z.string().min(1).max(200) });
-const AudioSchema = z.object({ audio: z.string().min(1) });
+const ImageSchema = z.object({ prompt: z.string().min(1).max(200), style: z.string().min(0).max(100).optional() });
+const AudioSchema = z.object({ audio: z.string().min(1) }); // audio base64
 
-// === (Reintroducido) extractText para compatibilidad con Groq ===
+// === extractText helper ===
 function extractText(completion){
-  const c = completion?.choices?.[0];
-  if (c?.message?.content && typeof c.message.content === 'string') return c.message.content.trim();
-  if (typeof c?.text === 'string' && c.text.trim()) return c.text.trim();
-  const parts = c?.message?.content;
-  if (Array.isArray(parts)) {
-    const joined = parts.map(p=> (typeof p==='string'? p : p?.text || '')).join('').trim();
-    if (joined) return joined;
-  }
-  return '';
-}
-
-// Endpoint de texto (reinsertado si faltaba)
-app.post('/api/generate', async (req,res)=>{
-  try {
-    const { prompt, level = 1 } = BodySchema.parse(req.body);
-    const completion = await groq.chat.completions.create({
-      model: 'openai/gpt-oss-20b', temperature: 0.7, max_tokens: 200,
-      messages: [
-        { role: 'system', content: 'Eres un tutor infantil amable (5-10 años). Responde en 1-2 frases, lenguaje sencillo y positivo, emojis opcionales.'},
-        { role: 'user', content: `Nivel ${level}. Genera una pista o refuerzo breve: ${prompt}` }
-      ]
-    });
-    let text = extractText(completion) || '👀 Intenta contar paso a paso, ¡tú puedes!';
-    res.json({ text });
-  } catch (err){
-    console.error('Error en /api/generate:', err.message);
-    res.status(400).json({ error: 'Bad request or Groq error' });
-  }
-});
-
-const AudioSchema = z.object({
-    audio: z.string().min(1) // audio codificado en base64
-});
-
-// Función para extraer texto de distintas formas posibles
-function extractText(completion) {
-    // 1) chat.completions estilo OpenAI
     const c = completion?.choices?.[0];
-    if (c?.message?.content && typeof c.message.content === 'string') {
-        return c.message.content.trim();
+    if (c?.message?.content && typeof c.message.content === 'string') return c.message.content.trim();
+    if (typeof c?.text === 'string' && c.text.trim()) return c.text.trim();
+    const parts = c?.message?.content;
+    if (Array.isArray(parts)) {
+        const joined = parts.map(p=> (typeof p==='string'? p : p?.text || '')).join('').trim();
+        if (joined) return joined;
     }
-    // 2) algunas implementaciones devuelven .text
-    if (typeof c?.text === 'string' && c.text.trim()) {
-        return c.text.trim();
-    }
-  }
-  // Si llegamos aquí, todos fallaron
-  throw new Error('Falló generación en todos los modelos: ' + JSON.stringify(resultsErrors.slice(0,5)));
+    return '';
 }
 
-// === Nuevo: generación local SDXL vía microservicio Flask ===
+// === Endpoint de texto ===
+app.post('/api/generate', async (req,res)=>{
+    try {
+        const { prompt, level = 1 } = BodySchema.parse(req.body);
+        const completion = await groq.chat.completions.create({
+            model: 'openai/gpt-oss-20b', temperature: 0.7, max_tokens: 200,
+            messages: [
+                { role: 'system', content: 'Eres un tutor infantil amable (5-10 años). Responde en 1-2 frases, lenguaje sencillo y positivo, emojis opcionales.'},
+                { role: 'user', content: `Nivel ${level}. Genera una pista o refuerzo breve: ${prompt}` }
+            ]
+        });
+        let text = extractText(completion) || '👀 Intenta contar paso a paso, ¡tú puedes!';
+        res.json({ text });
+    } catch (err){
+        console.error('Error en /api/generate:', err.message);
+        res.status(400).json({ error: 'Bad request or Groq error' });
+    }
+});
+
+// === Generación local SDXL ===
 async function generateImageLocal(prompt){
-  const url = process.env.LOCAL_SDXL_URL; // debe apuntar a /sdxl
-  if (!url) throw new Error('LOCAL_SDXL_URL no definido');
-  const started = Date.now();
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'image/png' },
-    body: JSON.stringify({ prompt })
-  });
-  if (!res.ok) {
-    let text = '';
-    try { text = await res.text(); } catch {}
-    throw new Error(`Local SDXL error ${res.status}: ${text.slice(0,300)}`);
-  }
-  const ct = res.headers.get('content-type') || '';
-  if (!ct.includes('image')) {
-    let text = '';
-    try { text = await res.text(); } catch {}
-    throw new Error(`Local SDXL devolvió non-image (${ct}): ${text.slice(0,300)}`);
-  }
-  const buf = Buffer.from(await res.arrayBuffer());
-  console.log(`[SDXL][Local] OK bytes=${buf.length} ms=${Date.now()-started}`);
-  return { buffer: buf, model: 'local-sdxl', fromCache: false, source: 'local' };
+    const url = process.env.LOCAL_SDXL_URL; // debe apuntar a /sdxl
+    if (!url) throw new Error('LOCAL_SDXL_URL no definido');
+    const started = Date.now();
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'image/png' },
+        body: JSON.stringify({ prompt })
+    });
+    if (!res.ok) {
+        let text = '';
+        try { text = await res.text(); } catch {}
+        throw new Error(`Local SDXL error ${res.status}: ${text.slice(0,300)}`);
+    }
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('image')) {
+        let text = '';
+        try { text = await res.text(); } catch {}
+        throw new Error(`Local SDXL devolvió non-image (${ct}): ${text.slice(0,300)}`);
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    console.log(`[SDXL][Local] OK bytes=${buf.length} ms=${Date.now()-started}`);
+    return { buffer: buf, model: 'local-sdxl', fromCache: false, source: 'local' };
+}
+
+// Implementación HF para imagen
+async function generateImageWithHF(prompt){
+    if (!getHFKey()) throw new Error('Hugging Face API key ausente');
+    const model = HF_IMAGE_MODELS[0] || 'stabilityai/stable-diffusion-xl-base-1.0';
+    const started = Date.now();
+    const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${getHFKey()}`,
+            Accept: 'image/png',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ inputs: prompt })
+    });
+    if (!res.ok) {
+        let text = '';
+        try { text = await res.text(); } catch {}
+        throw new Error(`HF error ${res.status}: ${text.slice(0,300)}`);
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    console.log(`[HF][Image] model=${model} bytes=${buf.length} ms=${Date.now()-started}`);
+    return { buffer: buf, model, fromCache: false };
 }
 
 // Wrapper unificado
 async function generateImageUnified(prompt){
-  if (USE_LOCAL_SDXL) {
-    try { return await generateImageLocal(prompt); } catch (e){
-      console.error('[SDXL][Local] Falla, intentando HF fallback:', e.message);
+    if (USE_LOCAL_SDXL) {
+        try { return await generateImageLocal(prompt); } catch (e){
+            console.error('[SDXL][Local] Falla, intentando HF fallback:', e.message);
+        }
     }
-  }
-  const r = await generateImageWithHF(prompt);
-  return { ...r, source: 'hf' };
+    const r = await generateImageWithHF(prompt);
+    return { ...r, source: 'hf' };
 }
 
+// === Endpoints de imagen ===
 app.post('/api/image', async (req, res) => {
     try {
-        const { prompt } = ImageSchema.parse(req.body);
-        const { buffer, model, fromCache, source } = await generateImageUnified(prompt);
+        const { prompt, style } = ImageSchema.parse(req.body);
+        const combined = style ? `${prompt}, estilo ${style}` : prompt;
+        const { buffer, model, fromCache, source } = await generateImageUnified(combined);
         res.set('Content-Type', 'image/png');
         if (model) res.set('X-Image-Model', model);
         if (source) res.set('X-Image-Source', source);
@@ -150,23 +157,24 @@ app.post('/api/image', async (req, res) => {
     }
 });
 
-// Endpoint opcional GET para pruebas rápidas (?prompt=)
 app.get('/api/image', async (req, res) => {
-  const prompt = (req.query.prompt || '').toString();
-  if (!prompt) return res.status(400).json({ error: 'Falta prompt' });
-  try {
-    const { buffer, model, fromCache, source } = await generateImageUnified(prompt);
-    res.set('Content-Type', 'image/png');
-    if (model) res.set('X-Image-Model', model);
-    if (source) res.set('X-Image-Source', source);
-    res.set('X-Image-Cache', fromCache ? 'hit' : 'miss');
-    res.send(buffer);
-  } catch (err) {
-    res.status(500).json({ error: 'Image generation failed', details: err.message });
-  }
+    const prompt = (req.query.prompt || '').toString();
+    const style = (req.query.style || '').toString();
+    if (!prompt) return res.status(400).json({ error: 'Falta prompt' });
+    try {
+        const combined = style ? `${prompt}, estilo ${style}` : prompt;
+        const { buffer, model, fromCache, source } = await generateImageUnified(combined);
+        res.set('Content-Type', 'image/png');
+        if (model) res.set('X-Image-Model', model);
+        if (source) res.set('X-Image-Source', source);
+        res.set('X-Image-Cache', fromCache ? 'hit' : 'miss');
+        res.send(buffer);
+    } catch (err) {
+        res.status(500).json({ error: 'Image generation failed', details: err.message });
+    }
 });
 
-// Transcripción de audio con Whisper
+// === Transcripción de audio con Whisper ===
 app.post('/api/transcribe', async (req, res) => {
     try {
         const { audio } = AudioSchema.parse(req.body);
@@ -192,37 +200,6 @@ app.post('/api/transcribe', async (req, res) => {
     } catch (err) {
         console.error('Error en /api/transcribe:', err.message);
         res.status(500).json({ error: 'Transcription failed', details: err.message });
-    }
-});
-
-// Transcripción de audio con Whisper
-app.post('/api/transcribe', async (req, res) => {
-    try {
-        const { audio } = AudioSchema.parse(req.body);
-        const audioBuffer = Buffer.from(audio, 'base64');
-
-        const response = await fetch(
-            'https://api-inference.huggingface.co/models/openai/whisper-small',
-            {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${process.env.HF_API_KEY}`,
-                    'Content-Type': 'audio/webm'
-                },
-                body: audioBuffer
-            }
-        );
-
-        if (!response.ok) {
-            const err = await response.text();
-            throw new Error(err);
-        }
-
-        const data = await response.json();
-        res.json({ text: data.text || '' });
-    } catch (err) {
-        console.error('Error en /api/transcribe:', err);
-        res.status(500).json({ error: 'Transcription failed' });
     }
 });
 

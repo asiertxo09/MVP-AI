@@ -333,16 +333,31 @@
     }
 
     async function generateImage(prompt, style) {
+        // Try Flask image service first (port 5001), then fallback to Node service (port 3001)
+        const payload = { prompt, style };
+        // Primary: Flask
         try {
             const res = await fetch(IMAGE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, style })
+                body: JSON.stringify(payload)
             });
-            if (!res.ok) throw new Error('falló');
+            if (!res.ok) throw new Error('flask fail');
             return await res.blob();
         } catch (e) {
-            console.warn('img error', e);
+            console.warn('Flask image error, trying Node fallback', e);
+        }
+        // Fallback: Node backend at /api/image (combines style server-side if supported)
+        try {
+            const res = await fetch('http://localhost:3001/api/image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'image/png' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('node fail');
+            return await res.blob();
+        } catch (e2) {
+            console.warn('Node image error', e2);
             return null;
         }
     }
@@ -844,7 +859,7 @@ Genera una palabra apropiada para practicar ${activityType}:`;
                 return;
             }
             result.innerHTML = '⌛ Generando imagen...';
-            const blob = await generateImage(prompt, style):
+            const blob = await generateImage(prompt, style);
             if (!blob) {
                 result.innerHTML = '<div class="feedback bad">Error generando imagen.</div>';
                 return;
