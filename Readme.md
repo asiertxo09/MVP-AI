@@ -75,3 +75,12 @@ uvicorn app:app --host 0.0.0.0 --port 5005
 ```
 
 Abrir: http://localhost:5500/eduplay.html
+{
+"d1_databases": [
+{
+"binding": "eduplay_auth",
+"database_name": "eduplay-auth",
+"database_id": "61998541-90f8-4ad5-94e1-44ee37fb215d"
+}
+]
+}

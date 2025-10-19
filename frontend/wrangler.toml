@@ -1,0 +1,7 @@
+name = "eduplay-frontend"
+compatibility_date = "2025-10-19"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "eduplay-auth"
+database_id = "61998541-90f8-4ad5-94e1-44ee37fb215d"
