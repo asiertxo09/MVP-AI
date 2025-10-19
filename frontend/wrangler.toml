@@ -1,6 +1,8 @@
 name = "eduplay-frontend"
 compatibility_date = "2025-10-19"
 
+pages_build_output_dir = "."
+
 [[d1_databases]]
 binding = "DB"
 database_name = "eduplay-auth"
