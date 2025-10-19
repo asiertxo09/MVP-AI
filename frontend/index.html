@@ -311,8 +311,8 @@
 <script>
     // ===== Config IA (backend separado) =====
     const USE_AI = true;
-    const API_URL = 'http://localhost:3001/api/generate';
-    const IMAGE_URL = 'http://localhost:5001/image';
+    const API_URL = 'https://eduplay-backend.onrender.com/api/generate';
+    const IMAGE_URL = 'https://eduplay-backend.onrender.com/image';
 
     async function generateWithAI(prompt) {
         if (!USE_AI) return null;
