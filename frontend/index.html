@@ -45,7 +45,12 @@
         a{color:var(--brand); text-decoration:none}
         a:hover{text-decoration:underline}
 
-        .container{ padding-inline: clamp(16px, 3vw, 24px); }
+        .container{
+            padding-inline: clamp(16px, 3vw, 24px);
+            max-width: var(--max);
+            margin-inline: auto;
+            width: 100%;
+        }
         section{ margin-block: var(--space-4); }
         .card{ padding: var(--space-3); border-radius: var(--radius); }
         header{
