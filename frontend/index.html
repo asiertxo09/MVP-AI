@@ -3,18 +3,346 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>EduPlay · Inicio</title>
+    <title>EDUPLAY — Juegos que impulsan progreso; decisiones basadas en evidencia</title>
+    <meta name="description" content="Plataforma educativa-terapéutica B2B que convierte el aprendizaje en progreso medible con juegos adaptativos, informes para profesionales y coordinación familia–escuela." />
+    <meta property="og:title" content="EDUPLAY" />
+    <meta property="og:description" content="Juegos que impulsan progreso; decisiones basadas en evidencia." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/assets/og-image.jpg" />
+    <link rel="icon" href="/assets/favicon.ico" />
     <style>
-        body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#0f172a;color:#e2e8f0}
-        .wrap{max-width:840px;margin:10vh auto;padding:24px}
-        a.button{display:inline-block;padding:12px 18px;border-radius:12px;background:#2563eb;color:#fff;text-decoration:none}
+        :root{
+            /* Paleta clara y alegre basada en el logo */
+            --bg: #FFFDF6;          /* fondo muy claro, cálido */
+            --bg-2:#F7FBFF;         /* segundo tono claro, fresco */
+            --card:#FFFFFF;         /* tarjetas blancas */
+            --ink:#1A1A1A;          /* texto principal */
+            --muted:#5F6C7B;        /* texto secundario */
+
+            --brand:#203A7F;        /* azul Eduplay (titulares, enlaces) */
+            --accent:#E7362D;       /* rojo Eduplay (CTA primaria) */
+            --highlight:#FFC83D;    /* amarillo (acentos, pills) */
+            --success:#38B349;      /* verde (kpis positivos) */
+            --info:#2BB6F0;         /* celeste (detalles y pills) */
+
+            --shadow:0 6px 18px rgba(0,0,0,.08);
+            --radius:14px;
+            --radius-lg:22px;
+            --max:1120px;
+        }
+
+        *{box-sizing:border-box}
+        html,body{
+            margin:0;
+            background:linear-gradient(180deg,var(--bg) 0%, var(--bg-2) 100%);
+            color:var(--ink);
+            font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Helvetica,Arial,sans-serif
+        }
+        a{color:var(--brand); text-decoration:none}
+        a:hover{text-decoration:underline}
+
+        .container{max-width:var(--max);margin-inline:auto;padding:0 20px}
+
+        header{
+            position:sticky; top:0; z-index:10;
+            backdrop-filter:saturate(120%) blur(6px);
+            background:rgba(255,255,255,.85);
+            border-bottom:1px solid rgba(0,0,0,.06);
+        }
+        nav{display:flex;gap:24px;align-items:center;justify-content:space-between;padding:12px 0}
+        .logo{display:flex;gap:10px;align-items:center}
+        .logo img{width:32px;height:32px;border-radius:8px;box-shadow:var(--shadow)}
+        .navlinks{display:flex;gap:10px;flex-wrap:wrap}
+
+        .btn{
+            display:inline-flex; align-items:center; gap:8px;
+            padding:10px 14px; border-radius:10px; font-weight:700;
+            border:2px solid transparent; transition:.15s ease-in-out;
+        }
+        .btn.primary{background:var(--accent); color:#fff; border-color:var(--accent)}
+        .btn.primary:hover{filter:brightness(1.05)}
+        .btn.ghost{background:#fff; color:var(--brand); border-color:rgba(32,58,127,.25)}
+        .btn.ghost:hover{background:rgba(32,58,127,.06)}
+        .btn.link{background:transparent; color:var(--brand); border-color:transparent}
+
+        .hero{
+            display:grid; grid-template-columns:1.1fr .9fr; gap:28px;
+            align-items:center; padding:56px 0;
+        }
+        .hero h1{color:var(--brand); font-size:clamp(28px,5vw,48px); line-height:1.05; margin:0 0 12px}
+        .sub{color:var(--muted); margin:0 0 18px; font-size:1.1rem}
+
+        .pill{
+            display:inline-flex; gap:10px; align-items:center;
+            padding:6px 10px; border-radius:999px;
+            background:rgba(43,182,240,.12); border:1px solid rgba(43,182,240,.35);
+            color:#0B5383; font-size:.9rem; margin-bottom:12px
+        }
+
+        .hero-card{
+            background:var(--card);
+            border:1px solid rgba(0,0,0,.06);
+            border-radius:var(--radius-lg);
+            box-shadow:var(--shadow);
+            padding:18px
+        }
+
+        .badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+        .badge{
+            font-size:.8rem; padding:6px 10px; border-radius:999px;
+            background:rgba(255,200,61,.16); border:1px solid rgba(255,200,61,.45); color:#7A5300
+        }
+
+        .grid{display:grid;gap:18px}
+        .features{grid-template-columns:repeat(3,minmax(0,1fr));margin:28px 0}
+        .card{
+            background:var(--card);
+            border:1px solid rgba(0,0,0,.06);
+            border-radius:var(--radius);
+            padding:18px;
+            box-shadow:var(--shadow)
+        }
+
+        h2{font-size:clamp(22px,3.5vw,32px);margin:0 0 12px;color:var(--brand)}
+        h3{margin:0 0 8px;color:#233B81}
+        p{margin:0 0 10px;color:#334155}
+
+        .steps{grid-template-columns:repeat(5,minmax(0,1fr))}
+        .step-num{font-weight:800;color:var(--accent)}
+
+        .cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+
+        .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+        .kpi{
+            padding:12px;border-radius:12px;
+            background:linear-gradient(180deg, rgba(56,179,73,.14), rgba(56,179,73,.08));
+            border:1px solid rgba(56,179,73,.35); color:#125a1f
+        }
+
+        .split{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+        .list{display:grid;gap:8px}
+        .list li{margin-left:18px}
+
+        .faq details{
+            background:var(--card);border:1px solid rgba(0,0,0,.06);
+            border-radius:12px;padding:14px
+        }
+        .faq summary{cursor:pointer;font-weight:700;color:var(--brand)}
+
+        /* Formularios claros */
+        input, select, textarea{
+            width:100%; padding:10px; border-radius:8px;
+            border:1px solid #D0D5DD; background:#FFFFFF; color:var(--ink)
+        }
+        input::placeholder, textarea::placeholder{color:#94A3B8}
+
+        footer{
+            border-top:1px solid rgba(0,0,0,.06); margin-top:36px; padding:24px 0; color:var(--muted)
+        }
+
+        @media (max-width:920px){
+            .hero{grid-template-columns:1fr}
+            .features{grid-template-columns:1fr}
+            .steps,.split{grid-template-columns:1fr}
+        }
     </style>
 </head>
 <body>
-<div class="wrap">
-    <h1>EduPlay</h1>
-    <p>Bienvenido. Accede con tu cuenta para usar la aplicación.</p>
-    <a class="button" href="/login">Entrar</a>
-</div>
+<a class="skip" href="#contenido" style="position:absolute;left:-9999px;">Saltar al contenido</a>
+
+<header role="banner" aria-label="Barra de navegación">
+    <div class="container">
+        <nav>
+            <div class="logo">
+                <img src="assets/logo.png" alt="Logo EDUPLAY" />
+                <strong>EDUPLAY</strong>
+            </div>
+            <div class="navlinks" role="navigation" aria-label="Enlaces principales">
+                <a class="btn ghost" href="#como-funciona">Cómo funciona</a>
+                <a class="btn ghost" href="#beneficios">Beneficios</a>
+                <a class="btn ghost" href="#seguridad">Privacidad</a>
+                <a class="btn primary" href="#demo">Solicitar demo</a>
+            </div>
+            <div>
+                <!-- Login activo -->
+                <a class="btn ghost" href="/login">Iniciar sesión</a>
+            </div>
+        </nav>
+    </div>
+</header>
+
+<main id="contenido">
+    <!-- HERO -->
+    <section class="hero container" id="inicio">
+        <div>
+            <div class="pill" aria-hidden="true">B2B para colegios y gabinetes · Integrable</div>
+            <h1>Juegos que impulsan progreso;<br/> decisiones basadas en evidencia</h1>
+
+            <div class="cta-row">
+                <a class="btn primary" href="#demo" aria-label="Solicitar demostración de EDUPLAY">Solicitar demo</a>
+                <a class="btn ghost" href="#contacto" aria-label="Hablar con ventas">Hablar con ventas</a>
+            </div>
+            <div class="badges" aria-label="Sellos de valor">
+                <span class="badge">Apoyo, no diagnóstico</span>
+                <span class="badge">RGPD/LOPDGDD</span>
+                <span class="badge">Accesible e inclusivo</span>
+            </div>
+        </div>
+        <div class="hero-card" role="img" aria-label="Vista de panel con KPIs de progreso">
+            <div class="kpis">
+                <div class="kpi"><strong>PCPM</strong><br><small>Palabras correctas por min</small></div>
+                <div class="kpi"><strong>EPM</strong><br><small>Errores por min</small></div>
+                <div class="kpi"><strong>Adherencia</strong><br><small>Rachas y sesiones</small></div>
+            </div>
+            <p style="margin-top:12px;color:#475569">Informes exportables para profesionales con tendencias y mapa de errores.</p>
+        </div>
+    </section>
+
+    <!-- PROPUESTA DE VALOR / FEATURES -->
+    <section class="container" id="beneficios" aria-labelledby="t-beneficios">
+        <h2 id="t-beneficios">Valor para tu centro</h2>
+        <div class="grid features">
+            <article class="card">
+                <h3>Progreso medible</h3>
+                <p>KPIs claros (PCPM, EPM, acierto/tiempo) y reportes listos para compartir.</p>
+            </article>
+            <article class="card">
+                <h3>Aprendizaje adaptativo</h3>
+                <p>Juegos de lectoescritura y cálculo con dificultad dinámica, ayudas y feedback inmediato.</p>
+            </article>
+            <article class="card">
+                <h3>Operativa eficiente</h3>
+                <p>Panel profesional: asignación de tareas, metas, alertas y trazabilidad.</p>
+            </article>
+            <article class="card">
+                <h3>Interoperabilidad real</h3>
+                <p>SSO Google/Microsoft e integración con LMS (Classroom, Moodle) y exportación a PDF.</p>
+            </article>
+            <article class="card">
+                <h3>Diseño inclusivo</h3>
+                <p>Entornos accesibles, control parental y contenidos adecuados para menores.</p>
+            </article>
+            <article class="card">
+                <h3>Modelo B2B</h3>
+                <p>Licencias por lotes para colegios y gabinetes, con uso en aula y en casa.</p>
+            </article>
+        </div>
+    </section>
+
+    <!-- CÓMO FUNCIONA -->
+    <section class="container" id="como-funciona" aria-labelledby="t-como">
+        <h2 id="t-como">Cómo funciona</h2>
+        <p class="sub">Un ciclo simple y completo para convertir uso en progreso.</p>
+        <div class="grid steps">
+            <div class="card"><div class="step-num">1. Medir</div><p>Evaluación inicial breve: lectura, fonología y cálculo; línea base y KPIs.</p></div>
+            <div class="card"><div class="step-num">2. Personalizar</div><p>Itinerario y nivel por área; mapa de errores y objetivos.</p></div>
+            <div class="card"><div class="step-num">3. Practicar</div><p>Sesiones cortas con juegos: caza-fonemas, puzles de sílabas, series numéricas.</p></div>
+            <div class="card"><div class="step-num">4. Evidenciar</div><p>Informes con tendencias, adherencia y “semáforo de riesgo”.</p></div>
+            <div class="card"><div class="step-num">5. Coordinar</div><p>Panel para docentes/logopedas, tareas por fonema, metas y comunicación.</p></div>
+        </div>
+        <div class="cta-row" style="margin-top:16px">
+            <a class="btn primary" href="#demo">Probar con mi centro</a>
+            <a class="btn ghost" href="#contacto">Pedir más información</a>
+        </div>
+    </section>
+
+    <!-- QUIÉN LO USA -->
+    <section class="container" aria-labelledby="t-para-quien">
+        <h2 id="t-para-quien">Pensado para…</h2>
+        <div class="split">
+            <div class="card">
+                <h3>Colegios</h3>
+                <ul class="list">
+                    <li>Refuerzo a 5–12 años en lectoescritura y cálculo.</li>
+                    <li>Seguimiento individual y coordinación con familias.</li>
+                    <li>Evidencia para decisiones pedagógicas.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>Gabinetes/Clínicas</h3>
+                <ul class="list">
+                    <li>Apoyo educativo-terapéutico (no diagnóstico).</li>
+                    <li>Informes comparables y exportables.</li>
+                    <li>Uso híbrido consulta–casa con la misma cuenta.</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRIVACIDAD / ACCESIBILIDAD -->
+    <section class="container" id="seguridad" aria-labelledby="t-priv">
+        <h2 id="t-priv">Privacidad, accesibilidad y soporte</h2>
+        <div class="split">
+            <div class="card">
+                <h3>Protección de menores</h3>
+                <p>RGPD/LOPDGDD, control parental, trazabilidad de acceso y contenidos adecuados.</p>
+            </div>
+            <div class="card">
+                <h3>Preferencias y control</h3>
+                <p>Descarga/borrado de datos, TTS, límites de tiempo por sesión y centro de ayuda.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA DEMO -->
+    <section class="container" id="demo" aria-labelledby="t-demo">
+        <h2 id="t-demo">Solicita una demo</h2>
+        <p class="sub">Te mostramos el panel profesional, ejemplos de informes y actividades adaptativas en 20 minutos.</p>
+        <form class="card" aria-label="Formulario de solicitud de demo" onsubmit="event.preventDefault(); alert('¡Gracias! Nos pondremos en contacto.');">
+            <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+                <label>Nombre
+                    <input required type="text" name="nombre" aria-label="Nombre" placeholder="Nombre">
+                </label>
+                <label>Email profesional
+                    <input required type="email" name="email" aria-label="Email" placeholder="tucorreo@centro.edu">
+                </label>
+                <label>Centro/Organización
+                    <input required type="text" name="org" aria-label="Organización" placeholder="Nombre del centro">
+                </label>
+                <label>Rol
+                    <select name="rol" aria-label="Rol">
+                        <option>Dirección</option><option>Docente</option><option>Orientación/Logopedia</option><option>Otro</option>
+                    </select>
+                </label>
+            </div>
+            <div class="cta-row" style="margin-top:18px">
+                <button class="btn primary" type="submit">Quiero la demo</button>
+                <small style="color:var(--muted)">Al enviar aceptas ser contactad@ para coordinar una demo inicial.</small>
+            </div>
+        </form>
+    </section>
+
+    <!-- FAQ -->
+    <section class="container faq" aria-labelledby="t-faq" style="margin-top:28px">
+        <h2 id="t-faq">Preguntas frecuentes</h2>
+        <div class="grid">
+            <details><summary>¿Es una herramienta de diagnóstico?</summary><p>No. Es apoyo educativo con indicadores pedagógicos y de progreso.</p></details>
+            <details><summary>¿Qué mide?</summary><p>PCPM, EPM, acierto/tiempo, adherencia, tendencias y mapa de errores.</p></details>
+            <details><summary>¿Qué actividades incluye?</summary><p>Lectura en voz alta, rimas, segmentación silábica, identificación de fonemas, dictados guiados, ejercicios de cálculo y más.</p></details>
+            <details><summary>¿Cómo gestionáis privacidad y accesibilidad?</summary><p>Controles parentales, descarga/borrado de datos, TTS, límites de sesión y soporte.</p></details>
+        </div>
+    </section>
+
+    <!-- CONTACTO -->
+    <section class="container" id="contacto" aria-labelledby="t-contacto" style="margin-top:28px">
+        <h2 id="t-contacto">Contacto</h2>
+        <div class="card">
+            <p>¿Tienes dudas o quieres un piloto? Escríbenos a <a href="mailto:hola@eduplay.app">hola@eduplay.app</a></p>
+        </div>
+    </section>
+</main>
+
+<footer role="contentinfo">
+    <div class="container">
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <small>© <span id="y"></span> EDUPLAY</small>
+            <div style="display:flex;gap:12px">
+                <a href="/legal/privacidad.html">Privacidad</a>
+                <a href="/legal/terminos.html">Términos</a>
+            </div>
+        </div>
+    </div>
+    <script>document.getElementById('y').textContent = new Date().getFullYear()</script>
+</footer>
 </body>
 </html>
