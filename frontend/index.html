@@ -29,6 +29,10 @@
             --radius:14px;
             --radius-lg:22px;
             --max:1120px;
+            --space-1: clamp(8px, 1.2vw, 12px);
+            --space-2: clamp(12px, 1.6vw, 16px);
+            --space-3: clamp(16px, 2vw, 24px);
+            --space-4: clamp(24px, 3vw, 40px);
         }
 
         *{box-sizing:border-box}
@@ -41,8 +45,9 @@
         a{color:var(--brand); text-decoration:none}
         a:hover{text-decoration:underline}
 
-        .container{max-width:var(--max);margin-inline:auto;padding:0 20px}
-
+        .container{ padding-inline: clamp(16px, 3vw, 24px); }
+        section{ margin-block: var(--space-4); }
+        .card{ padding: var(--space-3); border-radius: var(--radius); }
         header{
             position:sticky; top:0; z-index:10;
             backdrop-filter:saturate(120%) blur(6px);
@@ -103,7 +108,9 @@
             box-shadow:var(--shadow)
         }
 
-        h2{font-size:clamp(22px,3.5vw,32px);margin:0 0 12px;color:var(--brand)}
+        h1{ font-size: clamp(28px, 5.2vw, 52px); line-height: 1.05; }
+        h2{ font-size: clamp(22px, 3.6vw, 34px); }
+        p, li, input, select, textarea, button{ font-size: clamp(15px, 1.6vw, 17px); }
         h3{margin:0 0 8px;color:#233B81}
         p{margin:0 0 10px;color:#334155}
 
@@ -140,10 +147,29 @@
             border-top:1px solid rgba(0,0,0,.06); margin-top:36px; padding:24px 0; color:var(--muted)
         }
 
-        @media (max-width:920px){
-            .hero{grid-template-columns:1fr}
-            .features{grid-template-columns:1fr}
-            .steps,.split{grid-template-columns:1fr}
+        /* Tablet (≤ 1024px) */
+        @media (max-width: 1024px){
+            .hero{ grid-template-columns: 1fr; gap: var(--space-3); padding: var(--space-4) 0; }
+            .features{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+            .steps{ grid-template-columns: repeat(3, minmax(0,1fr)); }
+            .split{ grid-template-columns: 1fr; }
+        }
+
+        /* Móvil (≤ 680px) */
+        @media (max-width: 680px){
+            .features{ grid-template-columns: 1fr; }
+            .steps{ grid-template-columns: 1fr; }
+            .kpis{ grid-template-columns: 1fr; gap: var(--space-2); }
+            .cta-row{ flex-direction: column; align-items: stretch; }
+            .btn{ justify-content: center; padding: 12px 16px; }
+        }
+
+        /* Toques: accesibilidad y foco visible */
+        :focus-visible{ outline: 3px solid var(--info); outline-offset: 2px; border-radius: 8px; }
+
+        /* Respeta preferencias de movimiento */
+        @media (prefers-reduced-motion: reduce){
+            *{ animation: none !important; transition: none !important; }
         }
     </style>
 </head>
@@ -157,17 +183,39 @@
                 <img src="assets/logo.png" alt="Logo EDUPLAY" />
                 <strong>EDUPLAY</strong>
             </div>
-            <div class="navlinks" role="navigation" aria-label="Enlaces principales">
+
+            <button class="btn ghost" id="menuBtn" aria-expanded="false" aria-controls="navlinks" style="display:none">
+                ☰ Menú
+            </button>
+
+            <div class="navlinks" id="navlinks" role="navigation" aria-label="Enlaces principales">
                 <a class="btn ghost" href="#como-funciona">Cómo funciona</a>
                 <a class="btn ghost" href="#beneficios">Beneficios</a>
                 <a class="btn ghost" href="#seguridad">Privacidad</a>
                 <a class="btn primary" href="#demo">Solicitar demo</a>
-            </div>
-            <div>
-                <!-- Login activo -->
                 <a class="btn ghost" href="/login">Iniciar sesión</a>
             </div>
         </nav>
+
+        <script>
+            const btn = document.getElementById('menuBtn');
+            const nav = document.getElementById('navlinks');
+            const mq = window.matchMedia('(max-width: 680px)');
+            function updateMenu(){ btn.style.display = mq.matches ? 'inline-flex' : 'none'; nav.style.display = mq.matches ? 'none' : 'flex'; }
+            mq.addEventListener?.('change', updateMenu); updateMenu();
+            btn.addEventListener('click', ()=>{
+                const open = nav.style.display !== 'none';
+                nav.style.display = open ? 'none' : 'flex';
+                btn.setAttribute('aria-expanded', String(!open));
+            });
+        </script>
+
+        <style>
+            @media (max-width: 680px){
+                nav{ align-items: start; }
+                .navlinks{ flex-direction: column; gap: 8px; width: 100%; }
+            }
+        </style>
     </div>
 </header>
 
@@ -288,28 +336,29 @@
     <section class="container" id="demo" aria-labelledby="t-demo">
         <h2 id="t-demo">Solicita una demo</h2>
         <p class="sub">Te mostramos el panel profesional, ejemplos de informes y actividades adaptativas en 20 minutos.</p>
-        <form class="card" aria-label="Formulario de solicitud de demo" onsubmit="event.preventDefault(); alert('¡Gracias! Nos pondremos en contacto.');">
-            <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
-                <label>Nombre
-                    <input required type="text" name="nombre" aria-label="Nombre" placeholder="Nombre">
-                </label>
-                <label>Email profesional
-                    <input required type="email" name="email" aria-label="Email" placeholder="tucorreo@centro.edu">
-                </label>
-                <label>Centro/Organización
-                    <input required type="text" name="org" aria-label="Organización" placeholder="Nombre del centro">
-                </label>
-                <label>Rol
-                    <select name="rol" aria-label="Rol">
-                        <option>Dirección</option><option>Docente</option><option>Orientación/Logopedia</option><option>Otro</option>
-                    </select>
-                </label>
-            </div>
-            <div class="cta-row" style="margin-top:18px">
-                <button class="btn primary" type="submit">Quiero la demo</button>
-                <small style="color:var(--muted)">Al enviar aceptas ser contactad@ para coordinar una demo inicial.</small>
-            </div>
+        <form id="demoForm" class="card">
+            <label>Nombre <input name="nombre" required></label>
+            <label>Email <input type="email" name="email" required></label>
+            <label>Organización <input name="org" required></label>
+            <label>Rol <input name="rol"></label>
+            <button class="btn primary" type="submit">Solicitar demo</button>
         </form>
+
+        <script>
+            const f = document.getElementById("demoForm");
+            f.addEventListener("submit", async e => {
+                e.preventDefault();
+                const body = Object.fromEntries(new FormData(f).entries());
+                const r = await fetch("/api/demo", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+                alert(r.ok ? "✅ ¡Gracias! Te contactaremos pronto." : "❌ Error al enviar. Intenta más tarde.");
+                if (r.ok) f.reset();
+            });
+        </script>
+
     </section>
 
     <!-- FAQ -->
