@@ -336,11 +336,12 @@
     <section class="container" id="demo" aria-labelledby="t-demo">
         <h2 id="t-demo">Solicita una demo</h2>
         <p class="sub">Te mostramos el panel profesional, ejemplos de informes y actividades adaptativas en 20 minutos.</p>
-        <form id="demoForm" class="card">
+        <form id="demoForm" class="card" novalidate>
             <label>Nombre <input name="nombre" required></label>
             <label>Email <input type="email" name="email" required></label>
             <label>Organización <input name="org" required></label>
             <label>Rol <input name="rol"></label>
+            <label style="position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden;" aria-hidden="true" tabindex="-1">Deja este campo vacío <input name="demo_confirm" autocomplete="off"></label>
             <button class="btn primary" type="submit">Solicitar demo</button>
         </form>
 
@@ -351,11 +352,28 @@
                 const body = Object.fromEntries(new FormData(f).entries());
                 const r = await fetch("/api/demo", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json", "Accept": "application/json" },
                     body: JSON.stringify(body)
                 });
-                alert(r.ok ? "✅ ¡Gracias! Te contactaremos pronto." : "❌ Error al enviar. Intenta más tarde.");
-                if (r.ok) f.reset();
+                let message = "❌ Error al enviar. Intenta más tarde.";
+                let payload = {};
+                try {
+                    payload = await r.json();
+                } catch (_) {}
+                if (r.ok && payload.success) {
+                    message = "✅ ¡Gracias! Te contactaremos pronto.";
+                    f.reset();
+                } else if (r.status === 429) {
+                    const wait = payload.retryAfter ? ` Espera ${payload.retryAfter} segundos.` : "";
+                    message = "⏳ Estás enviando solicitudes muy rápido." + wait;
+                } else if (payload && payload.error === "invalid_email") {
+                    message = "📧 Revisa el formato de tu email.";
+                } else if (payload && payload.error === "bot_detected") {
+                    message = "⚠️ No se pudo validar el envío.";
+                } else if (payload && payload.error === "missing_fields") {
+                    message = "ℹ️ Completa todos los campos obligatorios.";
+                }
+                alert(message);
             });
         </script>
 
