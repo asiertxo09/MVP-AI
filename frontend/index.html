@@ -337,26 +337,47 @@
     <section class="container" id="demo" aria-labelledby="t-demo">
         <h2 id="t-demo">Solicita una demo</h2>
         <p class="sub">Te mostramos el panel profesional, ejemplos de informes y actividades adaptativas en 20 minutos.</p>
-        <form id="demoForm" class="card">
-            <label>Nombre <input name="nombre" required></label>
-            <label>Email <input type="email" name="email" required></label>
-            <label>Organización <input name="org" required></label>
-            <label>Rol <input name="rol"></label>
+        <form id="demoForm" class="card" method="post" action="/api/demo">
+            <label>Nombre <input name="nombre" autocomplete="name" required></label>
+            <label>Email <input type="email" name="email" autocomplete="email" required></label>
+            <label>Organización <input name="org" autocomplete="organization" required></label>
+            <label>Rol <input name="rol" autocomplete="organization-title"></label>
+            <label>Teléfono (opcional) <input type="tel" name="tel" autocomplete="tel"></label>
             <button class="btn primary" type="submit">Solicitar demo</button>
+            <p id="demoStatus" role="status" aria-live="polite"></p>
         </form>
 
         <script>
             const f = document.getElementById("demoForm");
+            const statusEl = document.getElementById("demoStatus");
+            const submitBtn = f.querySelector('button[type="submit"]');
+
             f.addEventListener("submit", async e => {
+                if (!window.fetch) return;
                 e.preventDefault();
+
                 const body = Object.fromEntries(new FormData(f).entries());
-                const r = await fetch("/api/demo", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(body)
-                });
-                alert(r.ok ? "✅ ¡Gracias! Te contactaremos pronto." : "❌ Error al enviar. Intenta más tarde.");
-                if (r.ok) f.reset();
+                submitBtn.disabled = true;
+                statusEl.textContent = "Enviando…";
+
+                try {
+                    const response = await fetch("/api/demo", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Error en el envío");
+                    }
+
+                    statusEl.textContent = "¡Gracias! Te contactaremos pronto.";
+                    f.reset();
+                } catch (error) {
+                    statusEl.textContent = "No se pudo enviar el formulario. Inténtalo de nuevo más tarde.";
+                } finally {
+                    submitBtn.disabled = false;
+                }
             });
         </script>
 

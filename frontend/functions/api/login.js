@@ -1,5 +1,4 @@
-import { verifyPassword } from "../lib/password";
-import { ensureUsersTable, findUserByUsername } from "../lib/users";
+import { verifyPassword } from "../lib/auth";
 
 export const onRequestPost = async ({ request, env }) => {
     try {
@@ -16,12 +15,15 @@ export const onRequestPost = async ({ request, env }) => {
         await ensureUsersTable(env.DB);
 
         // Buscar usuario en D1
-        const row = await findUserByUsername(env.DB, username);
+        const row = await env.DB.prepare(
+            "SELECT id, username, password_hash, password_salt, password_iterations, password_algo FROM users WHERE username = ?"
+        )
+            .bind(username).first();
 
         if (!row) return new Response("Credenciales inválidas", { status: 401 });
 
-        const valid = await verifyPassword(password, row.password);
-        if (!valid) return new Response("Credenciales inválidas", { status: 401 });
+        const ok = await verifyPassword(password, row);
+        if (!ok) return new Response("Credenciales inválidas", { status: 401 });
 
         // Crear token firmado (expira en 24h)
         const payload = { sub: row.id, u: row.username, exp: Math.floor(Date.now()/1000) + 60*60*24 };
