@@ -1,16 +1,30 @@
+import { verifyPassword } from "../lib/auth";
+import { ensureUsersTable } from "../lib/users";
+
 export const onRequestPost = async ({ request, env }) => {
     try {
-        const { username, password } = await request.json();
+        let body;
+        try {
+            body = await request.json();
+        } catch {
+            return new Response("Solicitud inválida", { status: 400 });
+        }
+        const username = typeof body.username === "string" ? body.username.trim() : "";
+        const password = typeof body.password === "string" ? body.password : "";
         if (!username || !password) return new Response("Faltan credenciales", { status: 400 });
 
+        await ensureUsersTable(env.DB);
+
         // Buscar usuario en D1
-        const row = await env.DB.prepare("SELECT id, username, password FROM users WHERE username = ?")
+        const row = await env.DB.prepare(
+            "SELECT id, username, password_hash, password_salt, password_iterations, password_algo FROM users WHERE lower(username) = lower(?)"
+        )
             .bind(username).first();
 
         if (!row) return new Response("Credenciales inválidas", { status: 401 });
 
-        // Comparación simple (Plano). ⚠️ Te paso nota para PBKDF2 abajo.
-        if (row.password !== password) return new Response("Credenciales inválidas", { status: 401 });
+        const ok = await verifyPassword(password, row);
+        if (!ok) return new Response("Credenciales inválidas", { status: 401 });
 
         // Crear token firmado (expira en 24h)
         const payload = { sub: row.id, u: row.username, exp: Math.floor(Date.now()/1000) + 60*60*24 };
@@ -22,6 +36,7 @@ export const onRequestPost = async ({ request, env }) => {
         });
         return new Response("OK", { status: 200, headers });
     } catch (e) {
+        console.error(e);
         return new Response("Error", { status: 500 });
     }
 };
