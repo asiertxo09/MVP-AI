@@ -114,3 +114,59 @@ python ai-backend-groq/app.py
 - Ejecuta las migraciones de D1 (`frontend/migrations/`) antes de desplegar para garantizar el esquema correcto.
 
 Para dudas adicionales consulta el código fuente en cada carpeta o abre un issue en el repositorio.
+
+# Steps to Run the Webpage Locally
+
+From frontend directory, run:
+
+```bash
+npm run dev
+```
+
+This will start the Cloudflare Pages preview server along with the Functions (API routes) locally. Make sure you have set up your local environment variables in `wrangler.toml` or `.dev.vars` file as needed.
+
+Also check the lastest migrations of the database in `frontend/migrations/` and run them in your local D1 instance to ensure the database schema is up to date.
+
+## Deployment
+To deploy the DB migration run:
+
+```bash
+wrangler d1 migrations apply DB --local
+rm -r .wrangler/state/v3/d1
+```
+
+Once the changes are applied, you need to create a new migration. In the frontend/migrations/ directory, create a new SQL file with the naming convention NNNN_description.sql:
+touch frontend/migrations/0003_your_description.sql
+
+````bash
+touch frontend/migrations/0003_your_description.sql
+````
+
+Edit the migration file and add your SQL statements:
+```sql
+-- Migration: Add new column to users table
+ALTER TABLE users ADD COLUMN new_column_name TEXT;
+
+-- Or create a new table
+CREATE TABLE IF NOT EXISTS new_table (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+name TEXT NOT NULL,
+created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+After editing the migration file, you can apply the new migration to your local D1 instance:
+```bash
+wrangler d1 migrations apply DB --local
+```
+
+Check that your migration worked:
+
+```bash
+wrangler d1 execute DB --local --command "PRAGMA table_info(users);"
+```
+
+Once tested locally and committed to version control, apply it to production:
+
+```bash
+wrangler d1 migrations apply DB --remote
+```
