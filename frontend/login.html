@@ -5,39 +5,75 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Iniciar sesión · EduPlay</title>
     <style>
+        :root{color-scheme:dark}
         body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#0f172a;color:#e2e8f0}
         .wrap{max-width:420px;margin:10vh auto;padding:24px}
         form{display:grid;gap:12px;background:#111827;border:1px solid #1f2937;border-radius:16px;padding:20px}
-        input{padding:10px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb}
-        button{padding:12px;border-radius:10px;border:0;background:#2563eb;color:#fff;cursor:pointer}
+        input{padding:12px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:#e5e7eb;font-size:16px}
+        button{padding:12px;border-radius:10px;border:0;background:#2563eb;color:#fff;cursor:pointer;font-size:16px;font-weight:600}
+        button[disabled]{opacity:.6;cursor:wait}
         .err{color:#fca5a5}
+        .msg{color:#a5b4fc;font-size:.95rem}
+        .foot{text-align:center;margin-top:16px;color:#cbd5f5}
+        a{color:#60a5fa}
     </style>
 </head>
 <body>
 <div class="wrap">
     <h2>Acceder</h2>
-    <form id="f">
-        <input name="username" placeholder="Usuario" required />
-        <input name="password" placeholder="Contraseña" type="password" required />
-        <button>Entrar</button>
-        <div class="err" id="e"></div>
+    <form id="f" novalidate>
+        <input name="username" placeholder="Usuario" autocomplete="username" required />
+        <input name="password" placeholder="Contraseña" type="password" autocomplete="current-password" required />
+        <button id="btn">Entrar</button>
+        <p class="msg" id="s" role="status" aria-live="polite"></p>
+        <div class="err" id="e" role="alert" aria-live="assertive"></div>
     </form>
+    <p class="foot">¿Aún no tienes cuenta? <a href="/register">Crea una ahora</a></p>
 </div>
 <script>
-    const f = document.getElementById('f'), e = document.getElementById('e');
+    const f = document.getElementById('f');
+    const e = document.getElementById('e');
+    const s = document.getElementById('s');
+    const btn = document.getElementById('btn');
+
+    const params = new URLSearchParams(location.search);
+    if (params.get('registered') === '1') {
+        s.textContent = 'Tu cuenta fue creada correctamente. Inicia sesión con tus datos.';
+    }
+
     f.addEventListener('submit', async (ev) => {
         ev.preventDefault();
         e.textContent = '';
+        s.textContent = '';
+        btn.disabled = true;
         const fd = new FormData(f);
-        const body = { username: fd.get('username'), password: fd.get('password') };
-        const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-            credentials: 'include'
-        });
-        if (res.ok) location.href = '/app/';
-        else e.textContent = (await res.text()) || 'Usuario o contraseña incorrectos';
+        const body = { username: fd.get('username')?.trim(), password: fd.get('password') };
+        if (!body.username || !body.password) {
+            e.textContent = 'Completa usuario y contraseña.';
+            btn.disabled = false;
+            return;
+        }
+        s.textContent = 'Verificando credenciales…';
+        try {
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+                credentials: 'include'
+            });
+            if (res.ok) {
+                location.href = '/app/';
+            } else {
+                e.textContent = (await res.text()) || 'Usuario o contraseña incorrectos';
+                s.textContent = '';
+                btn.disabled = false;
+            }
+        } catch (err) {
+            console.error(err);
+            e.textContent = 'No se pudo contactar con el servidor. Intenta de nuevo en unos segundos.';
+            s.textContent = '';
+            btn.disabled = false;
+        }
     });
 </script>
 </body>
