@@ -13,19 +13,24 @@ CREATE TABLE IF NOT EXISTS users (
 
 export const onRequestPost = async ({ request, env }) => {
     try {
-        const { username, password } = await request.json();
-        if (typeof username !== "string" || typeof password !== "string") {
-            return new Response("Formato inválido", { status: 400 });
+        let body;
+        try {
+            body = await request.json();
+        } catch {
+            return new Response("Solicitud inválida", { status: 400 });
         }
-        const trimmedUser = username.trim();
-        if (!trimmedUser || password.length < 8) {
+
+        const username = typeof body.username === "string" ? body.username.trim() : "";
+        const password = typeof body.password === "string" ? body.password : "";
+
+        if (!username || password.length < 8) {
             return new Response("Usuario o contraseña inválidos", { status: 400 });
         }
 
         await env.DB.prepare(CREATE_USERS_SQL).run();
 
-        const existing = await env.DB.prepare("SELECT id FROM users WHERE username = ?")
-            .bind(trimmedUser)
+        const existing = await env.DB.prepare("SELECT id FROM users WHERE lower(username) = lower(?)")
+            .bind(username)
             .first();
         if (existing) {
             return new Response("Usuario ya registrado", { status: 409 });
@@ -35,7 +40,7 @@ export const onRequestPost = async ({ request, env }) => {
         await env.DB.prepare(
             "INSERT INTO users (username, password_hash, password_salt, password_iterations, password_algo) VALUES (?,?,?,?,?)"
         )
-            .bind(trimmedUser, ...toColumnTuple(hashed))
+            .bind(username, ...toColumnTuple(hashed))
             .run();
 
         return new Response("Creado", { status: 201 });

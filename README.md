@@ -1,114 +1,116 @@
-Backend (Node):
+# Plataforma EduPlay · Guía de desarrollo
+
+Este repositorio contiene el frontend estático (Cloudflare Pages + Functions) y los servicios de backend que alimentan la plataforma EduPlay. Incluye autenticación de usuarios, generación de contenido con Groq, transcripción de audio y generación de imágenes.
+
+## Arquitectura general
+- **`frontend/`**: sitio público, formularios de registro/login y API routes en Cloudflare Workers (D1 como base de datos).
+- **`ai-backend-groq/`**: backend Node.js que expone endpoints para generar texto y transcribir audio usando Groq + Hugging Face.
+- **`sdxl-local/`**: servicio Python opcional para generar imágenes con Stable Diffusion XL en local.
+
 ```
+Navegador ─▶ frontend (Cloudflare)
+              ├─ /api/login | /api/register | /api/logout | /api/demo
+              └─▶ ai-backend-groq (Node) ─▶ Servicios Groq / Hugging Face
+                             └─▶ sdxl-local (Python) ─▶ Difusión estable
+```
+
+## Requisitos previos
+- Node.js 18+ y npm.
+- Python 3.10+ (solo si se usará `sdxl-local`).
+- Cuenta en Cloudflare D1 o SQLite compatible para desarrollo local.
+- Claves de API válidas para Groq y Hugging Face.
+
+## Puesta en marcha rápida
+### Frontend + Functions (desarrollo local)
+```bash
+cd frontend
+npm install
+# Configura variables locales de Cloudflare en wrangler.toml o `.dev.vars`
+npm run dev # levanta el preview con Wrangler
+```
+
+### Backend Groq / Hugging Face (Node.js)
+```bash
+cd ai-backend-groq
+npm install
+cp .env.example .env  # completa tus claves
 npm run dev
 ```
 
-Backend de imágenes (Python):
-```
+### Backend de imágenes local (opcional)
+```bash
 pip install -r ai-backend-groq/requirements.txt
 python ai-backend-groq/app.py
 ```
 
-Variables de entorno necesarias:
-- `GROQ_API_KEY`
-- `HF_API_KEY`
+## Variables de entorno
+| Servicio | Variable | Obligatoria | Descripción |
+|----------|----------|-------------|-------------|
+| Cloudflare Functions | `SESSION_SECRET` | Sí | Clave HMAC para firmar las cookies de sesión. |
+| Cloudflare Functions | `DB` | Sí | Enlace a la base D1 (Wrangler la expone automáticamente). |
+| Cloudflare Functions | `DEMO_FROM`, `DEMO_TO`, `DEMO_SUBJECT` | Opcionales | Datos para el endpoint `/api/demo`. |
+| Node backend | `GROQ_API_KEY` | Sí | Clave para generación de texto con Groq. |
+| Node backend | `HUGGING_FACE_API_KEY` o `HF_API_KEY` | Sí | Clave para uso de modelos Hugging Face. |
+| Node backend | `HF_IMAGE_MODELS` | Opcional | Lista de modelos de imagen (coma separada). |
+| Node backend | `HF_TIMEOUT_MS` | Opcional | Timeout en milisegundos para Hugging Face (default 45000). |
+| Node backend | `PORT` | Opcional | Puerto HTTP (default 3001). |
+| sdxl-local | `HF_API_KEY` | Sí | Token Hugging Face con acceso a los modelos de imagen usados. |
 
-Endpoints disponibles:
-- `POST /api/generate` texto de apoyo (Groq)
-- `POST /api/transcribe` transcripción de audio con Whisper
-- `POST /image` (puerto 5001) generación de imágenes con Stable Diffusion XL y prompt seguro
+## Base de datos y autenticación
+- La tabla `users` se crea automáticamente en D1 con columnas para credenciales hasheadas (`password_hash`, `password_salt`, `password_iterations`, `password_algo`).
+- Las contraseñas se almacenan usando PBKDF2 (SHA-256, 100k iteraciones por defecto).
+- El login devuelve una cookie de sesión firmada (`session`) válida por 24 h que es verificada en `_middleware.js` para proteger rutas `/app/*`.
 
-Frontend:
-```
-npx http-server -p 5500
-```
-=======
-# AI EduPlay - Backend (Groq + Hugging Face)
+### Flujo de registro
+1. El formulario `register.html` valida nombre, usuario/correo, contraseña y consentimiento.
+2. Envia `POST /api/register` con JSON `{ username, password }` (los demás campos se ignoran en backend).
+3. La función registra al usuario si no existe y responde `201 Created`.
 
-## Puesta en marcha rápida
-```bash
-cd ai-backend-groq
-npm install
-cp .env.example .env   # luego edita con tus claves reales
-npm run dev
-```
-Frontend (por ejemplo usando http-server):
-```bash
-cd frontend
-npx http-server -p 5500
-# Abrir http://localhost:5500/eduplay.html
-```
+### Flujo de login
+1. `login.html` envía `POST /api/login` con `{ username, password }`.
+2. La función busca al usuario en D1, verifica la contraseña y emite la cookie `session`.
+3. El middleware redirige a `/login` cuando el token falta o expira.
 
-## Variables de entorno necesarias
-| Variable | Obligatoria | Descripción |
-|----------|-------------|-------------|
-| `GROQ_API_KEY` | Sí | Clave Groq para generación de texto. |
-| `HUGGING_FACE_API_KEY` o `HF_API_KEY` | Sí | Clave Hugging Face (el código acepta cualquiera de los dos nombres). |
-| `HF_IMAGE_MODELS` | Opcional | Lista separada por comas de modelos de imagen. Default: `runwayml/stable-diffusion-v1-5,stabilityai/stable-diffusion-2-1-base` |
-| `HF_TIMEOUT_MS` | Opcional | Timeout en ms para generación de imagen (default 45000). |
-| `PORT` | Opcional | Puerto del backend (default 3001). |
+## Endpoints disponibles
+### Cloudflare Functions (`frontend/functions/api`)
+| Método | Ruta | Descripción | Respuestas relevantes |
+|--------|------|-------------|-----------------------|
+| POST | `/api/register` | Crea un usuario nuevo. Cuerpo: `{ username: string, password: string }`. | `201 Created` en éxito, `409` si el usuario existe, `400` si los datos son inválidos. |
+| POST | `/api/login` | Inicia sesión y entrega cookie `session`. Cuerpo: `{ username, password }`. | `200 OK` con `Set-Cookie`, `401` si credenciales inválidas. |
+| POST | `/api/logout` | Elimina la cookie y redirige a `/login`. | `302` hacia `/login`. |
+| POST | `/api/demo` | Envía un correo de demo (requiere variables `DEMO_*`). | `200` si se envía, `400/500` en error. |
 
-### Ejemplo `.env`
-```env
-GROQ_API_KEY=tu_clave_groq
-HUGGING_FACE_API_KEY=tu_clave_hf
-HF_IMAGE_MODELS=runwayml/stable-diffusion-v1-5,stabilityai/stable-diffusion-2-1-base
-HF_TIMEOUT_MS=45000
-PORT=3001
-```
-> Puedes usar `HF_API_KEY` en lugar de `HUGGING_FACE_API_KEY` si prefieres. El backend detecta ambos.
+### Backend Node (`ai-backend-groq/server.js`)
+| Método | Ruta | Descripción | Cuerpo/Respuesta |
+|--------|------|-------------|------------------|
+| GET | `/health` | Comprobación sencilla del servicio. | Responde `{ ok: true }`. |
+| POST | `/api/generate` | Genera texto educativo breve. | Request `{ prompt, level? }`. Respuesta `{ text, tokens, model }`. |
+| POST | `/api/transcribe` | Transcribe audio (base64). | Request `{ audio }`. Devuelve `{ text, confidence }`. |
+| POST | `/api/image` | Proxy de generación de imagen vía Hugging Face. | Request `{ prompt, enhance? }`. Respuesta PNG (`image/png`). |
+| GET | `/api/image` | Versión GET para debug rápido con query `?prompt=`. | Imagen PNG. |
+| GET | `/api/debug/hf` | Información diagnóstica de la clave HF (no exponer en prod). | `{ hasKey: boolean, models: [...] }`. |
 
-## Endpoints
+### Backend Python (`sdxl-local/app.py`)
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/health` | Comprobación de estado. |
-| POST | `/api/generate` | Genera texto corto de apoyo (JSON: `{ prompt, level? }`). |
-| POST | `/api/image` | Genera imagen (JSON: `{ prompt }`) -> devuelve PNG. |
-| GET | `/api/image?prompt=...` | Test rápido en navegador (no para producción). |
-| POST | `/api/transcribe` | Transcribe audio base64 (JSON: `{ audio }`). |
-| GET | `/api/debug/hf` | (Solo dev) Info mínima sobre la clave HF cargada. |
+| POST | `/image` | Genera imágenes SDXL localmente a partir de `{ prompt }`. |
 
-## Sistema de generación de imágenes (Stable Diffusion - Hugging Face)
-- Implementado con fallback multi‑modelo y reintentos (503 warmup, 5xx, 429, etc.).
-- Cache en memoria (clave = estilo|enhance|prompt) para llamadas repetidas.
-- Cabeceras de respuesta: `X-Image-Model` y `X-Image-Cache` (`hit`/`miss`).
+## Desarrollo de interfaces
+- Las páginas `login.html` y `register.html` incluyen márgenes laterales fluidos (`clamp`) para mejorar la legibilidad en pantallas pequeñas.
+- El layout principal (`index.html`) emplea variables CSS y rejillas responsivas.
 
-## Errores comunes y solución (especialmente 404)
-| Síntoma | Causa probable | Solución |
-|---------|----------------|----------|
-| `404 Not Found` desde Hugging Face | Nombre de variable mal (usaste `HF_API_KEY` pero el código antiguo solo leía `HUGGING_FACE_API_KEY`) | Ahora se aceptan ambos nombres; asegura que una esté definida y sin comillas. |
-| `404` o `403` en modelo | No aceptaste los términos/licencia del modelo (algunos son gated) | Entra a la página del modelo en HF y haz click en “Access repository”. |
-| `401 Unauthorized` | Clave inválida o vacía | Verifica `.env` y reinicia el backend. |
-| `503 loading` repetido | Modelo “cold start” | El backend reintenta automáticamente; espera unos segundos. |
-| Timeout/Abort | Modelo lento o red inestable | Aumenta `HF_TIMEOUT_MS` (p.ej. 60000) o reduce carga simultánea. |
-| Imagen vacía / content-type JSON | Respuesta de error devuelta como JSON aunque 200 | Backend probará siguiente modelo y registrará log de advertencia. |
+## Scripts útiles
+| Comando | Ubicación | Acción |
+|---------|-----------|--------|
+| `npm run dev` | `frontend/` | Inicia el preview de Cloudflare Pages/Functions. |
+| `npm run deploy` | `frontend/` | Publica el sitio (configurar en `package.json`). |
+| `npm run dev` | `ai-backend-groq/` | Levanta el servidor Node con recarga automática. |
+| `node server.js` | `ai-backend-groq/` | Ejecuta el backend en modo producción. |
 
-### Checklist rápido si falla la imagen
-1. `curl http://localhost:3001/health` => debe responder `{ ok: true }`.
-2. `curl http://localhost:3001/api/debug/hf` => `hasKey: true` y longitud > 20.
-3. Asegúrate de haber aceptado la licencia de cada modelo en HF.
-4. Probar GET manual: `curl -o test.png "http://localhost:3001/api/image?prompt=un%20gato%20dibujando"`.
-5. Revisar logs: busca líneas `[HF][Image]` para ver modelo, intentos y códigos.
-6. Si todos fallan: definir otro modelo en `HF_IMAGE_MODELS` (ej. `stabilityai/sdxl-turbo`).
+## Buenas prácticas
+- Asegura `SESSION_SECRET` con al menos 32 caracteres aleatorios.
+- Habilita HTTPS y la opción `Secure` en cookies (ya activado por defecto en Cloudflare).
+- Usa cuentas de servicio separadas para entornos de desarrollo y producción.
+- Ejecuta las migraciones de D1 (`frontend/migrations/`) antes de desplegar para garantizar el esquema correcto.
 
-## Diferencias respecto a la versión anterior
-- Se agregó soporte multi‑modelo + reintentos exponenciales.
-- Detección de ambas variables de clave HF (`HUGGING_FACE_API_KEY` / `HF_API_KEY`).
-- Endpoint GET `/api/image` para debug rápido.
-- Cabeceras diagnósticas (`X-Image-Model`, `X-Image-Cache`).
-- Polyfill `fetch` automático para Node < 18 (`node-fetch`).
-- Ruta `/favicon.ico` (204) para limpiar logs en desarrollo.
-
-## Notas de seguridad
-- No expongas `/api/debug/hf` en producción.
-- Considera limitar prompts o sanitizar si se expone a usuarios.
-- Añade un reverse proxy + TLS (NGINX / Caddy) para despliegue público.
-
-## Próximas mejoras sugeridas
-- Persistir cache en disco (LRU) o Redis.
-- Añadir colas para limitar simultáneas de imagen.
-- Test unitarios con mocks de fetch.
-- Observabilidad (p.ej. Prometheus métricas de latencia y tasa de error).
-
----
-**Troubleshooting rápido**: Si sigues viendo `404 Not Found` al generar imágenes, casi siempre es: (a) variable de entorno mal nombrada, (b) no aceptaste licencia del modelo, o (c) modelo retirado. Cambia a otro en `HF_IMAGE_MODELS` y revisa logs.
+Para dudas adicionales consulta el código fuente en cada carpeta o abre un issue en el repositorio.

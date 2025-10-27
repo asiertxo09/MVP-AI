@@ -1,4 +1,5 @@
 import { verifyPassword } from "../lib/auth";
+import { ensureUsersTable } from "../lib/users";
 
 export const onRequestPost = async ({ request, env }) => {
     try {
@@ -16,7 +17,7 @@ export const onRequestPost = async ({ request, env }) => {
 
         // Buscar usuario en D1
         const row = await env.DB.prepare(
-            "SELECT id, username, password_hash, password_salt, password_iterations, password_algo FROM users WHERE username = ?"
+            "SELECT id, username, password_hash, password_salt, password_iterations, password_algo FROM users WHERE lower(username) = lower(?)"
         )
             .bind(username).first();
 
