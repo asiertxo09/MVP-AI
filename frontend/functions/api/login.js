@@ -2,8 +2,17 @@ import { verifyPassword } from "../lib/auth";
 
 export const onRequestPost = async ({ request, env }) => {
     try {
-        const { username, password } = await request.json();
+        let body;
+        try {
+            body = await request.json();
+        } catch {
+            return new Response("Solicitud inválida", { status: 400 });
+        }
+        const username = typeof body.username === "string" ? body.username.trim() : "";
+        const password = typeof body.password === "string" ? body.password : "";
         if (!username || !password) return new Response("Faltan credenciales", { status: 400 });
+
+        await ensureUsersTable(env.DB);
 
         // Buscar usuario en D1
         const row = await env.DB.prepare(
@@ -26,6 +35,7 @@ export const onRequestPost = async ({ request, env }) => {
         });
         return new Response("OK", { status: 200, headers });
     } catch (e) {
+        console.error(e);
         return new Response("Error", { status: 500 });
     }
 };
