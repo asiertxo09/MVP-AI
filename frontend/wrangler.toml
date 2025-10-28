@@ -7,10 +7,10 @@ pages_build_output_dir = "."
 # Configura el binding de D1 en un archivo local (p. ej. `wrangler.local.toml`)
 # o directamente en la UI de Cloudflare Pages.
 # Ejemplo de bloque a añadir:
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "eduplay-auth"
-# database_id = "<UUID-de-tu-base>"
+[[d1_databases]]
+binding = "DB"
+database_name = "eduplay-auth"
+database_id = "<61998541-90f8-4ad5-94e1-44ee37fb215d>"
 
 # Para aplicar migraciones:
 #   npm run migrations:apply        # entorno remoto
