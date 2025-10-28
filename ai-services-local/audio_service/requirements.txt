@@ -1,0 +1,10 @@
+numpy
+fastapi
+uvicorn[standard]
+torch
+torchaudio
+transformers
+accelerate
+safetensors
+ffmpeg-python
+soundfile

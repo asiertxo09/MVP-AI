@@ -169,12 +169,14 @@ CORS_ORIGIN=https://tu-dominio.pages.dev
   ```
   fastapi
   uvicorn[standard]
+  numpy
   torch
   torchaudio
   transformers
   accelerate
   safetensors
   ffmpeg-python
+  soundfile
   ```
 
 ---
@@ -196,6 +198,7 @@ cd ../ai-backend-groq
 npm install
 cp .env.example .env
 npm run dev    # o: node server.js
+npm test        # pruebas de integración (Vitest)
 ```
 
 ```bash
@@ -203,15 +206,17 @@ npm run dev    # o: node server.js
 # 3.a) Imágenes (SDXL)
 cd ../ai-services-local/sdxl_service
 pip install -r requirements.txt
-uvicorn app:app --host 127.0.0.1 --port 5005
+uvicorn app:app --host 0.0.0.0 --port 5005
 
 # 3.b) Audio (ASR/TTS)
 cd ../audio_service
 pip install -r requirements.txt
-uvicorn app:app --host 127.0.0.1 --port 5006
+uvicorn app:app --host 0.0.0.0 --port 5006
 ```
 
 Asegúrate de que `LOCAL_SDXL_URL`, `LOCAL_ASR_URL` y `LOCAL_TTS_URL` apunten a los puertos anteriores.
+
+> Los tres servicios (Node y Python) exponen `/health`, `/health/live` y `/health/ready` como checks de vida y preparación.
 
 ### 5.2 Migraciones D1 (Cloudflare)
 
