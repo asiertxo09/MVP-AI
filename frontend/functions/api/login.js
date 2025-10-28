@@ -1,53 +1,58 @@
 import { verifyPassword } from "../lib/auth";
-import { ensureUsersTable } from "../lib/users";
+import { ensureUsersTable, findUserByUsername } from "../lib/users";
+import { createSessionToken, readSessionSecret, serializeSessionCookie } from "../lib/session";
 
 export const onRequestPost = async ({ request, env }) => {
     try {
+        if (request.headers.get("content-type")?.includes("application/json") === false) {
+            return jsonResponse({ error: "Content-Type debe ser application/json" }, 415);
+        }
+
         let body;
         try {
             body = await request.json();
         } catch {
-            return new Response("Solicitud inválida", { status: 400 });
+            return jsonResponse({ error: "JSON inválido" }, 400);
         }
+
         const username = typeof body.username === "string" ? body.username.trim() : "";
         const password = typeof body.password === "string" ? body.password : "";
-        if (!username || !password) return new Response("Faltan credenciales", { status: 400 });
+        if (!username || !password) {
+            return jsonResponse({ error: "Faltan credenciales" }, 400);
+        }
 
         await ensureUsersTable(env.DB);
+        const user = await findUserByUsername(env.DB, username);
+        if (!user) {
+            return jsonResponse({ error: "Credenciales inválidas" }, 401);
+        }
 
-        // Buscar usuario en D1
-        const row = await env.DB.prepare(
-            "SELECT id, username, password_hash, password_salt, password_iterations, password_algo FROM users WHERE lower(username) = lower(?)"
-        )
-            .bind(username).first();
+        const valid = await verifyPassword(password, user);
+        if (!valid) {
+            return jsonResponse({ error: "Credenciales inválidas" }, 401);
+        }
 
-        if (!row) return new Response("Credenciales inválidas", { status: 401 });
-
-        const ok = await verifyPassword(password, row);
-        if (!ok) return new Response("Credenciales inválidas", { status: 401 });
-
-        // Crear token firmado (expira en 24h)
-        const payload = { sub: row.id, u: row.username, exp: Math.floor(Date.now()/1000) + 60*60*24 };
-        const token = await signPayload(payload, env.SESSION_SECRET);
-
+        const secret = readSessionSecret(env);
+        const { token } = await createSessionToken({ userId: user.id, username: user.username, secret });
         const headers = new Headers({
-            "Set-Cookie": `session=${encodeURIComponent(token)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${60*60*24}`,
-            "Content-Type": "text/plain"
+            "Set-Cookie": serializeSessionCookie(token),
+            "Cache-Control": "no-store",
+            "Content-Type": "application/json"
         });
-        return new Response("OK", { status: 200, headers });
-    } catch (e) {
-        console.error(e);
-        return new Response("Error", { status: 500 });
+
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+    } catch (err) {
+        console.error("login", err);
+        return jsonResponse({ error: "Error interno" }, 500);
     }
 };
 
-// ---- utils ----
-async function signPayload(obj, secret) {
-    const b64 = btoa(JSON.stringify(obj));
-    const key = await crypto.subtle.importKey(
-        "raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-    );
-    const sigBuf = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(b64));
-    const sigHex = [...new Uint8Array(sigBuf)].map(b=>b.toString(16).padStart(2,"0")).join("");
-    return `${b64}.${sigHex}`;
+function jsonResponse(data, status) {
+    return new Response(JSON.stringify(data), {
+        status,
+        headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store"
+        }
+    });
 }
