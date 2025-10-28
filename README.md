@@ -7,7 +7,7 @@ Este repositorio contiene el frontend estático (Cloudflare Pages + Functions) y
 ## Arquitectura general
 - **`frontend/`**: sitio público, formularios de registro/login y API routes en Cloudflare Workers (D1 como base de datos).
 - **`ai-backend-groq/`**: backend Node.js que expone endpoints para generar texto y transcribir audio usando Groq + Hugging Face.
-- **`ai-services-local/`**: servicios Python opcionales para proxys Groq/HF y generación de imágenes SDXL en local.
+- **`ai-services-local/`**: servicios Python locales para imágenes SDXL y audio (ASR/TTS) usando pipelines de Hugging Face.
 
 ```
 Navegador ─▶ frontend (Cloudflare)
@@ -18,7 +18,7 @@ Navegador ─▶ frontend (Cloudflare)
 
 ## Requisitos previos
 - Node.js 18+ y npm.
-- Python 3.10+ (solo si se usará `ai-services-local/sdxl`).
+- Python 3.10+ (requerido para `sdxl_service` y `audio_service`).
 - Cuenta en Cloudflare D1 o SQLite compatible para desarrollo local.
 - Claves de API válidas para Groq y Hugging Face.
 
@@ -43,14 +43,17 @@ npm run dev
 
 ### Servicios de IA locales (opcional)
 ```bash
-# Proxy Groq/Hugging Face en Flask
-pip install -r ai-services-local/groq-proxy/requirements.txt
-python ai-services-local/groq-proxy/app.py
+# Generador SDXL local (FastAPI)
+pip install -r ai-services-local/sdxl_service/requirements.txt
+uvicorn ai-services-local.sdxl_service.app:app --host 0.0.0.0 --port 5005
 
-# Generador SDXL local
-pip install -r ai-services-local/sdxl/requirements.txt
-python ai-services-local/sdxl/app.py
+# Servicio de audio local (ASR/TTS)
+pip install -r ai-services-local/audio_service/requirements.txt
+uvicorn ai-services-local.audio_service.app:app --host 0.0.0.0 --port 5006
 ```
+
+> Nota: backend y microservicios comparten los endpoints de salud `/health`, `/health/live` y `/health/ready` para facilitar la monitorización local y en producción.
+
 
 ## Variables de entorno
 | Servicio | Variable | Obligatoria | Descripción |
@@ -59,11 +62,16 @@ python ai-services-local/sdxl/app.py
 | Cloudflare Functions | `DB` | Sí | Enlace a la base D1 (Wrangler la expone automáticamente). |
 | Cloudflare Functions | `DEMO_FROM`, `DEMO_TO`, `DEMO_SUBJECT` | Opcionales | Datos para el endpoint `/api/demo`. |
 | Node backend | `GROQ_API_KEY` | Sí | Clave para generación de texto con Groq. |
-| Node backend | `HUGGING_FACE_API_KEY` o `HF_API_KEY` | Sí | Clave para uso de modelos Hugging Face. |
+| Node backend | `HUGGING_FACE_API_KEY` o `HF_API_KEY` | Requerida si no se usa `LOCAL_SDXL_URL` | Token para inferencia en Hugging Face. |
 | Node backend | `HF_IMAGE_MODELS` | Opcional | Lista de modelos de imagen (coma separada). |
-| Node backend | `HF_TIMEOUT_MS` | Opcional | Timeout en milisegundos para Hugging Face (default 45000). |
+| Node backend | `CORS_ORIGIN` | Recomendado | Lista de orígenes permitidos (coma separada). |
+| Node backend | `LOCAL_SDXL_URL` | Opcional | URL del servicio SDXL local (`http://127.0.0.1:5005/image`). |
+| Node backend | `LOCAL_ASR_URL` | Opcional | URL del endpoint de transcripción (`http://127.0.0.1:5006/transcribe`). |
+| Node backend | `LOCAL_TTS_URL` | Opcional | URL del endpoint TTS (`http://127.0.0.1:5006/tts`). |
 | Node backend | `PORT` | Opcional | Puerto HTTP (default 3001). |
-| ai-services-local/sdxl | `HF_API_KEY` | Sí | Token Hugging Face con acceso a los modelos de imagen usados. |
+| ai-services-local/sdxl_service | `LOCAL_SDXL_MODEL` | Opcional | ID del modelo Diffusers (default SDXL base 1.0). |
+| ai-services-local/audio_service | `LOCAL_ASR_MODEL` | Opcional | Modelo ASR de Hugging Face (default `openai/whisper-small`). |
+| ai-services-local/audio_service | `LOCAL_TTS_MODEL`, `LOCAL_TTS_VOICE` | Opcionales | Modelo y voz para TTS (default `facebook/mms-tts-es`). |
 
 ## Base de datos y autenticación
 - La tabla `users` se crea automáticamente en D1 con columnas para credenciales hasheadas (`password_hash`, `password_salt`, `password_iterations`, `password_algo`).
@@ -89,20 +97,33 @@ python ai-services-local/sdxl/app.py
 | POST | `/api/logout` | Elimina la cookie de sesión. | `200 OK` con `Set-Cookie` vacío. |
 | POST | `/api/demo` | Envía un correo de demo (requiere variables `DEMO_*`). | `200` si se envía, `400/500` en error. |
 
-### Backend Node (`ai-backend-groq/server.js`)
+### Backend Node (`ai-backend-groq`)
 | Método | Ruta | Descripción | Cuerpo/Respuesta |
 |--------|------|-------------|------------------|
-| GET | `/health` | Comprobación sencilla del servicio. | Responde `{ ok: true }`. |
-| POST | `/api/generate` | Genera texto educativo breve. | Request `{ prompt, level? }`. Respuesta `{ text, tokens, model }`. |
-| POST | `/api/transcribe` | Transcribe audio (base64). | Request `{ audio }`. Devuelve `{ text, confidence }`. |
-| POST | `/api/image` | Proxy de generación de imagen vía Hugging Face. | Request `{ prompt, enhance? }`. Respuesta PNG (`image/png`). |
-| GET | `/api/image` | Versión GET para debug rápido con query `?prompt=`. | Imagen PNG. |
-| GET | `/api/debug/hf` | Información diagnóstica de la clave HF (no exponer en prod). | `{ hasKey: boolean, models: [...] }`. |
+| GET | `/health` | Estado general del backend. | `{ ok, service, uptime }`. |
+| GET | `/health/live` | Check ligero para balanceadores. | `{ ok: true, status: 'live' }`. |
+| GET | `/health/ready` | Verifica dependencias externas (Groq, SDXL, ASR/TTS). | `{ ok, status, dependencies }`. |
+| POST | `/api/generate` | Genera texto educativo breve. | Request `{ prompt, level? }`. Respuesta `{ text }`. |
+| POST | `/api/transcribe` | Envía audio base64 al servicio local ASR. | Request `{ audio, format?, language? }`. Respuesta `{ text, confidence }`. |
+| POST | `/api/image` | Proxy de generación de imágenes (SDXL local o Hugging Face). | Request `{ prompt, style? }`. Respuesta PNG (`image/png`). |
 
-### Backend Python (`ai-services-local/sdxl/app.py`)
+### Servicios Python (`ai-services-local`)
+#### `sdxl_service/app.py`
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/image` | Genera imágenes SDXL localmente a partir de `{ prompt }`. |
+| GET | `/health` | Información general del servicio SDXL. |
+| GET | `/health/live` | Check ligero de vida. |
+| GET | `/health/ready` | Indica si el pipeline SDXL está cargado. |
+| POST | `/image` | Genera imágenes en PNG a partir de `{ prompt, style?, ... }`. |
+
+#### `audio_service/app.py`
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/health` | Información general del servicio de audio. |
+| GET | `/health/live` | Check ligero de vida. |
+| GET | `/health/ready` | Indica si los pipelines ASR/TTS están listos. |
+| POST | `/transcribe` | Transcribe audio base64 normalizado a 16 kHz. |
+| POST | `/tts` | Genera audio WAV desde texto `{ text, voice?, speed? }`. |
 
 ## Desarrollo de interfaces
 - Las páginas `login.html` y `register.html` incluyen márgenes laterales fluidos (`clamp`) para mejorar la legibilidad en pantallas pequeñas.
@@ -118,6 +139,7 @@ python ai-services-local/sdxl/app.py
 | `npm run deploy` | `frontend/` | Publica el sitio (configurar en `package.json`). |
 | `npm run dev` | `ai-backend-groq/` | Levanta el servidor Node con recarga automática. |
 | `node server.js` | `ai-backend-groq/` | Ejecuta el backend en modo producción. |
+| `npm test` | `ai-backend-groq/` | Ejecuta las pruebas de integración (Vitest + Supertest). |
 
 ## Buenas prácticas
 - Asegura `SESSION_SECRET` con al menos 32 caracteres aleatorios.
