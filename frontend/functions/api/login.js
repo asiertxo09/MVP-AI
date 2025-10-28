@@ -1,6 +1,7 @@
 import { verifyPassword } from "../lib/auth";
 import { ensureUsersTable, findUserByUsername } from "../lib/users";
 import { createSessionToken, readSessionSecret, serializeSessionCookie } from "../lib/session";
+import { requireDb, MissingDatabaseBindingError } from "../lib/d1";
 
 export const onRequestPost = async ({ request, env }) => {
     try {
@@ -21,8 +22,9 @@ export const onRequestPost = async ({ request, env }) => {
             return jsonResponse({ error: "Faltan credenciales" }, 400);
         }
 
-        await ensureUsersTable(env.DB);
-        const user = await findUserByUsername(env.DB, username);
+        const db = requireDb(env);
+        await ensureUsersTable(db);
+        const user = await findUserByUsername(db, username);
         if (!user) {
             return jsonResponse({ error: "Credenciales inválidas" }, 401);
         }
@@ -42,6 +44,10 @@ export const onRequestPost = async ({ request, env }) => {
 
         return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
     } catch (err) {
+        if (err instanceof MissingDatabaseBindingError) {
+            console.error("login missing DB", err);
+            return jsonResponse({ error: err.userMessage }, 500);
+        }
         console.error("login", err);
         return jsonResponse({ error: "Error interno" }, 500);
     }

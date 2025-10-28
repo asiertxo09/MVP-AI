@@ -11,7 +11,7 @@ Este documento define la estructura de carpetas esperada para el monorepo de Edu
 │   │   └─ lib/                    ← Utilidades compartidas (auth, session, ...)
 │   ├─ migrations/                 ← Migraciones D1 numeradas secuencialmente
 │   ├─ assets/, app/, *.html       ← Sitio estático
-│   └─ wrangler.toml               ← Plantilla de configuración (no subir secretos)
+│   └─ wrangler.toml               ← Plantilla de configuración (no subir secretos, añade el binding D1 en archivos locales)
 ├─ ai-backend-groq/                ← Backend Node.js (Groq + Hugging Face)
 │   ├─ server.js                   ← Servidor Express principal
 │   ├─ package.json                ← Scripts npm y dependencias Node
@@ -29,6 +29,7 @@ Este documento define la estructura de carpetas esperada para el monorepo de Edu
 - Mantén los servicios Python dentro de `ai-services-local/` para evitar mezclarlos con el backend Node.
 - Las migraciones de D1 deben vivir en `frontend/migrations/` y seguir el esquema `NNNN_descripcion.sql`.
 - Toda configuración de ejemplo debe almacenarse como plantilla (`wrangler.toml`, `.env.example`, etc.) sin credenciales reales.
+- El binding de D1 (`DB`) debe configurarse fuera del repositorio (archivo local o ajustes de Pages) antes de ejecutar funciones.
 - La lógica compartida de autenticación (hashing, sesiones) reside en `frontend/functions/lib/` y se reutiliza desde los endpoints.
 
 ### Flujo recomendado de trabajo

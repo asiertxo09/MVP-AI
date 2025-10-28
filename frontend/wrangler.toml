@@ -1,4 +1,4 @@
-# Plantilla de configuración para Cloudflare Pages + Functions.
+# Plantilla base para Cloudflare Pages + Functions.
 # Copia este archivo y ajusta los valores antes de desplegar.
 name = "eduplay-frontend"
 compatibility_date = "2024-05-01"
@@ -8,13 +8,13 @@ pages_build_output_dir = "."
 # Genera una cadena aleatoria de al menos 32 caracteres.
 SESSION_SECRET = "changeme-super-secreto"
 
-[[d1_databases]]
-# Nombre del binding usado en el código (env.DB)
-binding = "DB"
-# Nombre de la base de datos en Cloudflare D1
-# Sustituye por el identificador real de tu base en cada entorno.
-database_name = "eduplay-auth"
-database_id = "00000000-0000-0000-0000-000000000000"
+# Configura el binding de D1 en un archivo local (p. ej. `wrangler.local.toml`)
+# o directamente en la UI de Cloudflare Pages.
+# Ejemplo de bloque a añadir:
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "eduplay-auth"
+# database_id = "<UUID-de-tu-base>"
 
 # Para aplicar migraciones:
 #   npm run migrations:apply        # entorno remoto

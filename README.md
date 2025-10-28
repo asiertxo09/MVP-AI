@@ -27,7 +27,9 @@ Navegador ─▶ frontend (Cloudflare)
 ```bash
 cd frontend
 npm install
-# Configura variables locales de Cloudflare en wrangler.toml o `.dev.vars`
+# Copia `wrangler.toml` a un archivo local (p. ej. `wrangler.local.toml`) y añade tu binding D1
+# o configura el binding directamente en la UI de Cloudflare Pages.
+# Completa también `.dev.vars` si necesitas variables adicionales.
 npm run dev # levanta el preview con Wrangler
 ```
 
@@ -138,6 +140,8 @@ This will start the Cloudflare Pages preview server along with the Functions (AP
 Also check the lastest migrations of the database in `frontend/migrations/` and run them in your local D1 instance to ensure the database schema is up to date.
 
 ## Deployment
+Antes de desplegar, añade el binding **DB** en *Settings → Functions → D1 Databases* dentro del proyecto de Cloudflare Pages o crea un archivo de entorno (por ejemplo `wrangler.production.toml`) con el bloque `[[d1_databases]]` apuntando a tu base.
+
 To deploy the DB migration run:
 
 ```bash

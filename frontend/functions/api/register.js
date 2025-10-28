@@ -1,5 +1,6 @@
 import { hashPassword } from "../lib/auth";
 import { ensureUsersTable, findUserByUsername, createUser } from "../lib/users";
+import { requireDb, MissingDatabaseBindingError } from "../lib/d1";
 
 export const onRequestPost = async ({ request, env }) => {
     try {
@@ -24,14 +25,15 @@ export const onRequestPost = async ({ request, env }) => {
             return jsonResponse({ error: "La contraseña debe tener al menos 8 caracteres" }, 400);
         }
 
-        await ensureUsersTable(env.DB);
-        const existing = await findUserByUsername(env.DB, username);
+        const db = requireDb(env);
+        await ensureUsersTable(db);
+        const existing = await findUserByUsername(db, username);
         if (existing) {
             return jsonResponse({ error: "Usuario ya registrado" }, 409);
         }
 
         const hashed = await hashPassword(password);
-        await createUser(env.DB, {
+        await createUser(db, {
             username,
             passwordHash: hashed.hash,
             passwordSalt: hashed.salt,
@@ -41,6 +43,10 @@ export const onRequestPost = async ({ request, env }) => {
 
         return jsonResponse({ ok: true }, 201);
     } catch (err) {
+        if (err instanceof MissingDatabaseBindingError) {
+            console.error("register missing DB", err);
+            return jsonResponse({ error: err.userMessage }, 500);
+        }
         console.error("register", err);
         return jsonResponse({ error: "Error interno" }, 500);
     }
