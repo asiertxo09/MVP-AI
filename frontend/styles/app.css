@@ -1,0 +1,143 @@
+@import url("./base.css");
+
+.child-app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3) var(--space-5);
+}
+
+.child-app h1 {
+  font-family: var(--font-heading);
+  text-align: center;
+  font-size: clamp(2.2rem, 3.4vw, 2.8rem);
+  color: var(--color-navy);
+  margin-bottom: var(--space-3);
+}
+
+.child-app p.lead {
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 1.1rem;
+  margin-bottom: var(--space-4);
+}
+
+.activity-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.activity-card {
+  background: var(--color-cloud);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.activity-card button {
+  align-self: flex-start;
+}
+
+.progress-board {
+  margin-top: var(--space-4);
+  background: rgba(76, 158, 227, 0.12);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  border: 2px solid rgba(76, 158, 227, 0.25);
+}
+
+.progress-board h2 {
+  margin-top: 0;
+  font-family: var(--font-heading);
+  color: var(--color-navy);
+}
+
+.progress-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.progress-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-cloud);
+  box-shadow: 0 6px 16px rgba(31, 60, 136, 0.1);
+}
+
+.progress-item strong {
+  color: var(--color-navy);
+}
+
+.metric-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(58, 183, 149, 0.16);
+  color: var(--color-grass);
+  font-weight: 700;
+}
+
+.metric-badge[data-trend="down"] {
+  background: rgba(242, 95, 92, 0.16);
+  color: var(--color-berry);
+}
+
+#logoutButton {
+  margin: var(--space-3) auto;
+  display: block;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 37, 66, 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  z-index: 50;
+}
+
+.dialog-backdrop[aria-hidden="false"] {
+  display: flex;
+}
+
+.dialog {
+  background: var(--color-cloud);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-3);
+  max-width: 480px;
+  width: 100%;
+  box-shadow: var(--shadow-strong);
+}
+
+.dialog h2 {
+  margin-top: 0;
+}
+
+.dialog button + button {
+  margin-left: var(--space-2);
+}
+
+@media (max-width: 640px) {
+  .progress-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .activity-card button {
+    align-self: stretch;
+  }
+}
