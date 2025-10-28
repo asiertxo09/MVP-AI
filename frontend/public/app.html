@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tu aventura EduPlay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap"
+    />
+    <link rel="stylesheet" href="/styles/app.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#zona-actividades">Saltar a las actividades</a>
+    <main class="child-app" id="zona-actividades">
+      <h1>¡Hola! ¿Listos para jugar y aprender?</h1>
+      <p class="lead">
+        Sigue las instrucciones paso a paso. Cada misión te da estrellas y nos
+        ayuda a saber cómo te sientes.
+      </p>
+
+      <section class="activity-grid" aria-label="Actividades disponibles">
+        <article
+          class="activity-card"
+          data-activity="lenguaje"
+          aria-labelledby="actividad-lenguaje"
+        >
+          <h2 id="actividad-lenguaje">Historias con ritmo</h2>
+          <p>
+            Escucha la historia, responde la pregunta y usa las tarjetas de
+            emociones para mostrar cómo te sientes.
+          </p>
+          <button class="btn btn-primary" data-action="start">
+            Comenzar historia
+          </button>
+        </article>
+        <article
+          class="activity-card"
+          data-activity="sensorial"
+          aria-labelledby="actividad-sensorial"
+        >
+          <h2 id="actividad-sensorial">Pausa arcoíris</h2>
+          <p>
+            Respira como una tortuga, estira tus brazos como un arcoíris y marca
+            tu energía en la escala de colores.
+          </p>
+          <button class="btn btn-primary" data-action="start">
+            Iniciar pausa
+          </button>
+        </article>
+        <article
+          class="activity-card"
+          data-activity="matematicas"
+          aria-labelledby="actividad-mates"
+        >
+          <h2 id="actividad-mates">Laboratorio numérico</h2>
+          <p>
+            Cuenta fichas brillantes y elige la respuesta correcta. Si aciertas
+            tres seguidas ganas una medalla.
+          </p>
+          <button class="btn btn-primary" data-action="start">
+            Resolver reto
+          </button>
+        </article>
+      </section>
+
+      <button class="btn btn-secondary" id="logoutButton" type="button">
+        Cerrar sesión
+      </button>
+
+      <section class="progress-board" aria-labelledby="tablero-titulo">
+        <h2 id="tablero-titulo">Tu tablero de progreso</h2>
+        <p role="status" id="progresoEstado">
+          Aquí verás tus estrellas, energía y rachas ganadas.
+        </p>
+        <ul class="progress-list" id="progressList"></ul>
+      </section>
+    </main>
+
+    <div
+      class="dialog-backdrop"
+      id="activityDialog"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dialogTitle"
+    >
+      <div class="dialog">
+        <h2 id="dialogTitle"></h2>
+        <p id="dialogInstruction"></p>
+        <div class="btn-row">
+          <button class="btn btn-secondary" data-action="cancel">
+            Cancelar
+          </button>
+          <button class="btn btn-primary" data-action="complete">
+            ¡Listo!
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/scripts/child-app.js"></script>
+  </body>
+</html>

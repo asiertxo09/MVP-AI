@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Iniciar sesión · EduPlay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap"
+    />
+    <link rel="stylesheet" href="/styles/base.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#loginForm">Saltar al formulario</a>
+    <main class="container">
+      <div class="protected-alert" role="alert" id="protectedNotice">
+        ¡Ups! Necesitas iniciar sesión para acceder a la app. Ingresa tus datos
+        o regístrate.
+      </div>
+      <article class="form-card" aria-labelledby="titulo-login">
+        <header>
+          <h1 id="titulo-login">Bienvenida, familia EduPlay</h1>
+          <p>
+            Inicia sesión para continuar con las aventuras y ver el tablero de
+            progreso.
+          </p>
+        </header>
+        <form id="loginForm" novalidate>
+          <div class="status-message" id="loginStatus" role="status" hidden>
+            Iniciando sesión…
+          </div>
+          <div class="form-field">
+            <label for="login-username">Usuario o correo</label>
+            <input
+              class="input-control"
+              type="text"
+              id="login-username"
+              name="username"
+              autocomplete="username"
+              required
+              maxlength="80"
+            />
+            <span class="helper-text"
+              >Ingresa el usuario que configuraste al registrarte.</span
+            >
+            <span
+              class="error-text"
+              data-error-for="login-username"
+              hidden
+            ></span>
+          </div>
+          <div class="form-field">
+            <label for="login-password">Contraseña</label>
+            <input
+              class="input-control"
+              type="password"
+              id="login-password"
+              name="password"
+              autocomplete="current-password"
+              required
+              minlength="8"
+            />
+            <span class="helper-text"
+              >Usa una contraseña segura con al menos 8 caracteres.</span
+            >
+            <span
+              class="error-text"
+              data-error-for="login-password"
+              hidden
+            ></span>
+          </div>
+          <button class="btn btn-primary" type="submit" id="loginSubmit">
+            Entrar
+          </button>
+        </form>
+        <p class="link-row">
+          ¿Aún no tienes cuenta? <a href="/register.html">Regístrate</a>.
+        </p>
+      </article>
+    </main>
+    <script type="module">
+      import { initLoginForm } from "../scripts/auth.js";
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect");
+      if (redirect === "protected") {
+        const notice = document.getElementById("protectedNotice");
+        notice.style.display = "block";
+      }
+      initLoginForm({
+        formId: "loginForm",
+        statusId: "loginStatus",
+        submitId: "loginSubmit",
+      });
+    </script>
+  </body>
+</html>
