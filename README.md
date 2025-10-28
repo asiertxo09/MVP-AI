@@ -1,22 +1,24 @@
 # Plataforma EduPlay · Guía de desarrollo
 
+> Consulta `docs/README_DEV_Codex.md` para el mapa de directorios actualizado.
+
 Este repositorio contiene el frontend estático (Cloudflare Pages + Functions) y los servicios de backend que alimentan la plataforma EduPlay. Incluye autenticación de usuarios, generación de contenido con Groq, transcripción de audio y generación de imágenes.
 
 ## Arquitectura general
 - **`frontend/`**: sitio público, formularios de registro/login y API routes en Cloudflare Workers (D1 como base de datos).
 - **`ai-backend-groq/`**: backend Node.js que expone endpoints para generar texto y transcribir audio usando Groq + Hugging Face.
-- **`sdxl-local/`**: servicio Python opcional para generar imágenes con Stable Diffusion XL en local.
+- **`ai-services-local/`**: servicios Python opcionales para proxys Groq/HF y generación de imágenes SDXL en local.
 
 ```
 Navegador ─▶ frontend (Cloudflare)
               ├─ /api/login | /api/register | /api/logout | /api/demo
               └─▶ ai-backend-groq (Node) ─▶ Servicios Groq / Hugging Face
-                             └─▶ sdxl-local (Python) ─▶ Difusión estable
+                             └─▶ ai-services-local (Python) ─▶ Proxys locales / SDXL
 ```
 
 ## Requisitos previos
 - Node.js 18+ y npm.
-- Python 3.10+ (solo si se usará `sdxl-local`).
+- Python 3.10+ (solo si se usará `ai-services-local/sdxl`).
 - Cuenta en Cloudflare D1 o SQLite compatible para desarrollo local.
 - Claves de API válidas para Groq y Hugging Face.
 
@@ -25,7 +27,9 @@ Navegador ─▶ frontend (Cloudflare)
 ```bash
 cd frontend
 npm install
-# Configura variables locales de Cloudflare en wrangler.toml o `.dev.vars`
+# Copia `wrangler.toml` a un archivo local (p. ej. `wrangler.local.toml`) y añade tu binding D1
+# o configura el binding directamente en la UI de Cloudflare Pages.
+# Completa también `.dev.vars` si necesitas variables adicionales.
 npm run dev # levanta el preview con Wrangler
 ```
 
@@ -37,10 +41,15 @@ cp .env.example .env  # completa tus claves
 npm run dev
 ```
 
-### Backend de imágenes local (opcional)
+### Servicios de IA locales (opcional)
 ```bash
-pip install -r ai-backend-groq/requirements.txt
-python ai-backend-groq/app.py
+# Proxy Groq/Hugging Face en Flask
+pip install -r ai-services-local/groq-proxy/requirements.txt
+python ai-services-local/groq-proxy/app.py
+
+# Generador SDXL local
+pip install -r ai-services-local/sdxl/requirements.txt
+python ai-services-local/sdxl/app.py
 ```
 
 ## Variables de entorno
@@ -54,7 +63,7 @@ python ai-backend-groq/app.py
 | Node backend | `HF_IMAGE_MODELS` | Opcional | Lista de modelos de imagen (coma separada). |
 | Node backend | `HF_TIMEOUT_MS` | Opcional | Timeout en milisegundos para Hugging Face (default 45000). |
 | Node backend | `PORT` | Opcional | Puerto HTTP (default 3001). |
-| sdxl-local | `HF_API_KEY` | Sí | Token Hugging Face con acceso a los modelos de imagen usados. |
+| ai-services-local/sdxl | `HF_API_KEY` | Sí | Token Hugging Face con acceso a los modelos de imagen usados. |
 
 ## Base de datos y autenticación
 - La tabla `users` se crea automáticamente en D1 con columnas para credenciales hasheadas (`password_hash`, `password_salt`, `password_iterations`, `password_algo`).
@@ -77,7 +86,7 @@ python ai-backend-groq/app.py
 |--------|------|-------------|-----------------------|
 | POST | `/api/register` | Crea un usuario nuevo. Cuerpo: `{ username: string, password: string }`. | `201 Created` en éxito, `409` si el usuario existe, `400` si los datos son inválidos. |
 | POST | `/api/login` | Inicia sesión y entrega cookie `session`. Cuerpo: `{ username, password }`. | `200 OK` con `Set-Cookie`, `401` si credenciales inválidas. |
-| POST | `/api/logout` | Elimina la cookie y redirige a `/login`. | `302` hacia `/login`. |
+| POST | `/api/logout` | Elimina la cookie de sesión. | `200 OK` con `Set-Cookie` vacío. |
 | POST | `/api/demo` | Envía un correo de demo (requiere variables `DEMO_*`). | `200` si se envía, `400/500` en error. |
 
 ### Backend Node (`ai-backend-groq/server.js`)
@@ -90,7 +99,7 @@ python ai-backend-groq/app.py
 | GET | `/api/image` | Versión GET para debug rápido con query `?prompt=`. | Imagen PNG. |
 | GET | `/api/debug/hf` | Información diagnóstica de la clave HF (no exponer en prod). | `{ hasKey: boolean, models: [...] }`. |
 
-### Backend Python (`sdxl-local/app.py`)
+### Backend Python (`ai-services-local/sdxl/app.py`)
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | POST | `/image` | Genera imágenes SDXL localmente a partir de `{ prompt }`. |
@@ -103,6 +112,9 @@ python ai-backend-groq/app.py
 | Comando | Ubicación | Acción |
 |---------|-----------|--------|
 | `npm run dev` | `frontend/` | Inicia el preview de Cloudflare Pages/Functions. |
+| `npm run migrations:list` | `frontend/` | Lista el estado de las migraciones D1 asociadas al binding `DB`. |
+| `npm run migrations:apply` | `frontend/` | Aplica las migraciones pendientes al entorno remoto configurado. |
+| `npm run migrations:apply:local` | `frontend/` | Ejecuta las migraciones usando la base local de Wrangler (`--local`). |
 | `npm run deploy` | `frontend/` | Publica el sitio (configurar en `package.json`). |
 | `npm run dev` | `ai-backend-groq/` | Levanta el servidor Node con recarga automática. |
 | `node server.js` | `ai-backend-groq/` | Ejecuta el backend en modo producción. |
@@ -128,6 +140,8 @@ This will start the Cloudflare Pages preview server along with the Functions (AP
 Also check the lastest migrations of the database in `frontend/migrations/` and run them in your local D1 instance to ensure the database schema is up to date.
 
 ## Deployment
+Antes de desplegar, añade el binding **DB** en *Settings → Functions → D1 Databases* dentro del proyecto de Cloudflare Pages o crea un archivo de entorno (por ejemplo `wrangler.production.toml`) con el bloque `[[d1_databases]]` apuntando a tu base.
+
 To deploy the DB migration run:
 
 ```bash
