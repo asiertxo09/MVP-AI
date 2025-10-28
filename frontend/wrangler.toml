@@ -6,7 +6,7 @@ pages_build_output_dir = "."
 
 [vars]
 # Genera una cadena aleatoria de al menos 32 caracteres.
-SESSION_SECRET = "changeme-super-secreto"
+SESSION_SECRET = "ajsud18364jmduunm39o2k3j4n5m6b7v8c9x0z"
 
 # Configura el binding de D1 en un archivo local (p. ej. `wrangler.local.toml`)
 # o directamente en la UI de Cloudflare Pages.
