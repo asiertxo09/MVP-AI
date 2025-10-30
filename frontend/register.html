@@ -50,6 +50,16 @@
                 ></span>
             </div>
             <div class="form-field">
+                <label for="register-role">Tipo de usuario</label>
+                <select class="input-control" id="register-role" name="role" required>
+                    <option value="" disabled selected>Selecciona un rol</option>
+                    <option value="Padre">Padre</option>
+                    <option value="Hijo">Hijo</option>
+                    <option value="Médico">Médico</option>
+                </select>
+                <span class="error-text" data-error-for="register-role" hidden></span>
+            </div>
+            <div class="form-field">
                 <label for="register-password">Contraseña</label>
                 <input
                         class="input-control"

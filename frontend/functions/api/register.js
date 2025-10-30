@@ -14,15 +14,18 @@ export const onRequestPost = async ({ request, env }) => {
         } catch {
             return jsonResponse({ error: "JSON inválido" }, 400);
         }
-
         const username = typeof body.username === "string" ? body.username.trim() : "";
         const password = typeof body.password === "string" ? body.password : "";
+        const role = typeof body.role === "string" ? body.role : "";
 
         if (username.length < 3 || username.length > 50) {
             return jsonResponse({ error: "El usuario debe tener entre 3 y 50 caracteres" }, 400);
         }
         if (password.length < 8) {
             return jsonResponse({ error: "La contraseña debe tener al menos 8 caracteres" }, 400);
+        }
+        if (!["Padre", "Hijo", "Médico"].includes(role)) {
+            return jsonResponse({ error: "Rol de usuario no válido" }, 400);
         }
 
         const db = requireDb(env);
@@ -39,6 +42,7 @@ export const onRequestPost = async ({ request, env }) => {
             passwordSalt: hashed.salt,
             passwordIterations: hashed.iterations,
             passwordAlgo: hashed.algorithm,
+            role,
         });
 
         return jsonResponse({ ok: true }, 201);

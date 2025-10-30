@@ -46,6 +46,7 @@ const validateRegister = (form) => {
   const password = form.password.value.trim();
   const confirm = form.passwordConfirm.value.trim();
   const consent = form.querySelector("#register-consent");
+  const role =form.role.value
   let hasError = false;
 
   clearErrors(form);
@@ -88,7 +89,7 @@ const validateRegister = (form) => {
     valid: !hasError,
     values: {
       username,
-      password,
+      password, role,
     },
   };
 };
