@@ -33,7 +33,7 @@ export async function ensureUsersTable(db) {
 export async function findUserByUsername(db, username) {
     return db
         .prepare(
-            "SELECT id FROM users WHERE lower(username) = lower(?)"
+            "SELECT u.id, u.username, u.password_hash, u.password_salt, u.password_iterations, u.password_algo, u.created_at, r.role_name FROM users u JOIN user_roles r ON u.role_id = r.id WHERE lower(u.username) = lower(?)"
         )
         .bind(username)
         .first();
