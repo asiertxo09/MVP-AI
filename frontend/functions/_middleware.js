@@ -5,7 +5,7 @@ const PUBLIC_PATHS = new Set(["/", "/login"]);
 export const onRequest = async ({ request, next, env }) => {
     const url = new URL(request.url);
 
-    if (PUBLIC_PATHS.has(url.pathname) || url.pathname.startsWith("/api/")) {
+    if (PUBLIC_PATHS.has(url.pathname)) {
         return next();
     }
 
@@ -22,7 +22,7 @@ export const onRequest = async ({ request, next, env }) => {
             if (!payload) {
                 return redirectToLogin(url);
             }
-            request.session = payload; // Disponible para handlers posteriores
+            request.session = payload;
         } catch (err) {
             console.error("middleware", err);
             return redirectToLogin(url);

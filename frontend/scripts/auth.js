@@ -124,7 +124,16 @@ const register = async (payload) => {
 };
 
 const login = async (payload) => {
-  return post("/api/login", payload);
+    const response = await post("/api/login", payload);
+    // Registrar la sesión en la tabla sessions
+    try {
+        await post("/api/sessions", {
+            username: payload.username // Enviar el username en lugar de id_user
+        });
+    } catch (error) {
+        console.warn("No se pudo registrar la sesión", error);
+    }
+    return response;
 };
 
 const logout = async () => {
