@@ -130,7 +130,7 @@ const login = async (payload) => {
 const logout = async () => {
   await post("/api/logout", {});
   localStorage.removeItem(SESSION_KEY);
-  window.location.assign("/login.html");
+  window.location.assign("/index.html");
 };
 
 const rememberSession = () => {
@@ -172,7 +172,7 @@ const initRegisterForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
         onSuccess();
       } else {
         setTimeout(() => {
-          window.location.assign("/login.html");
+          window.location.assign("/app.html");
         }, 1200);
       }
     } catch (error) {
@@ -213,7 +213,7 @@ const initLoginForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
         onSuccess();
       } else {
         setTimeout(() => {
-          window.location.assign("/app.html");
+          window.location.assign("app/index.html");
         }, 600);
       }
     } catch (error) {

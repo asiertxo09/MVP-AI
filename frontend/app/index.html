@@ -298,6 +298,10 @@
     <header>
         <h1>🧸 AI EduPlay</h1>
         <div class="pill" id="status">Modo adaptativo con IA</div>
+        <div class="pill">
+            <a href=../index.html style="color:inherit;text-decoration:none;">Inicio</a>
+        </div>
+        <button id="logout-button" class="pill" style="border:none; cursor:pointer;">Cerrar sesión</button>
     </header>
 
     <section class="screen" id="screen"></section>
@@ -308,11 +312,20 @@
     </footer>
 </main>
 
-<script>
+<script type="module">
     // ===== Config IA (backend separado) =====
     const USE_AI = true;
     const API_URL = 'https://eduplay-backend.onrender.com/api/generate';
     const IMAGE_URL = 'https://eduplay-backend.onrender.com/image';
+    const NODE_URL = 'https://eduplay-backend.onrender.com/api';
+
+    import { hasActiveSession, initLogoutButton } from '../scripts/auth.js';
+
+    if (!hasActiveSession()) {
+        window.location.replace('/index.html');
+    }
+
+    initLogoutButton('logout-button');
 
     async function generateWithAI(prompt) {
         if (!USE_AI) return null;
@@ -852,7 +865,7 @@ Genera una palabra apropiada para practicar ${activityType}:`;
     }
 
     // ==== Start ====
-    renderHome();
+    document.addEventListener('DOMContentLoaded', renderHome);
 </script>
 </body>
 
