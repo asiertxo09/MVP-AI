@@ -30,8 +30,8 @@ function normalizeUrl(value) {
 export function loadConfig(rawEnv = process.env) {
   const env = envSchema.parse(rawEnv);
   const corsOrigins = splitList(env.CORS_ORIGIN, [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
   ]);
 
   const hfKey = (env.HUGGING_FACE_API_KEY || env.HF_API_KEY || '').trim().replace(/^["']+|["']+$/g, '');

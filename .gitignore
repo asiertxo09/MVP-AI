@@ -5,3 +5,4 @@ frontend/.wrangler
 frontend/.dev.vars
 frontend/node_modules
 ai-backend-groq/.venv
+ai-services-local/.venv
