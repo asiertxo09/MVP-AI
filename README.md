@@ -206,3 +206,11 @@ Once tested locally and committed to version control, apply it to production:
 ```bash
 wrangler d1 migrations apply DB --remote
 ```
+
+# Ver logs
+
+To view logs for your Cloudflare Functions, you can use the following command:
+
+```bash
+wrangler pages deployment tail
+```

@@ -108,43 +108,87 @@
             <div class="steps">
                 <div class="step">
                     <strong aria-hidden="true">1</strong>
+                    <h3>Panel con emojis</h3>
                     <p>
-                        <strong>Panel con emojis.</strong> Los avances se muestran con
-                        caritas y colores que niños y familias interpretan al instante.
+                        Los avances se muestran con caritas y colores que niños y familias interpretan al instante.
                     </p>
                 </div>
                 <div class="step">
                     <strong aria-hidden="true">2</strong>
+                    <h3>Objetivos SMART adaptados</h3>
                     <p>
-                        <strong>Objetivos SMART adaptados.</strong> Cada misión sugiere
-                        ajustes graduales basados en el ritmo del menor.
+                        Cada misión sugiere ajustes graduales basados en el ritmo del menor.
                     </p>
                 </div>
                 <div class="step">
                     <strong aria-hidden="true">3</strong>
+                    <h3>Alertas tempranas</h3>
                     <p>
-                        <strong>Alertas tempranas.</strong> Si detectamos frustración o
-                        fatiga el sistema recomienda pausas activas.
+                        Si detectamos frustración o fatiga, el sistema recomienda pausas activas.
                     </p>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="section" id="equipo" aria-labelledby="equipo-titulo">
-        <div class="container testimonial">
-            <div>
-                <h2 id="equipo-titulo">Co-creado con terapeutas y familias</h2>
-                <p>
-                    Más de 40 profesionales de terapia ocupacional y familias
-                    neurodiversas participaron en sesiones de co-diseño.
-                </p>
-            </div>
-            <blockquote>
-                “Los niños se sienten seguros porque las instrucciones se leen y se
-                muestran con pictogramas. Y yo recibo reportes en lenguaje claro.”
-                <cite>– Camila, terapeuta ocupacional</cite>
-            </blockquote>
+
+    <section class="container" id="demo" aria-labelledby="t-demo">
+        <h2 id="t-demo">Solicita una demo</h2>
+        <p class="sub">Te mostramos el panel profesional, ejemplos de informes y actividades adaptativas en 20 minutos.</p>
+        <form id="demoForm" class="card" method="post" action="/api/demo">
+            <label>Nombre <input name="nombre" autocomplete="name" required></label>
+            <label>Email <input type="email" name="email" autocomplete="email" required></label>
+            <label>Organización <input name="org" autocomplete="organization" required></label>
+            <label>Rol <input name="rol" autocomplete="organization-title"></label>
+            <label>Teléfono (opcional) <input type="tel" name="tel" autocomplete="tel"></label>
+            <button class="btn btn-primary" type="submit">Solicitar demo</button>
+            <p id="demoStatus" role="status" aria-live="polite"></p>
+        </form>
+
+        <script>
+            const f = document.getElementById("demoForm");
+            const statusEl = document.getElementById("demoStatus");
+            const submitBtn = f.querySelector('button[type="submit"]');
+
+            f.addEventListener("submit", async e => {
+                if (!window.fetch) return;
+                e.preventDefault();
+
+                const body = Object.fromEntries(new FormData(f).entries());
+                submitBtn.disabled = true;
+                statusEl.textContent = "Enviando…";
+
+                try {
+                    const response = await fetch("/api/demo", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error("Error en el envío");
+                    }
+
+                    statusEl.textContent = "¡Gracias! Te contactaremos pronto.";
+                    f.reset();
+                } catch (error) {
+                    statusEl.textContent = "No se pudo enviar el formulario. Inténtalo de nuevo más tarde.";
+                } finally {
+                    submitBtn.disabled = false;
+                }
+            });
+        </script>
+
+    </section>
+
+    <!-- FAQ -->
+    <section class="container faq" aria-labelledby="t-faq" style="margin-top:28px">
+        <h2 id="t-faq">Preguntas frecuentes</h2>
+        <div class="grid">
+            <details><summary>¿Es una herramienta de diagnóstico?</summary><p>No. Es apoyo educativo con indicadores pedagógicos y de progreso.</p></details>
+            <details><summary>¿Qué mide?</summary><p>PCPM, EPM, acierto/tiempo, adherencia, tendencias y mapa de errores.</p></details>
+            <details><summary>¿Qué actividades incluye?</summary><p>Lectura en voz alta, rimas, segmentación silábica, identificación de fonemas, dictados guiados, ejercicios de cálculo y más.</p></details>
+            <details><summary>¿Cómo gestionáis privacidad y accesibilidad?</summary><p>Controles parentales, descarga/borrado de datos, TTS, límites de sesión y soporte.</p></details>
         </div>
     </section>
 </main>
