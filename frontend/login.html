@@ -81,7 +81,10 @@
     </article>
 </main>
 <script type="module">
-    import { initLoginForm } from "../scripts/auth.js";
+    import { initLoginForm, hasActiveSession} from "../scripts/auth.js";
+    if (hasActiveSession()) {
+        window.location.replace("app/index.html");
+    }
     const params = new URLSearchParams(window.location.search);
     const redirect = params.get("redirect");
     if (redirect === "protected") {

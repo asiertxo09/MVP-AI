@@ -468,6 +468,13 @@ footer.site-footer p {
   }
 }
 
+#registerSubmit {
+    display: block;
+    margin: 1rem auto;
+    width: fit-content;
+    min-width: 180px;
+}
+
 #demo {
     text-align: center;
 }

@@ -182,7 +182,7 @@ const initRegisterForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
         onSuccess();
       } else {
         setTimeout(() => {
-          window.location.assign("/app.html");
+          window.location.assign("/login.html");
         }, 1200);
       }
     } catch (error) {
