@@ -172,15 +172,42 @@ const initRegisterForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
     showStatus(statusElement, "Creando tu cuenta…");
 
     try {
+      // Limpiar localStorage antes de registrar para evitar bucle infinito
+      localStorage.removeItem(SESSION_KEY);
+
       await register(values);
       showStatus(
         statusElement,
-        "¡Tu cuenta está lista! Revisa tu correo para confirmar.",
+        "¡Tu cuenta está lista! Iniciando sesión…",
         "success",
       );
-      if (typeof onSuccess === "function") {
-        onSuccess();
-      } else {
+
+      // Hacer login automático después del registro
+      try {
+        await login({ username: values.username, password: values.password });
+        rememberSession();
+
+        showStatus(
+          statusElement,
+          "Redirigiendo a la evaluación inicial…",
+          "success",
+        );
+
+        if (typeof onSuccess === "function") {
+          onSuccess();
+        } else {
+          setTimeout(() => {
+            window.location.assign("/assessment.html");
+          }, 800);
+        }
+      } catch (loginError) {
+        // Si falla el login automático, redirigir a login manual
+        console.error("Error en login automático:", loginError);
+        showStatus(
+          statusElement,
+          "Cuenta creada. Por favor, inicia sesión.",
+          "success",
+        );
         setTimeout(() => {
           window.location.assign("/login.html");
         }, 1200);
@@ -191,7 +218,6 @@ const initRegisterForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
           ? error.message
           : "Ocurrió un problema al crear tu cuenta.";
       showStatus(statusElement, message, "error");
-    } finally {
       submitButton?.removeAttribute("disabled");
     }
   });

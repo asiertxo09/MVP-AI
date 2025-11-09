@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Evaluación Inicial - EduPlay</title>
+    <link rel="stylesheet" href="../styles/base.css" />
+    <style>
+        .assessment-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .assessment-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .assessment-header h1 {
+            color: #1c7ed6;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #51cf66, #37b24d);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .test-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+        }
+
+        .test-card.active {
+            border-color: #1c7ed6;
+            background: #e7f5ff;
+        }
+
+        .test-card.completed {
+            border-color: #51cf66;
+            background: #ebfbee;
+        }
+
+        .test-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .test-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: white;
+        }
+
+        .test-content {
+            flex: 1;
+        }
+
+        .test-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #212529;
+            margin-bottom: 5px;
+        }
+
+        .test-description {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .test-actions {
+            margin-top: 15px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #1c7ed6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1864ab;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #51cf66;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #868e96;
+            color: white;
+        }
+
+        .test-area {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+        }
+
+        .test-area.active {
+            display: block;
+        }
+
+        .reading-text {
+            font-size: 18px;
+            line-height: 1.8;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .record-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .record-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .record-btn.recording {
+            background: #fa5252;
+            color: white;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1c7ed6;
+        }
+
+        .question-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .question-text {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #212529;
+        }
+
+        .options {
+            display: grid;
+            gap: 10px;
+        }
+
+        .option-btn {
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            background: white;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .option-btn:hover {
+            border-color: #1c7ed6;
+            background: #e7f5ff;
+        }
+
+        .option-btn.selected {
+            border-color: #1c7ed6;
+            background: #1c7ed6;
+            color: white;
+        }
+
+        .option-btn.correct {
+            border-color: #51cf66;
+            background: #51cf66;
+            color: white;
+        }
+
+        .option-btn.incorrect {
+            border-color: #fa5252;
+            background: #fa5252;
+            color: white;
+        }
+
+        .math-input {
+            width: 100px;
+            padding: 10px;
+            font-size: 20px;
+            text-align: center;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            margin: 0 10px;
+        }
+
+        .dictation-input {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            font-size: 16px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .results-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+        }
+
+        .metric-card {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px 30px;
+            border-radius: 15px;
+            margin: 10px;
+            min-width: 150px;
+        }
+
+        .metric-value {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .audio-player {
+            margin: 15px 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1c7ed6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="assessment-container">
+        <div class="assessment-header">
+            <h1>🎯 Evaluación Inicial</h1>
+            <p>Completa estas 4 pruebas para conocer tu nivel y personalizar tu aprendizaje</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="overallProgress" style="width: 0%">0%</div>
+            </div>
+        </div>
+
+        <!-- Test 1: Lectura en voz alta -->
+        <div class="test-card" id="test1Card">
+            <div class="test-header">
+                <div class="test-icon">📖</div>
+                <div class="test-content">
+                    <div class="test-title">1. Lectura en voz alta</div>
+                    <div class="test-description">Lee el siguiente texto en voz alta y grábate</div>
+                </div>
+            </div>
+            <div class="test-actions">
+                <button class="btn btn-primary" onclick="startReadingTest()">Comenzar prueba</button>
+            </div>
+            <div class="test-area" id="readingTest">
+                <div class="reading-text" id="readingText">
+                    El sol brillaba en el cielo azul mientras María y su perro corrían por el parque.
+                    Los pájaros cantaban en los árboles y las flores de colores alegraban el camino.
+                    María se sintió muy feliz ese día de primavera.
+                </div>
+                <div class="record-controls">
+                    <button class="record-btn" id="recordBtn" onclick="toggleRecording()">🎤</button>
+                    <div class="timer" id="readingTimer">0:00</div>
+                </div>
+                <audio id="audioPlayback" class="audio-player" controls style="display:none; width: 100%;"></audio>
+                <div id="recordingStatus"></div>
+                <button class="btn btn-success" id="submitReadingBtn" style="display:none;" onclick="submitReading()">
+                    Enviar lectura
+                </button>
+            </div>
+        </div>
+
+        <!-- Test 2: Conciencia fonológica -->
+        <div class="test-card" id="test2Card">
+            <div class="test-header">
+                <div class="test-icon">🔤</div>
+                <div class="test-content">
+                    <div class="test-title">2. Conciencia fonológica</div>
+                    <div class="test-description">Identifica sonidos, rimas y sílabas</div>
+                </div>
+            </div>
+            <div class="test-actions">
+                <button class="btn btn-primary" onclick="startPhonologicalTest()" disabled id="startPhonBtn">
+                    Comenzar prueba
+                </button>
+            </div>
+            <div class="test-area" id="phonologicalTest">
+                <div id="phonologicalQuestions"></div>
+                <button class="btn btn-success" id="submitPhonBtn" style="display:none;" onclick="submitPhonological()">
+                    Enviar respuestas
+                </button>
+            </div>
+        </div>
+
+        <!-- Test 3: Cálculo básico -->
+        <div class="test-card" id="test3Card">
+            <div class="test-header">
+                <div class="test-icon">🔢</div>
+                <div class="test-content">
+                    <div class="test-title">3. Cálculo básico</div>
+                    <div class="test-description">Resuelve operaciones matemáticas simples</div>
+                </div>
+            </div>
+            <div class="test-actions">
+                <button class="btn btn-primary" onclick="startMathTest()" disabled id="startMathBtn">
+                    Comenzar prueba
+                </button>
+            </div>
+            <div class="test-area" id="mathTest">
+                <div id="mathQuestions"></div>
+                <button class="btn btn-success" id="submitMathBtn" style="display:none;" onclick="submitMath()">
+                    Enviar respuestas
+                </button>
+            </div>
+        </div>
+
+        <!-- Test 4: Dictado -->
+        <div class="test-card" id="test4Card">
+            <div class="test-header">
+                <div class="test-icon">✍️</div>
+                <div class="test-content">
+                    <div class="test-title">4. Dictado</div>
+                    <div class="test-description">Escucha y escribe lo que oyes</div>
+                </div>
+            </div>
+            <div class="test-actions">
+                <button class="btn btn-primary" onclick="startDictationTest()" disabled id="startDictBtn">
+                    Comenzar prueba
+                </button>
+            </div>
+            <div class="test-area" id="dictationTest">
+                <button class="btn btn-primary" onclick="playDictation()">▶️ Reproducir dictado</button>
+                <audio id="dictationAudio" style="display:none;"></audio>
+                <div style="margin-top: 20px;">
+                    <label style="font-weight: 600; margin-bottom: 10px; display: block;">
+                        Escribe lo que escuchaste:
+                    </label>
+                    <textarea class="dictation-input" id="dictationInput"
+                              placeholder="Escribe aquí el dictado..."></textarea>
+                </div>
+                <button class="btn btn-success" onclick="submitDictation()" style="margin-top: 15px;">
+                    Enviar dictado
+                </button>
+            </div>
+        </div>
+
+        <!-- Resultados finales -->
+        <div class="results-summary hidden" id="resultsSection">
+            <h2>🎉 ¡Evaluación completada!</h2>
+            <p style="margin: 20px 0;">Aquí están tus métricas:</p>
+            <div id="metricsDisplay"></div>
+            <button class="btn btn-primary" onclick="goToApp()" style="margin-top: 30px; background: white; color: #667eea;">
+                Ir a la aplicación
+            </button>
+        </div>
+    </div>
+
+    <script type="module" src="../scripts/assessment.js"></script>
+</body>
+</html>
+

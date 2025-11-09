@@ -1,6 +1,6 @@
 import { readSessionSecret, verifySessionToken, SESSION_COOKIE_NAME } from "./lib/session";
 
-const PUBLIC_PATHS = new Set(["/", "/login"]);
+const PUBLIC_PATHS = new Set(["/", "/login", "/register.html", "/assessment.html"]);
 
 export const onRequest = async ({ request, next, env }) => {
     const url = new URL(request.url);
