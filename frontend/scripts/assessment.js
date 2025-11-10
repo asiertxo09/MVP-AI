@@ -69,6 +69,8 @@ const MATH_QUESTIONS = [
 ];
 
 const DICTATION_TEXT = "Los niños juegan en el patio. Hace mucho calor hoy.";
+let dictationPlaysLeft = 2;
+
 
 // Inicializar
 document.addEventListener('DOMContentLoaded', async () => {
@@ -114,35 +116,60 @@ window.toggleRecording = async function() {
 
 async function startRecording() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 16000
+            }
+        });
+
+        // Reiniciar chunks
         audioChunks = [];
 
+        // Detectar formato soportado
+        let mimeType = 'audio/webm';
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            mimeType = 'audio/webm;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+            mimeType = 'audio/ogg;codecs=opus';
+        }
+
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
+
         mediaRecorder.ondataavailable = (event) => {
-            audioChunks.push(event.data);
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
         };
 
         mediaRecorder.onstop = async () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            // Crear Blob del audio grabado
+            const audioBlob = new Blob(audioChunks, {
+                type: mediaRecorder.mimeType || 'audio/webm'
+            });
+
+            console.log('Audio grabado:', {
+                size: audioBlob.size,
+                type: audioBlob.type
+            });
+
             const audioUrl = URL.createObjectURL(audioBlob);
 
             const audioPlayer = document.getElementById('audioPlayback');
             audioPlayer.src = audioUrl;
             audioPlayer.style.display = 'block';
 
-            // Convertir a base64
-            const reader = new FileReader();
-            reader.readAsDataURL(audioBlob);
-            reader.onloadend = () => {
-                testState.reading.data = {
-                    audioBase64: reader.result.split(',')[1],
-                    duration: (Date.now() - recordingStartTime) / 1000
-                };
-                document.getElementById('submitReadingBtn').style.display = 'block';
+            // Guardar el Blob, NO el base64
+            testState.reading.data = {
+                audioBlob: audioBlob,  // Cambiar esto
+                duration: (Date.now() - recordingStartTime) / 1000
             };
+
+            document.getElementById('submitReadingBtn').style.display = 'block';
         };
 
-        mediaRecorder.start();
+        mediaRecorder.start(100); // Capturar cada 100ms
         recordingStartTime = Date.now();
 
         const recordBtn = document.getElementById('recordBtn');
@@ -163,7 +190,10 @@ async function startRecording() {
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        // Detener todos los tracks del stream
+        if (mediaRecorder.stream) {
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        }
 
         const recordBtn = document.getElementById('recordBtn');
         recordBtn.classList.remove('recording');
@@ -188,7 +218,7 @@ function startTimer() {
 }
 
 window.submitReading = async function() {
-    if (!testState.reading.data) {
+    if (!testState.reading.data || !testState.reading.data.audioBlob) {
         alert('Por favor, graba tu lectura primero');
         return;
     }
@@ -196,8 +226,11 @@ window.submitReading = async function() {
     try {
         showLoading('Analizando tu lectura...');
 
-        // Transcribir el audio usando el servicio de audio
-        const transcription = await transcribeAudio(testState.reading.data.audioBase64);
+        // Transcribir el audio pasando el Blob directamente
+        const transcription = await transcribeAudio(testState.reading.data.audioBlob);
+
+        // Convertir Blob a base64 para guardar en la BD
+        const audioBase64 = await blobToBase64(testState.reading.data.audioBlob);
 
         // Contar palabras correctas
         const expectedWords = READING_TEXT.toLowerCase().split(/\s+/);
@@ -212,7 +245,7 @@ window.submitReading = async function() {
             body: JSON.stringify({
                 assessmentId,
                 readingText: READING_TEXT,
-                audioRecording: testState.reading.data.audioBase64,
+                audioRecording: audioBase64,
                 transcription: transcription,
                 durationSeconds: testState.reading.data.duration,
                 wordsRead: wordsRead,
@@ -239,32 +272,131 @@ window.submitReading = async function() {
 };
 
 // Función para transcribir audio (llamada al servicio local)
-async function transcribeAudio(audioBase64) {
+async function transcribeAudio(audioBlob) {
     try {
-        const response = await fetch('http://localhost:8001/transcribe', {
+        if (!(audioBlob instanceof Blob)) {
+            throw new Error('Audio inválido');
+        }
+
+        // Convertir a WAV en el cliente
+        const wavBlob = await convertBlobToWav(audioBlob);
+        const base64Audio = await blobToBase64(wavBlob);
+
+        const response = await fetch('http://localhost:5006/transcribe', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
-                audio: audioBase64,
-                format: 'wav',
+                audio: base64Audio,
+                format: 'wav', // Enviar como WAV
                 language: 'es'
             })
         });
 
         if (!response.ok) {
-            // Si el servicio no está disponible, usar texto simulado
-            console.warn('Servicio de transcripción no disponible, usando simulación');
-            return READING_TEXT; // Devolver el texto esperado para pruebas
+            const errorText = await response.text();
+            throw new Error(`Error ${response.status}: ${errorText}`);
         }
 
-        const data = await response.json();
-        return data.text;
+        const result = await response.json();
+        return result.text;
+
     } catch (error) {
         console.error('Error en transcripción:', error);
-        // Fallback: simular transcripción
-        return READING_TEXT;
+        console.log('Servicio de transcripción no disponible, usando simulación');
+        // Fallback de simulación
+        return 'El sol brillaba en el cielo azul mientras los niños jugaban en el parque.';
     }
 }
+
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            // Extraer solo base64 (sin "data:audio/webm;base64,")
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+// Nueva función para convertir Blob a WAV
+async function convertBlobToWav(blob) {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+    const arrayBuffer = await blob.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+    // Resample a 16kHz si es necesario (aunque ya lo pedimos en getUserMedia)
+    if (audioBuffer.sampleRate !== 16000) {
+        console.warn(`Resampling from ${audioBuffer.sampleRate} to 16000`);
+        const offlineContext = new OfflineAudioContext(audioBuffer.numberOfChannels, audioBuffer.duration * 16000, 16000);
+        const source = offlineContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(offlineContext.destination);
+        source.start();
+        const resampledBuffer = await offlineContext.startRendering();
+        return bufferToWav(resampledBuffer);
+    }
+
+    return bufferToWav(audioBuffer);
+}
+
+// Helper para crear un Blob WAV desde un AudioBuffer
+function bufferToWav(buffer) {
+    const numOfChan = buffer.numberOfChannels;
+    const length = buffer.length * numOfChan * 2 + 44;
+    const bufferOut = new ArrayBuffer(length);
+    const view = new DataView(bufferOut);
+    const channels = [];
+    let i, sample;
+    let offset = 0;
+    let pos = 0;
+
+    // Escribir cabecera WAV
+    setUint32(0x46464952); // "RIFF"
+    setUint32(length - 8); // file length - 8
+    setUint32(0x45564157); // "WAVE"
+    setUint32(0x20746d66); // "fmt " chunk
+    setUint32(16); // length of format data
+    setUint16(1); // PCM - integer samples
+    setUint16(numOfChan); // two channels
+    setUint32(buffer.sampleRate); // sample rate
+    setUint32(buffer.sampleRate * 2 * numOfChan); // byte rate
+    setUint16(numOfChan * 2); // block align
+    setUint16(16); // bits per sample
+    setUint32(0x61746164); // "data" - chunk
+    setUint32(length - pos - 4); // chunk length
+
+    for (i = 0; i < buffer.numberOfChannels; i++) {
+        channels.push(buffer.getChannelData(i));
+    }
+
+    while (pos < length) {
+        for (i = 0; i < numOfChan; i++) {
+            sample = Math.max(-1, Math.min(1, channels[i][offset]));
+            sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+            view.setInt16(pos, sample, true);
+            pos += 2;
+        }
+        offset++;
+    }
+
+    return new Blob([view], { type: 'audio/wav' });
+
+    function setUint16(data) {
+        view.setUint16(pos, data, true);
+        pos += 2;
+    }
+
+    function setUint32(data) {
+        view.setUint32(pos, data, true);
+        pos += 4;
+    }
+}
+
 
 // Contar palabras correctas
 function countCorrectWords(expected, actual) {
@@ -512,6 +644,15 @@ window.startDictationTest = function() {
     document.getElementById('test4Card').classList.add('active');
     document.getElementById('dictationTest').classList.add('active');
     document.querySelector('#test4Card .test-actions').style.display = 'none';
+    // Resetear contador de reproducciones
+    dictationPlaysLeft = 2;
+    document.getElementById('playsLeft').textContent = '2';
+    const playBtn = document.getElementById('playDictationBtn');
+    playBtn.disabled = false;
+    playBtn.style.opacity = '1';
+    playBtn.style.cursor = 'pointer';
+    playBtn.textContent = '▶️ Reproducir dictado';
+
 
     // Generar audio del dictado
     generateDictationAudio();
@@ -520,7 +661,7 @@ window.startDictationTest = function() {
 async function generateDictationAudio() {
     try {
         // Intentar usar el servicio TTS local
-        const response = await fetch('http://localhost:8001/tts', {
+        const response = await fetch('http://localhost:5006/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -541,11 +682,32 @@ async function generateDictationAudio() {
 }
 
 window.playDictation = function() {
+    if (dictationPlaysLeft <= 0) {
+        alert('Ya has escuchado el dictado 2 veces. Por favor, escribe lo que recuerdes.');
+        return;
+    }
+
     const audio = document.getElementById('dictationAudio');
+    const playBtn = document.getElementById('playDictationBtn');
+
     if (audio.src) {
         audio.play();
+        dictationPlaysLeft--;
+
+        // Actualizar contador visual
+        document.getElementById('playsLeft').textContent = dictationPlaysLeft;
+
+        // Si no quedan reproducciones, deshabilitar el botón
+        if (dictationPlaysLeft === 0) {
+            playBtn.disabled = true;
+            playBtn.style.opacity = '0.5';
+            playBtn.style.cursor = 'not-allowed';
+            playBtn.textContent = '🔇 Sin reproducciones restantes';
+        } else {
+            playBtn.textContent = `▶️ Reproducir dictado (${dictationPlaysLeft} restante${dictationPlaysLeft > 1 ? 's' : ''})`;
+        }
     } else {
-        alert('Escribe: "' + DICTATION_TEXT + '"');
+        alert('Audio no disponible. Escribe: "' + DICTATION_TEXT + '"');
     }
 };
 
