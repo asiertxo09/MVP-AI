@@ -275,14 +275,15 @@ window.submitReading = async function() {
 async function transcribeAudio(audioBlob) {
     try {
         if (!(audioBlob instanceof Blob)) {
-            throw new Error('Audio inválido');
+            throw new Error('Audio inválido')
         }
 
+        const transcriptionUrl = window.ENV?.AUDIO_SERVICE_URL+'/transcribe';
         // Convertir a WAV en el cliente
         const wavBlob = await convertBlobToWav(audioBlob);
         const base64Audio = await blobToBase64(wavBlob);
 
-        const response = await fetch('http://localhost:5006/transcribe', {
+        const response = await fetch(transcriptionUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

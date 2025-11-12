@@ -4,6 +4,9 @@ name = "eduplay-frontend"
 compatibility_date = "2024-05-01"
 pages_build_output_dir = "."
 
+[VARS]
+AUDIO_SERVICE_URL = "https://mvp-ai.onrender.com"
+
 # Configura el binding de D1 en un archivo local (p. ej. `wrangler.local.toml`)
 # o directamente en la UI de Cloudflare Pages.
 # Ejemplo de bloque a añadir:
