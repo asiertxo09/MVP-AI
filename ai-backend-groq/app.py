@@ -265,7 +265,8 @@ async def chat_options():
 
 if __name__ == '__main__':
     import uvicorn
-    port = int(os.getenv('PORT', 3000))
+    # Usar PORT_PYTHON del .env, fallback a PORT, y luego a 5001
+    port = int(os.getenv('PORT_PYTHON') or os.getenv('PORT', 5001))
     print(f"🚀 Starting EduPlay Backend on port {port}")
     print(f"📡 Groq API: {'✅ Configured' if GROQ_API_KEY else '❌ Not configured'}")
     uvicorn.run(
@@ -274,4 +275,3 @@ if __name__ == '__main__':
         port=port,
         log_level="info"
     )
-
