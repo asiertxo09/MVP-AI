@@ -21,32 +21,38 @@ TARGET_SAMPLE_RATE = 16_000
 IS_RENDER = os.getenv('RENDER', 'false').lower() == 'true'
 
 # Force CPU in Render since they don't have GPU
+# Use lighter settings for production
 if IS_RENDER:
     DEVICE_INDEX = -1
     DTYPE = torch.float32
+    # Disable torch optimizations to save memory
+    torch.set_num_threads(1)
+    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['MKL_NUM_THREADS'] = '1'
 else:
     DEVICE_INDEX = 0 if torch.cuda.is_available() else -1
     DTYPE = torch.float16 if torch.cuda.is_available() else torch.float32
 
-# Use a smaller model from Hugging Face Hub for production
-# This will be downloaded automatically on first use
+# Use the smallest model possible in production
 ASR_MODEL_ID = os.getenv('LOCAL_ASR_MODEL', 'openai/whisper-tiny' if IS_RENDER else '../models/whisper-small')
 
 app = FastAPI(title='Local Audio Service', version='1.0.0')
 
+# CORS configuration - MUST be very permissive for production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
+    expose_headers=["*"]
 )
 
 _asr_pipeline = None
 
 class TranscribeRequest(BaseModel):
     audio: str = Field(..., min_length=10)
-    format: str = Field(default='wav') # Expecting WAV from the client
+    format: str = Field(default='wav')
     language: Optional[str] = Field(default='es')
 
 class TTSRequest(BaseModel):
@@ -66,7 +72,6 @@ def decode_audio(payload: TranscribeRequest) -> tuple[torch.Tensor, int]:
 
     buffer = io.BytesIO(data)
     try:
-        # The client is sending WAV, so we only need soundfile
         waveform, sample_rate = sf.read(buffer, dtype='float32')
     except Exception as e:
         raise HTTPException(
@@ -92,12 +97,15 @@ def ensure_asr_pipeline():
         start = time.time()
         print(f"[ASR] Cargando modelo desde: {ASR_MODEL_ID}")
         print(f"[ASR] Device: {'CPU' if DEVICE_INDEX == -1 else 'CUDA'}")
+        print(f"[ASR] Available memory: {os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES') / (1024.**3):.2f} GB" if hasattr(os, 'sysconf') else "[ASR] Memory check not available")
+
         try:
             _asr_pipeline = pipeline(
                 task='automatic-speech-recognition',
                 model=ASR_MODEL_ID,
                 torch_dtype=DTYPE,
                 device=DEVICE_INDEX,
+                model_kwargs={"low_cpu_mem_usage": True} if IS_RENDER else {}
             )
             elapsed = int((time.time() - start) * 1000)
             print(f"[ASR] Modelo cargado en {elapsed}ms")
@@ -113,16 +121,18 @@ async def health():
         'service': SERVICE_NAME,
         'models': {'asr': ASR_MODEL_ID, 'tts': 'gTTS'},
         'environment': 'production' if IS_RENDER else 'development',
-        'device': 'cpu' if DEVICE_INDEX == -1 else 'cuda'
+        'device': 'cpu' if DEVICE_INDEX == -1 else 'cuda',
+        'model_loaded': _asr_pipeline is not None
     }
 
 @app.post('/transcribe')
 async def transcribe(request: TranscribeRequest):
     try:
         waveform_tensor, sample_rate = decode_audio(request)
+
+        # Only load model when actually needed (lazy loading)
         pipe = ensure_asr_pipeline()
 
-        # El pipeline de Whisper espera un diccionario con 'raw' y 'sampling_rate'
         audio_input = {
             "raw": waveform_tensor.numpy(),
             "sampling_rate": sample_rate
@@ -133,6 +143,8 @@ async def transcribe(request: TranscribeRequest):
         result = pipe(
             audio_input,
             generate_kwargs={'language': request.language, 'task': 'transcribe'} if request.language else {},
+            chunk_length_s=30,  # Process in chunks to save memory
+            batch_size=1  # Smallest batch size
         )
 
         print(f"[ASR] Resultado: {result}")
@@ -145,11 +157,13 @@ async def transcribe(request: TranscribeRequest):
             'confidence': confidence,
             'language': request.language
         }
+    except HTTPException:
+        raise
     except Exception as exc:
         print(f"[ASR] Error en transcripción: {exc}")
-        if isinstance(exc, HTTPException):
-            raise exc
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error en transcripción: {str(exc)}") from exc
 
 
 @app.post('/tts')
@@ -163,11 +177,44 @@ async def text_to_speech(request: TTSRequest):
         return Response(
             content=audio_bytes,
             media_type='audio/mp3',
-            headers={'X-Audio-Model': 'gTTS'}
+            headers={
+                'X-Audio-Model': 'gTTS',
+                'Access-Control-Allow-Origin': '*'
+            }
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f'Error TTS: {str(exc)}') from exc
 
+# Add explicit OPTIONS handler for CORS preflight
+@app.options("/transcribe")
+async def transcribe_options():
+    return Response(
+        status_code=200,
+        headers={
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+        }
+    )
+
+@app.options("/tts")
+async def tts_options():
+    return Response(
+        status_code=200,
+        headers={
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+        }
+    )
+
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run(app, host='0.0.0.0', port=int(os.getenv('PORT', 5006)))
+    port = int(os.getenv('PORT', 5006))
+    print(f"[SERVER] Starting on port {port}")
+    uvicorn.run(
+        app,
+        host='0.0.0.0',
+        port=port,
+        log_level="info"
+    )
