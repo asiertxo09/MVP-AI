@@ -667,13 +667,14 @@ window.startDictationTest = function() {
 
 async function generateDictationAudio() {
     try {
-        // Intentar usar el servicio TTS local
-        const response = await fetch('http://localhost:5006/tts', {
+        // Usar el servicio TTS del backend unificado
+        const BACKEND_URL = window.ENV?.BACKEND_URL || 'https://eduplay-backend.onrender.com';
+        const response = await fetch(`${BACKEND_URL}/tts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 text: DICTATION_TEXT,
-                voice: 'default',
+                language: 'es',
                 speed: 0.9
             })
         });
