@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: mvp-ai-audio
+    runtime: python
+    buildCommand: cd ai-services-local/audio_service && pip install -r requirements.txt
+    startCommand: cd ai-services-local/audio_service && python -m uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: RENDER
+        value: "true"
+      - key: LOCAL_ASR_MODEL
+        value: "openai/whisper-tiny"
+      - key: PYTHON_VERSION
+        value: "3.13.4"
+

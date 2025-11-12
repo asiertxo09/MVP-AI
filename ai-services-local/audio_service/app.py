@@ -16,14 +16,21 @@ from gtts import gTTS
 
 SERVICE_NAME = 'audio-service'
 TARGET_SAMPLE_RATE = 16_000
-DEVICE_INDEX = 0 if torch.cuda.is_available() else -1
-DTYPE = torch.float16 if torch.cuda.is_available() else torch.float32
 
-# --- CHANGE THIS LINE ---
-# Use the local path to the model. This assumes the script is run from the `ai-services-local/audio_service` directory.
-# The path points up one level and then into the 'models' directory.
-ASR_MODEL_ID = os.getenv('LOCAL_ASR_MODEL', '../models/whisper-small')
-# --- END CHANGE ---
+# Detect if running in Render (production) or local
+IS_RENDER = os.getenv('RENDER', 'false').lower() == 'true'
+
+# Force CPU in Render since they don't have GPU
+if IS_RENDER:
+    DEVICE_INDEX = -1
+    DTYPE = torch.float32
+else:
+    DEVICE_INDEX = 0 if torch.cuda.is_available() else -1
+    DTYPE = torch.float16 if torch.cuda.is_available() else torch.float32
+
+# Use a smaller model from Hugging Face Hub for production
+# This will be downloaded automatically on first use
+ASR_MODEL_ID = os.getenv('LOCAL_ASR_MODEL', 'openai/whisper-tiny' if IS_RENDER else '../models/whisper-small')
 
 app = FastAPI(title='Local Audio Service', version='1.0.0')
 
@@ -83,15 +90,20 @@ def ensure_asr_pipeline():
     global _asr_pipeline
     if _asr_pipeline is None:
         start = time.time()
-        print(f"[ASR] Cargando modelo desde: {os.path.abspath(ASR_MODEL_ID)}")
-        _asr_pipeline = pipeline(
-            task='automatic-speech-recognition',
-            model=ASR_MODEL_ID,
-            torch_dtype=DTYPE,
-            device=DEVICE_INDEX,
-        )
-        elapsed = int((time.time() - start) * 1000)
-        print(f"[ASR] Modelo cargado en {elapsed}ms")
+        print(f"[ASR] Cargando modelo desde: {ASR_MODEL_ID}")
+        print(f"[ASR] Device: {'CPU' if DEVICE_INDEX == -1 else 'CUDA'}")
+        try:
+            _asr_pipeline = pipeline(
+                task='automatic-speech-recognition',
+                model=ASR_MODEL_ID,
+                torch_dtype=DTYPE,
+                device=DEVICE_INDEX,
+            )
+            elapsed = int((time.time() - start) * 1000)
+            print(f"[ASR] Modelo cargado en {elapsed}ms")
+        except Exception as e:
+            print(f"[ASR] Error cargando modelo: {e}")
+            raise HTTPException(status_code=503, detail=f"Error cargando modelo ASR: {str(e)}")
     return _asr_pipeline
 
 @app.get('/health')
@@ -100,6 +112,8 @@ async def health():
         'ok': True,
         'service': SERVICE_NAME,
         'models': {'asr': ASR_MODEL_ID, 'tts': 'gTTS'},
+        'environment': 'production' if IS_RENDER else 'development',
+        'device': 'cpu' if DEVICE_INDEX == -1 else 'cuda'
     }
 
 @app.post('/transcribe')
