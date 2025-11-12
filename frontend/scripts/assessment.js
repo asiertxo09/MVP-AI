@@ -278,7 +278,12 @@ async function transcribeAudio(audioBlob) {
             throw new Error('Audio inválido')
         }
 
-        const transcriptionUrl = window.ENV?.AUDIO_SERVICE_URL+'/transcribe';
+        // URL del servicio de transcripción con fallback
+        const AUDIO_SERVICE_URL = window.ENV?.AUDIO_SERVICE_URL || 'https://mvp-ai.onrender.com';
+        const transcriptionUrl = `${AUDIO_SERVICE_URL}/transcribe`;
+
+        console.log('🎤 Enviando audio a:', transcriptionUrl);
+
         // Convertir a WAV en el cliente
         const wavBlob = await convertBlobToWav(audioBlob);
         const base64Audio = await blobToBase64(wavBlob);
@@ -301,11 +306,12 @@ async function transcribeAudio(audioBlob) {
         }
 
         const result = await response.json();
+        console.log('✅ Transcripción recibida:', result.text);
         return result.text;
 
     } catch (error) {
-        console.error('Error en transcripción:', error);
-        console.log('Servicio de transcripción no disponible, usando simulación');
+        console.error('❌ Error en transcripción:', error);
+        console.warn('⚠️ Servicio de transcripción no disponible, usando simulación');
         // Fallback de simulación
         return 'El sol brillaba en el cielo azul mientras los niños jugaban en el parque.';
     }
@@ -896,4 +902,3 @@ function hideLoading() {
         overlay.remove();
     }
 }
-
