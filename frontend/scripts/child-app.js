@@ -168,7 +168,40 @@ const completeActivity = (activityKey, metrics) => {
     },
     ...(metrics.history ?? []),
   ].slice(0, 20);
+
+  // Sincronizar con la base de datos
+  syncMetricsToDatabase(activityKey, config);
+
   return updated;
+};
+
+// Nueva función para sincronizar métricas con la base de datos
+const syncMetricsToDatabase = async (activityKey, config) => {
+  try {
+    await fetch('/api/metrics', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        activityType: activityKey,
+        activityName: config.title,
+        starsEarned: config.reward.stars || 0,
+        energyChange: config.reward.energy || 0,
+        isCorrect: true, // Las actividades del sistema de misiones se consideran completadas
+        challengeData: { type: 'mission', activity: activityKey },
+        userResponse: { completed: true },
+        metadata: {
+          timestamp: Date.now(),
+          source: 'child-app'
+        }
+      })
+    });
+  } catch (error) {
+    console.warn('Error sincronizando métrica:', error);
+    // No bloquear la experiencia del usuario si falla el guardado
+  }
 };
 
 const attachActivityListeners = (metrics) => {

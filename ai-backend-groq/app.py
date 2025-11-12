@@ -50,6 +50,12 @@ class ChatRequest(BaseModel):
     temperature: float = Field(default=0.7, ge=0, le=2)
     max_tokens: int = Field(default=1024, ge=1, le=8000)
 
+class GenerateRequest(BaseModel):
+    prompt: str = Field(..., min_length=1, max_length=2000)
+    model: str = Field(default='llama-3.3-70b-versatile')
+    temperature: float = Field(default=0.7, ge=0, le=2)
+    max_tokens: int = Field(default=1024, ge=1, le=8000)
+
 # ==================== HEALTH CHECK ====================
 
 @app.get('/health')
@@ -226,6 +232,64 @@ async def chat(request: ChatRequest):
             detail=f"Error en chat: {str(e)}"
         )
 
+# ==================== GENERATE (GROQ LLM) ====================
+
+@app.post('/api/generate')
+async def generate(request: GenerateRequest):
+    """
+    Generación de texto usando Groq API (compatible con frontend)
+    """
+    if not GROQ_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="Groq API key no configurada"
+        )
+
+    try:
+        headers = {
+            'Authorization': f'Bearer {GROQ_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+
+        payload = {
+            'model': request.model,
+            'messages': [
+                {'role': 'user', 'content': request.prompt}
+            ],
+            'temperature': request.temperature,
+            'max_tokens': request.max_tokens
+        }
+
+        response = requests.post(
+            f'{GROQ_API_URL}/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+
+        if not response.ok:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Error de Groq API: {response.text}"
+            )
+
+        result = response.json()
+        text = result['choices'][0]['message']['content']
+
+        return {
+            'text': text,
+            'model': request.model,
+            'usage': result.get('usage', {})
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error en generate: {str(e)}"
+        )
+
 # ==================== CORS PREFLIGHT HANDLERS ====================
 
 @app.options("/transcribe")
@@ -233,7 +297,6 @@ async def transcribe_options():
     return Response(
         status_code=200,
         headers={
-            'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
             'Access-Control-Allow-Headers': '*',
         }
@@ -252,6 +315,17 @@ async def tts_options():
 
 @app.options("/chat")
 async def chat_options():
+    return Response(
+        status_code=200,
+        headers={
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+        }
+    )
+
+@app.options("/api/generate")
+async def generate_options():
     return Response(
         status_code=200,
         headers={
