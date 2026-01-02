@@ -482,11 +482,19 @@
                 const starsEarned = isCorrect ? (activityType === 'math' ? 3 : 2) : 0;
                 const energyChange = isCorrect ? 1 : -1;
 
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+
+                // Add Authorization header if child token exists
+                const childToken = sessionStorage.getItem('child_session_token');
+                if (childToken) {
+                    headers['Authorization'] = `Bearer ${childToken}`;
+                }
+
                 await fetch('/api/metrics', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: headers,
                     credentials: 'include',
                     body: JSON.stringify({
                         activityType,

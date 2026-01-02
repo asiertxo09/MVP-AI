@@ -214,7 +214,39 @@ export class PhonemeHuntGame {
         }
     }
 
-    showWin() {
+    async showWin() {
+        // Report success to backend
+        try {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            const childToken = sessionStorage.getItem('child_session_token');
+            if (childToken) {
+                headers['Authorization'] = `Bearer ${childToken}`;
+            }
+
+            await fetch('/api/metrics', {
+                method: 'POST',
+                headers: headers,
+                credentials: 'include',
+                body: JSON.stringify({
+                    activityType: 'phoneme_hunt',
+                    activityName: `Caza-Fonemas /${this.targetPhoneme}/`,
+                    starsEarned: 5,
+                    energyChange: 2,
+                    isCorrect: true,
+                    challengeData: { phoneme: this.targetPhoneme },
+                    userResponse: { completed: true },
+                    metadata: {
+                        timestamp: Date.now(),
+                        correctCount: this.correctCount
+                    }
+                })
+            });
+        } catch (e) {
+            console.warn('Error saving metrics', e);
+        }
+
         const modal = document.createElement('div');
         modal.className = 'win-modal';
         modal.innerHTML = `

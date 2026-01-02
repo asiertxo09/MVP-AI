@@ -21,18 +21,20 @@ export async function createSessionToken({ userId, username, role, secret, ttlSe
     return { token, payload, expiresAt: exp };
 }
 
-export function serializeSessionCookie(token, { maxAge = SESSION_TTL_SECONDS, path = "/" } = {}) {
+export function serializeSessionCookie(token, { maxAge = SESSION_TTL_SECONDS, path = "/", secure = true } = {}) {
     if (typeof token !== "string" || token.length === 0) {
         throw new TypeError("token must be a non-empty string");
     }
     const directives = [
         `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}`,
         "HttpOnly",
-        "Secure",
         "SameSite=Lax",
         `Path=${path}`,
         `Max-Age=${Math.max(0, Math.floor(maxAge))}`,
     ];
+    if (secure) {
+        directives.push("Secure");
+    }
     return directives.join("; ");
 }
 

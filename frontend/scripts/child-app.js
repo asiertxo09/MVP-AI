@@ -178,11 +178,19 @@ const completeActivity = (activityKey, metrics) => {
 // Nueva función para sincronizar métricas con la base de datos
 const syncMetricsToDatabase = async (activityKey, config) => {
   try {
+    const headers = {
+      'Content-Type': 'application/json'
+    };
+
+    // Add Authorization header if child token exists
+    const childToken = sessionStorage.getItem('child_session_token');
+    if (childToken) {
+      headers['Authorization'] = `Bearer ${childToken}`;
+    }
+
     await fetch('/api/metrics', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: headers,
       credentials: 'include',
       body: JSON.stringify({
         activityType: activityKey,

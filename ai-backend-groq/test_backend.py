@@ -8,7 +8,7 @@ import base64
 import json
 
 # Configuración
-BASE_URL = "http://localhost:3000"  # Cambiar a la URL de Render en producción
+BASE_URL = "http://localhost:5001"  # Cambiar a la URL de Render en producción
 
 def test_health():
     """Prueba el endpoint de health check"""
