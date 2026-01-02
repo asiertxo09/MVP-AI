@@ -36,8 +36,10 @@ export const onRequestPost = async ({ request, env }) => {
 
         const secret = readSessionSecret(env);
         const { token } = await createSessionToken({ userId: user.id, username: user.username, role: user.role_name, secret });
+
+        const isSecure = request.url.startsWith("https:");
         const headers = new Headers({
-            "Set-Cookie": serializeSessionCookie(token),
+            "Set-Cookie": serializeSessionCookie(token, { secure: isSecure }),
             "Cache-Control": "no-store",
             "Content-Type": "application/json"
         });
