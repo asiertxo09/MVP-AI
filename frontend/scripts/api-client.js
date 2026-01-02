@@ -47,9 +47,16 @@ async function apiFetch(path, options = {}) {
   }
 
   // CHECK FOR CHILD TOKEN (Simultaneous Session Support)
+  // IMPORTANT: Only use child token when in the child app context (/app/)
   const childToken = sessionStorage.getItem('child_session_token');
-  if (childToken) {
+  const isChildAppContext = window.location.pathname.startsWith('/app/');
+
+  if (childToken && isChildAppContext) {
     requestInit.headers['Authorization'] = `Bearer ${childToken}`;
+  } else if (childToken && !isChildAppContext) {
+    // We're in parent/admin context but have a stale child token - clear it
+    console.log('Clearing stale child_session_token (not in /app/ context)');
+    sessionStorage.removeItem('child_session_token');
   }
 
   let response;

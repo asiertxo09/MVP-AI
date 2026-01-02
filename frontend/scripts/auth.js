@@ -143,7 +143,24 @@ const rememberSession = () => {
   localStorage.setItem(SESSION_KEY, "active");
 };
 
-const hasActiveSession = () => localStorage.getItem(SESSION_KEY) === "active";
+const hasActiveSession = () => {
+  // Primary check: localStorage flag
+  if (localStorage.getItem(SESSION_KEY) === "active") {
+    return true;
+  }
+
+  // Fallback: Check if session cookie exists (for cases where localStorage was cleared but cookie is still valid)
+  // The cookie name is 'eduplay_session' set by the backend
+  const hasCookie = document.cookie.split(';').some(c => c.trim().startsWith('eduplay_session='));
+
+  if (hasCookie) {
+    // Restore the localStorage flag since cookie is valid
+    localStorage.setItem(SESSION_KEY, "active");
+    return true;
+  }
+
+  return false;
+};
 
 const requireSession = () => {
   if (!hasActiveSession()) {

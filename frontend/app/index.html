@@ -361,11 +361,11 @@
         initLogoutButton('logout-button');
 
         window.exitToParentPortal = function () {
-            // Clear child session token
+            // Clear child session token ONLY - parent session is still valid via cookie
             sessionStorage.removeItem('child_session_token');
-            localStorage.removeItem('eduplay_session'); // Assuming this was set to 'active'
+            // DO NOT remove localStorage.eduplay_session - the parent still has a valid session
 
-            // Navigate
+            // Navigate back to parent dashboard
             window.location.href = '/dashboard-parent.html';
         }
 
@@ -674,7 +674,7 @@ Genera una palabra apropiada para practicar ${activityType}:`;
         function renderHome() {
             screen.innerHTML = '';
             screen.classList.remove('grid3'); // Remove grid layout if present
-            
+
             // Initialize Map
             const map = new MapController('screen', userProgress);
             map.render();
@@ -684,7 +684,7 @@ Genera una palabra apropiada para practicar ${activityType}:`;
         document.addEventListener('node-selected', (e) => {
             const { level, state } = e.detail;
             console.log("Navigating to activity:", level.type);
-            
+
             if (level.type === 'math') renderMath();
             else if (level.type === 'reading' || level.type === 'write') renderWriting();
             else if (level.type === 'speaking') renderSpeech();
