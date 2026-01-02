@@ -1,0 +1,1053 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portal de Padres · EduPlay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles/base.css" />
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF and html2canvas for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        .child-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .child-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+            border: 2px solid var(--color-sky-light);
+        }
+
+        .child-info h3 {
+            margin-bottom: 0.2rem;
+        }
+
+        .child-info p {
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .stat-badge {
+            background: var(--color-sky-light);
+            color: var(--color-navy);
+            padding: 0.3rem 0.8rem;
+            border-radius: 99px;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(16, 37, 66, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 500px;
+            box-shadow: var(--shadow-strong);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        /* Metrics Styles */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.3s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .metric-icon {
+            font-size: 2rem;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: var(--color-muted);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--color-navy);
+            margin: 0.5rem 0;
+        }
+
+        .metric-subtext {
+            font-size: 0.85rem;
+            color: var(--color-muted);
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--color-sky-light);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-sun), #f39c12);
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 2rem;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--color-navy);
+        }
+
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 200px;
+            padding-top: 20px;
+            gap: 10px;
+        }
+
+        .chart-bar {
+            flex: 1;
+            max-width: 60px;
+            background: linear-gradient(180deg, var(--color-sky), var(--primary));
+            border-radius: 8px 8px 0 0;
+            position: relative;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .chart-bar:hover {
+            opacity: 0.8;
+            transform: scaleY(1.05);
+        }
+
+        .chart-bar-value {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+
+        .chart-bar-label {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: var(--color-muted);
+            font-weight: 600;
+        }
+
+        .activity-list {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .activity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+
+        .activity-item:hover {
+            background: var(--color-sky-light);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-info {
+            flex: 1;
+        }
+
+        .activity-name {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .activity-time {
+            font-size: 0.85rem;
+            color: var(--color-muted);
+        }
+
+        .activity-result {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-neutral {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .assessment-section {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 2rem;
+        }
+
+        .assessment-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .assessment-item {
+            text-align: center;
+            padding: 1.5rem;
+            background: var(--color-sky-light);
+            border-radius: var(--radius-sm);
+        }
+
+        .assessment-score {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin: 0.5rem 0;
+            color: var(--primary);
+        }
+
+        .assessment-label {
+            font-size: 0.9rem;
+            color: var(--color-navy);
+            font-weight: 700;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            border-radius: var(--radius-md);
+        }
+    </style>
+
+</head>
+
+<body>
+    <script>
+        // CRITICAL: Ensure we are in PARENT context.
+        // Clear any child session token that might have been set by the game.
+        if (sessionStorage.getItem('child_session_token')) {
+            console.log('Clearing child session token for Parent Dashboard context');
+            sessionStorage.removeItem('child_session_token');
+        }
+    </script>
+    <header class="site-header" role="banner">
+        <div class="container site-nav"><a class="brand" href="index.html"><span class="brand-logo"
+                    aria-hidden="true"><img src="assets/logo.png" alt="Logo de EduPlay" /></span><span>Portal
+                    Padres</span></a>
+            <div class="flex"><span class="btn btn-outline" style="border: none; pointer-events: none;">Hola,
+                    Familia</span><button class="btn btn-secondary" id="logoutBtn">Cerrar Sesión</button></div>
+        </div>
+    </header>
+    <main class="container" style="padding-top: 3rem;">
+        <!-- Welcome Section -->
+        <section class="animate-fade-in">
+            <div class="flex"
+                style="justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap;">
+                <div>
+                    <h1>Mis Hijos</h1>
+                    <p>Gestiona sus cuentas y visualiza su progreso.</p>
+                </div><button class="btn btn-primary" onclick="openLinkModal()">+Vincular Hijo</button>
+            </div>
+            <!-- Children Grid -->
+            <div class="grid" id="childrenGrid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+                <!-- Loading State -->
+                <div class="glass-card text-center">
+                    <p>Cargando perfiles...</p>
+                </div>
+            </div>
+        </section>
+        <!-- Detailed Stats Section (Placeholder/Example) -->
+        <section class="metrics-section animate-fade-in delay-200" id="statsSection" style="display: none;">
+            <div class="metrics-header flex"
+                style="justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 class="section-title" id="statsTitle" style="margin:0;">Progreso de [Hijo]</h2><button
+                    class="btn btn-outline" onclick="hideStats()">Cerrar</button>
+            </div>
+            <div id="statsContent" style="position: relative; min-height: 200px;">
+                <!-- Loading Spinner -->
+                <div id="statsLoading" class="loading-overlay">
+                    <div style="text-align: center;"><span style="font-size: 2rem;">⏳</span>
+                        <p>Cargando datos...</p>
+                    </div>
+                </div>
+                <!-- Metrics Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div>
+                                <div class="metric-label">Estrellas Totales</div>
+                                <div class="metric-value" id="totalStars">0</div>
+                            </div>
+                            <div class="metric-icon">⭐</div>
+                        </div>
+                        <div class="metric-subtext">Logros conseguidos</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div>
+                                <div class="metric-label">Nivel de Energía</div>
+                                <div class="metric-value" id="energyLevel">5.0</div>
+                            </div>
+                            <div class="metric-icon">⚡</div>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="energyProgress" style="width: 50%"></div>
+                        </div>
+                        <div class="metric-subtext">Motivación actual</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div>
+                                <div class="metric-label">Racha de Días</div>
+                                <div class="metric-value" id="streakDays">0</div>
+                            </div>
+                            <div class="metric-icon">🔥</div>
+                        </div>
+                        <div class="metric-subtext">Días consecutivos activo</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div>
+                                <div class="metric-label">Actividades</div>
+                                <div class="metric-value" id="totalActivities">0</div>
+                            </div>
+                            <div class="metric-icon">🎯</div>
+                        </div>
+                        <div class="metric-subtext">Total ejercicios</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <div>
+                                <div class="metric-label">Tiempo de Juego</div>
+                                <div class="metric-value" id="totalTime">0h</div>
+                            </div>
+                            <div class="metric-icon">⏱️</div>
+                        </div>
+                        <div class="metric-subtext">Horas totales</div>
+                    </div>
+                </div>
+                <!-- Initial Assessment -->
+                <h3 class="chart-title">📋 Evaluación Inicial</h3>
+                <div class="assessment-section" id="assessmentSection">
+                    <div id="assessmentContent" class="assessment-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+                <!-- Activity Chart -->
+                <div class="chart-container">
+                    <div class="chart-title">Distribución de Actividades (7 días)</div>
+                    <div class="chart-bars" id="activityChart">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+                <!-- Recent Activities -->
+                <h3 class="chart-title">📚 Actividades Recientes</h3>
+                <div class="activity-list" id="activitiesList">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+            <!-- Chart.js: Fluency Evolution -->
+            <div class="chart-container">
+                <div class="chart-title">📈 Evolución de Fluidez (PCPM)</div>
+                <canvas id="fluencyChart" height="200"></canvas>
+            </div>
+            <!-- Chart.js: Pre/Post Comparison -->
+            <div class="chart-container">
+                <div class="chart-title">📊 Comparativa Pre/Post Evaluación</div>
+                <canvas id="prePostChart" height="200"></canvas>
+            </div>
+            <!-- PDF Export Button -->
+            <div style="margin-top: 2rem; text-align: center;">
+                <button class="btn btn-primary" id="exportPdfBtn" onclick="exportToPDF()">
+                    📄 Exportar Informe PDF
+                </button>
+            </div>
+            </div>
+        </section>
+    </main>
+    <!-- Link Account Modal -->
+    <div class="modal" id="linkModal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 1rem;">Gestionar Hijos</h2>
+            <div class="tabs" style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border);"><button
+                    type="button" class="tab active"
+                    style="padding: 0.5rem 1rem; border: none; background: none; cursor: pointer; border-bottom: 2px solid var(--primary); font-weight: 600;"
+                    onclick="switchTab('create')">Crear Nuevo</button><button type="button" class="tab"
+                    style="padding: 0.5rem 1rem; border: none; background: none; cursor: pointer; color: var(--text-light);"
+                    onclick="switchTab('link')">Vincular Existente</button></div>
+            <!-- Create Child Form -->
+            <form id="createChildForm">
+                <div class="form-field"><label>Nombre de Usuario</label><input class="form-input" name="username"
+                        required placeholder="ej. juanito2024"></div>
+                <div class="form-field"><label>Contraseña</label><input class="form-input" type="password"
+                        name="password" required placeholder="********"></div><input type="hidden" name="role"
+                    value="child">
+                <div class="status-message error" id="createError" hidden></div>
+                <div class="status-message success" id="createSuccess" hidden>¡Cuenta creada y vinculada !</div>
+                <div class="flex" style="margin-top: 1.5rem; justify-content: flex-end;"><button type="button"
+                        class="btn btn-secondary" onclick="closeLinkModal()">Cancelar</button><button type="submit"
+                        class="btn btn-primary">Crear Cuenta</button></div>
+            </form>
+            <!-- Link Existing Form -->
+            <form id="linkForm" style="display: none;">
+                <p style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-light);">Si tu hijo ya
+                    tiene una cuenta,
+                    ingrésala aquí para vincularla. </p>
+                <div class="form-field"><label>Usuario del Niño</label><input class="form-input" name="childUsername"
+                        required placeholder="ej. juanito123"></div>
+                <div class="form-field"><label>Contraseña del Niño</label><input class="form-input" type="password"
+                        name="childPassword" required placeholder="********"></div>
+                <div class="status-message error" id="linkError" hidden></div>
+                <div class="status-message success" id="linkSuccess" hidden>¡Cuenta vinculada !</div>
+                <div class="flex" style="margin-top: 1.5rem; justify-content: flex-end;"><button type="button"
+                        class="btn btn-secondary" onclick="closeLinkModal()">Cancelar</button><button type="submit"
+                        class="btn btn-primary">Vincular</button></div>
+            </form>
+        </div>
+    </div>
+    <script type="module">import {
+            initLogoutButton,
+            requireSession
+        }
+
+            from "./scripts/auth.js";
+
+        import {
+            post,
+            get
+        }
+
+            from "./scripts/api-client.js";
+
+        requireSession();
+        initLogoutButton("logoutBtn");
+
+        async function loadChildren() {
+            const grid = document.getElementById('childrenGrid');
+
+            try {
+                const response = await get('/api/children');
+                const children = response.data?.children || [];
+                window.childrenData = children; // Store globally
+
+                if (children.length === 0) {
+                    grid.innerHTML = ` <div class="glass-card text-center" style="grid-column: 1 / -1;"><span style="font-size: 3rem;">🐣</span><h3>Aún no tienes hijos vinculados</h3><p>Usa el botón "Vincular Hijo" para comenzar.</p></div>`;
+                    return;
+                }
+
+                grid.innerHTML = children.map(child => `
+                    <div class="child-card animate-fade-in" onclick="viewChildStats(${child.id})">
+                        <div class="flex" style="align-items: center;">
+                            <div style="background: var(--color-sky); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 1.2rem;">
+                                ${child.username.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div class="child-info">
+                                <h3>${child.username}</h3>
+                                <p>Última actividad: ${child.last_activity_date ? new Date(child.last_activity_date).toLocaleDateString() : 'Nunca'}</p>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div style="font-weight: 800; font-size: 1.2rem; color: var(--color-sun);">⭐ ${child.total_stars || 0}</div>
+                            <div style="font-size: 0.8rem; color: var(--color-muted);">Estrellas</div>
+                        </div>
+                    </div>
+                `).join('');
+
+            }
+
+            catch (error) {
+                console.error(error);
+                grid.innerHTML = '<div class="status-message error">Error al cargar datos.</div>';
+            }
+        }
+
+        // Modal Logic
+        window.openLinkModal = () => document.getElementById('linkModal').classList.add('active');
+        window.closeLinkModal = () => document.getElementById('linkModal').classList.remove('active');
+
+        // Tab Switching
+        window.switchTab = (tab) => {
+            const createForm = document.getElementById('createChildForm');
+            const linkForm = document.getElementById('linkForm');
+            const tabs = document.querySelectorAll('.modal .tab');
+
+            if (tab === 'create') {
+                createForm.style.display = 'block';
+                linkForm.style.display = 'none';
+                tabs[0].classList.add('active');
+                tabs[0].style.borderBottom = '2px solid var(--primary)';
+                tabs[0].style.color = 'var(--text)';
+                tabs[1].classList.remove('active');
+                tabs[1].style.borderBottom = 'none';
+                tabs[1].style.color = 'var(--text-light)';
+            }
+
+            else {
+                createForm.style.display = 'none';
+                linkForm.style.display = 'block';
+                tabs[1].classList.add('active');
+                tabs[1].style.borderBottom = '2px solid var(--primary)';
+                tabs[1].style.color = 'var(--text)';
+                tabs[0].classList.remove('active');
+                tabs[0].style.borderBottom = 'none';
+                tabs[0].style.color = 'var(--text-light)';
+            }
+        }
+
+            ;
+
+        // Create Child Account
+        document.getElementById('createChildForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            const errorEl = document.getElementById('createError');
+            const successEl = document.getElementById('createSuccess');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            errorEl.hidden = true;
+            successEl.hidden = true;
+            submitBtn.disabled = true;
+
+            try {
+
+                // 1. Register the child
+                await post('/api/register', {
+                    username: data.username,
+                    password: data.password,
+                    role: 'child'
+                });
+
+                // 2. Link the new account to the parent
+                // We use the same credentials we just created
+                await post('/api/link-account', {
+                    childUsername: data.username,
+                    childPassword: data.password
+                });
+
+                successEl.hidden = false;
+
+                setTimeout(() => {
+                    closeLinkModal();
+                    loadChildren();
+                    submitBtn.disabled = false;
+                    e.target.reset();
+                }
+
+                    , 1000);
+            }
+
+            catch (err) {
+                console.error(err);
+                errorEl.textContent = err.message || "Error al crear la cuenta. Intenta con otro nombre de usuario.";
+                errorEl.hidden = false;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Link Existing Account
+        document.getElementById('linkForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            const errorEl = document.getElementById('linkError');
+            const successEl = document.getElementById('linkSuccess');
+
+            errorEl.hidden = true;
+            successEl.hidden = true;
+
+            try {
+                await post('/api/link-account', data);
+                successEl.hidden = false;
+
+                setTimeout(() => {
+                    closeLinkModal();
+                    loadChildren();
+                    e.target.reset();
+                }
+
+                    , 1000);
+            }
+
+            catch (err) {
+                errorEl.textContent = err.message || "Error al vincular cuenta";
+                errorEl.hidden = false;
+            }
+        });
+
+        // Close modal on click outside
+        document.getElementById('linkModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('linkModal')) closeLinkModal();
+        });
+
+        loadChildren();
+
+        // Stats View Logic
+        window.currentData = null;
+        window.currentChildId = null;
+
+        window.viewChildStats = async (childId) => {
+            const statsSection = document.getElementById('statsSection');
+            const statsTitle = document.getElementById('statsTitle');
+            const loading = document.getElementById('statsLoading');
+
+            // Find child name from grid
+            const childInfo = window.childrenData?.find(c => c.id === childId);
+            if (childInfo) statsTitle.textContent = `Progreso de ${childInfo.username}`;
+
+            // Add Actions Container
+            const actionsContainer = document.createElement('div');
+            actionsContainer.className = 'flex gap-2 mb-12 justify-end'; // Increased margin-bottom further
+            actionsContainer.innerHTML = `
+                <button onclick="window.playAsChild(${childId})" class="btn btn-primary" style="font-size: 1.1rem; padding: 0.75rem 1.5rem;">
+                    🎮 Jugar como ${childInfo?.username || 'Hijo'}
+                </button>
+                <button onclick="window.unlinkChild(${childId})" class="btn btn-secondary" style="background: var(--color-error); color: white; border: none;">
+                    💔 Desvincular
+                </button>
+            `;
+
+            // Insert actions after title
+            const header = statsSection.querySelector('.section-header') || statsSection.firstElementChild;
+            // Remove existing actions if any to avoid duplicates on re-open
+            const existingActions = statsSection.querySelector('.gap-2.mb-4');
+            if (existingActions) existingActions.remove();
+
+            header.insertAdjacentElement('afterend', actionsContainer);
+
+            statsSection.style.display = 'block';
+            statsSection.scrollIntoView({ behavior: 'smooth' });
+            loading.style.display = 'flex';
+            window.currentChildId = childId;
+
+            try {
+                // Fetch all data for this child
+                const [currentRes, dailyRes, activitiesRes, assessmentRes] = await Promise.all([
+                    get(`/api/metrics?type=current&childId=${childId}`),
+                    get(`/api/metrics?type=daily&days=7&childId=${childId}`),
+                    get(`/api/metrics?type=activities&childId=${childId}`),
+                    get(`/api/assessment?childId=${childId}`)
+                ]);
+
+                updateMetricsUI(currentRes.data?.current);
+                updateActivityChart(dailyRes.data?.daily);
+                updateActivitiesList(activitiesRes.data?.activities);
+                updateAssessmentSection(assessmentRes.data?.assessments);
+
+            } catch (error) {
+                console.error("Error loading stats:", error);
+            } finally {
+                loading.style.display = 'none';
+            }
+        };
+
+        window.hideStats = () => {
+            document.getElementById('statsSection').style.display = 'none';
+            window.currentChildId = null;
+        };
+
+        // UI Updaters
+        function updateMetricsUI(current) {
+            if (!current) current = {};
+
+            document.getElementById('totalStars').textContent = current.total_stars || 0;
+            document.getElementById('energyLevel').textContent = (current.energy_level || 5.0).toFixed(1);
+            document.getElementById('energyProgress').style.width = `${(current.energy_level || 5.0) * 10}%`;
+            document.getElementById('streakDays').textContent = current.current_streak || 0;
+            document.getElementById('totalActivities').textContent = current.total_activities_completed || 0;
+
+            const hours = Math.floor((current.total_time_played_seconds || 0) / 3600);
+            const minutes = Math.floor(((current.total_time_played_seconds || 0) % 3600) / 60);
+            document.getElementById('totalTime').textContent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        }
+
+        function updateActivityChart(dailyMetrics) {
+            const chart = document.getElementById('activityChart');
+            if (!dailyMetrics || dailyMetrics.length === 0) {
+                chart.innerHTML = '<div style="width:100%; text-align:center; color:var(--text-light);">No hay datos recientes</div>';
+                return;
+            }
+
+            const activityTypes = {};
+            dailyMetrics.forEach(day => {
+                if (day.activities_by_type) {
+                    const types = JSON.parse(day.activities_by_type);
+                    Object.keys(types).forEach(type => {
+                        activityTypes[type] = (activityTypes[type] || 0) + types[type];
+                    });
+                }
+            });
+
+            const maxValue = Math.max(...Object.values(activityTypes), 1);
+
+            chart.innerHTML = Object.entries(activityTypes).map(([type, count]) => {
+                const height = (count / maxValue) * 100;
+                return `
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                            <div class="chart-bar" style="height: ${height}%">
+                                <div class="chart-bar-value">${count}</div>
+                            </div>
+                            <div class="chart-bar-label">${getActivityTypeName(type)}</div>
+                        </div>
+                    `;
+            }).join('');
+        }
+
+        function updateActivitiesList(activities) {
+            const list = document.getElementById('activitiesList');
+            if (!activities || activities.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:1rem;">No hay actividades registradas</div>';
+                return;
+            }
+
+            list.innerHTML = activities.slice(0, 10).map(activity => {
+                const isCorrect = activity.is_correct;
+                const badgeClass = isCorrect === null ? 'badge-neutral' : (isCorrect ? 'badge-success' : 'badge-error');
+                const badgeText = isCorrect === null ? 'Completado' : (isCorrect ? '✓ Correcto' : '✗ Incorrecto');
+                const date = new Date(activity.completed_at);
+
+                return `
+                        <div class="activity-item">
+                            <div class="activity-info">
+                                <div class="activity-name">
+                                    ${getActivityTypeEmoji(activity.activity_type)} ${activity.activity_name}
+                                </div>
+                                <div class="activity-time">${formatRelativeTime(date)}</div>
+                            </div>
+                            <div class="activity-result">
+                                ${activity.stars_earned > 0 ? `<span style="color:var(--color-sun);">⭐ ${activity.stars_earned}</span>` : ''}
+                                <span class="badge ${badgeClass}">${badgeText}</span>
+                            </div>
+                        </div>
+                    `;
+            }).join('');
+        }
+
+        function updateAssessmentSection(assessments) {
+            const section = document.getElementById('assessmentContent');
+            if (!assessments || assessments.length === 0) {
+                section.innerHTML = '<div style="grid-column:1/-1; text-align:center;">No se ha completado la evaluación inicial</div>';
+                return;
+            }
+            const completed = assessments.find(a => a.completed === 1);
+            if (!completed) {
+                section.innerHTML = '<div style="grid-column:1/-1; text-align:center;">Evaluación en progreso...</div>';
+                return;
+            }
+            section.innerHTML = `
+                    <div class="assessment-item">
+                        <div class="assessment-label">📖 Lectura</div>
+                        <div class="assessment-score">-</div>
+                    </div>
+                    <div class="assessment-item">
+                        <div class="assessment-label">🔤 Fonología</div>
+                        <div class="assessment-score">-</div>
+                    </div>
+                    <div class="assessment-item">
+                        <div class="assessment-label">🔢 Matemáticas</div>
+                        <div class="assessment-score">-</div>
+                    </div>
+                `;
+        }
+
+        // Helpers
+        function getActivityTypeEmoji(type) {
+            const emojis = { 'math': '🔢', 'matematicas': '🔢', 'write': '✍️', 'speak': '🗣️', 'lenguaje': '📚', 'sensorial': '🧘' };
+            return emojis[type] || '🎯';
+        }
+
+        function getActivityTypeName(type) {
+            const names = { 'math': 'Matemáticas', 'matematicas': 'Matemáticas', 'write': 'Escritura', 'speak': 'Pronunciación', 'lenguaje': 'Lenguaje', 'sensorial': 'Sensorial' };
+            return names[type] || type;
+        }
+
+        function formatRelativeTime(date) {
+            const now = new Date();
+            const diff = now - date;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+
+            if (minutes < 1) return 'Hace un momento';
+            if (minutes < 60) return `Hace ${minutes} min`;
+            if (hours < 24) return `Hace ${hours} h`;
+            return `Hace ${days} d`;
+        }
+        window.playAsChild = async function (childId) {
+            try {
+                const response = await post('/api/play-as-child', { childId });
+                // response is already parsed by api-client logic
+                const data = response.data;
+
+                if (response.ok && data.token) {
+                    // Open with token parameter in the same tab
+                    window.location.href = `/app/index.html?child_token=${data.token}`;
+                } else {
+                    alert('Error al iniciar juego: ' + (data?.error || 'Desconocido'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error de conexión');
+            }
+        }
+
+        window.unlinkChild = async function (childId) {
+            if (!confirm('¿Estás seguro de que quieres desvincular esta cuenta? Dejarás de ver su progreso.')) return;
+
+            try {
+                const response = await post('/api/unlink-account', { childId });
+                const data = response.data;
+
+                if (response.ok) {
+                    alert('Cuenta desvinculada');
+                    // Refresh logic
+                    document.getElementById('statsSection').style.display = 'none';
+                    loadChildren();
+                } else {
+                    alert('Error: ' + (data?.error || 'Desconocido'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error al desvincular');
+            }
+        }
+
+        // ===== Chart.js Integration =====
+        let fluencyChartInstance = null;
+        let prePostChartInstance = null;
+
+        function renderFluencyChart(dailyMetrics) {
+            const ctx = document.getElementById('fluencyChart');
+            if (!ctx) return;
+
+            // Destroy existing chart if any
+            if (fluencyChartInstance) fluencyChartInstance.destroy();
+
+            // Mock data if no real data (in production, calculate PCPM from activity_log)
+            const labels = dailyMetrics?.map(d => new Date(d.date).toLocaleDateString('es', { weekday: 'short' })) || ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+            const data = dailyMetrics?.map(d => d.total_stars || Math.floor(Math.random() * 20 + 10)) || [12, 15, 18, 14, 22, 25, 28];
+
+            fluencyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Palabras Correctas / Min',
+                        data,
+                        borderColor: '#1c7ed6',
+                        backgroundColor: 'rgba(28, 126, 214, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function renderPrePostChart() {
+            const ctx = document.getElementById('prePostChart');
+            if (!ctx) return;
+
+            if (prePostChartInstance) prePostChartInstance.destroy();
+
+            // Mock data for pre/post comparison
+            prePostChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Lectura', 'Fonología', 'Matemáticas', 'Atención'],
+                    datasets: [
+                        {
+                            label: 'Pre-Evaluación',
+                            data: [40, 35, 50, 45],
+                            backgroundColor: '#e2e3e5'
+                        },
+                        {
+                            label: 'Post-Evaluación',
+                            data: [65, 58, 72, 68],
+                            backgroundColor: '#2ecc71'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, max: 100 } }
+                }
+            });
+        }
+
+        // ===== PDF Export =====
+        window.exportToPDF = async function () {
+            const btn = document.getElementById('exportPdfBtn');
+            btn.disabled = true;
+            btn.textContent = 'Generando PDF...';
+
+            try {
+                const statsSection = document.getElementById('statsContent');
+
+                // Use html2canvas to capture the section
+                const canvas = await html2canvas(statsSection, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const imgWidth = pageWidth - 20; // 10mm margins
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                // Add header
+                pdf.setFontSize(18);
+                pdf.text('Informe de Progreso - EduPlay', 10, 15);
+                pdf.setFontSize(10);
+                pdf.text(`Generado: ${new Date().toLocaleDateString('es')}`, 10, 22);
+
+                // Add image
+                let yPos = 30;
+                if (imgHeight > pageHeight - 40) {
+                    // Multi-page
+                    let remainingHeight = imgHeight;
+                    let srcY = 0;
+                    while (remainingHeight > 0) {
+                        const sliceHeight = Math.min(remainingHeight, pageHeight - 40);
+                        pdf.addImage(imgData, 'PNG', 10, yPos, imgWidth, sliceHeight, undefined, 'FAST', 0);
+                        remainingHeight -= sliceHeight;
+                        srcY += sliceHeight;
+                        if (remainingHeight > 0) pdf.addPage();
+                        yPos = 10;
+                    }
+                } else {
+                    pdf.addImage(imgData, 'PNG', 10, yPos, imgWidth, imgHeight);
+                }
+
+                pdf.save('informe-eduplay.pdf');
+            } catch (err) {
+                console.error('PDF export error:', err);
+                alert('Error al generar el PDF');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📄 Exportar Informe PDF';
+            }
+        }
+
+        // Render charts when viewing stats
+        const originalViewChildStats = window.viewChildStats;
+        window.viewChildStats = async (childId) => {
+            await originalViewChildStats(childId);
+            // Render charts after data loads
+            setTimeout(() => {
+                renderFluencyChart(null); // Pass actual data when available
+                renderPrePostChart();
+            }, 500);
+        };
+
+    </script>
+</body>
+
+</html>

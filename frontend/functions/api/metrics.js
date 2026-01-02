@@ -1,21 +1,13 @@
 // API endpoint para gestionar métricas de actividades
 import { requireDb } from "../lib/d1";
-import { verifySessionToken, readSessionSecret, SESSION_COOKIE_NAME } from "../lib/session";
+import { getSession } from "../lib/session";
 
 // POST: Guardar nueva métrica de actividad
 export const onRequestPost = async ({ request, env }) => {
     try {
-        const secret = readSessionSecret(env);
-        const cookieHeader = request.headers.get("Cookie") || "";
-        const token = cookieHeader.split(';').find(c => c.trim().startsWith(SESSION_COOKIE_NAME + '='))?.split('=')[1];
-
-        if (!token) {
-            return jsonResponse({ error: "No autenticado" }, 401);
-        }
-
-        const session = await verifySessionToken(decodeURIComponent(token), secret);
+        const session = await getSession(request, env);
         if (!session) {
-            return jsonResponse({ error: "Sesión inválida" }, 401);
+            return jsonResponse({ error: "No autenticado" }, 401);
         }
 
         const {
@@ -70,26 +62,33 @@ export const onRequestPost = async ({ request, env }) => {
     }
 };
 
-// GET: Obtener métricas del usuario
+// GET: Obtener métricas del usuario (o hijo vinculado)
 export const onRequestGet = async ({ request, env }) => {
     try {
-        const secret = readSessionSecret(env);
-        const cookieHeader = request.headers.get("Cookie") || "";
-        const token = cookieHeader.split(';').find(c => c.trim().startsWith(SESSION_COOKIE_NAME + '='))?.split('=')[1];
-
-        if (!token) {
-            return jsonResponse({ error: "No autenticado" }, 401);
-        }
-
-        const session = await verifySessionToken(decodeURIComponent(token), secret);
+        const session = await getSession(request, env);
         if (!session) {
-            return jsonResponse({ error: "Sesión inválida" }, 401);
+            return jsonResponse({ error: "No autenticado" }, 401);
         }
 
         const db = requireDb(env);
         const url = new URL(request.url);
         const type = url.searchParams.get('type'); // 'current', 'daily', 'activities', 'complete'
         const days = parseInt(url.searchParams.get('days') || '30');
+        const childId = url.searchParams.get('childId');
+
+        let targetUserId = session.sub;
+
+        // Si se solicita información de un hijo, verificar la vinculación
+        if (childId) {
+            const link = await db.prepare(
+                `SELECT * FROM user_links WHERE supervisor_id = ? AND child_id = ?`
+            ).bind(session.sub, childId).first();
+
+            if (!link) {
+                return jsonResponse({ error: "No tienes permiso para ver este usuario" }, 403);
+            }
+            targetUserId = childId;
+        }
 
         let data = {};
 
@@ -97,15 +96,18 @@ export const onRequestGet = async ({ request, env }) => {
             // Estado actual
             const current = await db.prepare(
                 `SELECT * FROM user_current_state WHERE user_id = ?`
-            ).bind(session.sub).first();
+            ).bind(targetUserId).first();
 
             if (!current) {
-                // Inicializar si no existe
-                await db.prepare(
-                    `INSERT INTO user_current_state (user_id) VALUES (?)`
-                ).bind(session.sub).run();
+                // Si es el propio usuario, inicializamos. Si es hijo, solo devolvemos estructura vacía si no existe.
+                if (targetUserId === session.sub) {
+                    await db.prepare(
+                        `INSERT INTO user_current_state (user_id) VALUES (?)`
+                    ).bind(targetUserId).run();
+                }
+
                 data.current = {
-                    user_id: session.sub,
+                    user_id: targetUserId,
                     total_stars: 0,
                     energy_level: 5.0,
                     current_streak: 0,
@@ -124,7 +126,7 @@ export const onRequestGet = async ({ request, env }) => {
                  WHERE user_id = ? 
                  AND date(metric_date) >= date('now', '-' || ? || ' days')
                  ORDER BY metric_date DESC`
-            ).bind(session.sub, days).all();
+            ).bind(targetUserId, days).all();
             data.daily = dailyMetrics.results;
         }
 
@@ -135,7 +137,7 @@ export const onRequestGet = async ({ request, env }) => {
                  WHERE user_id = ? 
                  ORDER BY completed_at DESC 
                  LIMIT 50`
-            ).bind(session.sub).all();
+            ).bind(targetUserId).all();
             data.activities = activities.results;
         }
 
@@ -143,7 +145,7 @@ export const onRequestGet = async ({ request, env }) => {
             // Vista completa consolidada
             const complete = await db.prepare(
                 `SELECT * FROM student_complete_metrics WHERE user_id = ?`
-            ).bind(session.sub).first();
+            ).bind(targetUserId).first();
             data.complete = complete;
         }
 

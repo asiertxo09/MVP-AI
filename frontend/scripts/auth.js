@@ -46,7 +46,7 @@ const validateRegister = (form) => {
   const password = form.password.value.trim();
   const confirm = form.passwordConfirm.value.trim();
   const consent = form.querySelector("#register-consent");
-  const role =form.role.value
+  const role = form.role.value
   let hasError = false;
 
   clearErrors(form);
@@ -125,23 +125,19 @@ const register = async (payload) => {
 };
 
 const login = async (payload) => {
-    const response = await post("/api/login", payload);
-    // Registrar la sesión en la tabla sessions
-    try {
-        await post("/api/sessions", {
-            username: payload.username // Enviar el username en lugar de id_user
-        });
-    } catch (error) {
-        console.warn("No se pudo registrar la sesión", error);
-    }
-    return response;
+  const response = await post("/api/login", payload);
+  // Registrar la sesión en la tabla sessions
+  try {
+    await post("/api/sessions", {
+      username: payload.username // Enviar el username en lugar de id_user
+    });
+  } catch (error) {
+    console.warn("No se pudo registrar la sesión", error);
+  }
+  return response;
 };
 
-const logout = async () => {
-  await post("/api/logout", {});
-  localStorage.removeItem(SESSION_KEY);
-  window.location.assign("/index.html");
-};
+
 
 const rememberSession = () => {
   localStorage.setItem(SESSION_KEY, "active");
@@ -197,7 +193,7 @@ const initRegisterForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
           onSuccess();
         } else {
           setTimeout(() => {
-            window.location.assign("/assessment.html");
+            window.location.assign("/dashboard-parent.html");
           }, 800);
         }
       } catch (loginError) {
@@ -238,21 +234,34 @@ const initLoginForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
     showStatus(statusElement, "Estamos verificando tus datos…");
 
     try {
-      await login(values);
+      const response = await login(values);
       rememberSession();
       showStatus(
         statusElement,
         "¡Bienvenida/o de nuevo! Redirigiendo…",
         "success",
       );
+
+      const data = await response.json();
+      const role = data.role;
+
       if (typeof onSuccess === "function") {
-        onSuccess();
+        onSuccess(role);
       } else {
         setTimeout(() => {
-          window.location.assign("app/index.html");
+          if (role === 'Padre' || role === 'parent') {
+            window.location.assign("/dashboard-parent.html");
+          } else if (role === 'Médico' || role === 'medical' || role === 'specialist') { // Accommodate likely schema values
+            window.location.assign("/portal-specialist.html");
+          } else if (role === 'Hijo' || role === 'child') {
+            window.location.assign("/app/index.html"); // Or wherever the child app lives
+          } else {
+            window.location.assign("/app/index.html"); // Fallback
+          }
         }, 600);
       }
     } catch (error) {
+      console.error(error); // Debug
       const message =
         error instanceof ApiError
           ? error.message
@@ -280,6 +289,30 @@ const initLogoutButton = (buttonId) => {
   });
 };
 
+// GLOBAL LOGOUT SYNC
+const authChannel = new BroadcastChannel('auth_channel');
+authChannel.onmessage = (event) => {
+  if (event.data === 'logout') {
+    // Received logout signal from another tab
+    console.log("Logged out from another tab");
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem('child_session_token'); // Clear child token too
+    window.location.assign("/index.html");
+  }
+};
+
+const logout = async () => {
+  // Notify other tabs
+  authChannel.postMessage('logout');
+
+  await post("/api/logout", {});
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem('child_session_token');
+  window.location.assign("/index.html");
+};
+
+const SESSION_COOKIE_NAME = SESSION_KEY;
+
 export {
   login,
   register,
@@ -289,4 +322,5 @@ export {
   initLogoutButton,
   requireSession,
   hasActiveSession,
+  SESSION_COOKIE_NAME
 };

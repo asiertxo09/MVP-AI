@@ -24,7 +24,8 @@ export const onRequestPost = async ({ request, env }) => {
         if (password.length < 8) {
             return jsonResponse({ error: "La contraseña debe tener al menos 8 caracteres" }, 400);
         }
-        if (!["Padre", "Hijo", "Médico"].includes(role)) {
+        const validRoles = ["Padre", "Hijo", "Médico", "parent", "child", "specialist", "medical"];
+        if (!validRoles.includes(role)) {
             return jsonResponse({ error: "Rol de usuario no válido" }, 400);
         }
 
@@ -35,6 +36,19 @@ export const onRequestPost = async ({ request, env }) => {
             return jsonResponse({ error: "Usuario ya registrado" }, 409);
         }
 
+        // Map roles to DB values
+        const roleMapping = {
+            'parent': 'Padre',
+            'child': 'Hijo',
+            'specialist': 'Médico',
+            'medical': 'Médico',
+            'Padre': 'Padre',
+            'Hijo': 'Hijo',
+            'Médico': 'Médico'
+        };
+
+        const dbRole = roleMapping[role];
+
         const hashed = await hashPassword(password);
         await createUser(db, {
             username,
@@ -42,7 +56,7 @@ export const onRequestPost = async ({ request, env }) => {
             passwordSalt: hashed.salt,
             passwordIterations: hashed.iterations,
             passwordAlgo: hashed.algorithm,
-            role,
+            role: dbRole,
         });
 
         return jsonResponse({ ok: true }, 201);

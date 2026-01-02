@@ -1,4 +1,4 @@
-a-- Migration: 0005_create_parent_accounts_and_metrics
+-- Migration: 0005_create_parent_accounts_and_metrics
 -- Crea la estructura para cuentas de padres y métricas de juegos
 
 -- Tabla para almacenar las contraseñas de padres asociadas a cuentas de niños

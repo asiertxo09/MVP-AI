@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="es">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,95 +8,100 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-            rel="stylesheet"
-            href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap"
-    />
+        href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles/base.css" />
 </head>
+
 <body>
-<a class="skip-link" href="#loginForm">Saltar al formulario</a>
-<main class="container">
-    <div class="protected-alert" role="alert" id="protectedNotice">
-        ¡Ups! Necesitas iniciar sesión para acceder a la app. Ingresa tus datos
-        o regístrate.
-    </div>
-    <article class="form-card" aria-labelledby="titulo-login">
-        <header>
-            <h1 id="titulo-login">Bienvenida, familia EduPlay</h1>
-            <p>
-                Inicia sesión para continuar con las aventuras y ver el tablero de
-                progreso.
-            </p>
-        </header>
-        <form id="loginForm" novalidate>
-            <div class="status-message" id="loginStatus" role="status" hidden>
-                Iniciando sesión…
+    <a class="skip-link" href="#loginForm">Saltar al formulario</a>
+
+    <header class="site-header" role="banner">
+        <div class="container site-nav">
+            <a class="brand" href="index.html">
+                <span class="brand-logo" aria-hidden="true"><img src="assets/logo.png" alt="Logo de EduPlay" /></span>
+                <span>EduPlay</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="auth-container animate-fade-in">
+            <div class="form-card">
+                <header>
+                    <div id="role-icon" style="font-size: 3rem; text-align: center; margin-bottom: 1rem;">👋</div>
+                    <h1 id="titulo-login">Bienvenida/o</h1>
+                    <p id="subtitulo-login">Inicia sesión para continuar.</p>
+                </header>
+
+                <form id="loginForm" novalidate>
+                    <div class="status-message" id="loginStatus" role="status" hidden>
+                        Iniciando sesión…
+                    </div>
+
+                    <div class="form-field">
+                        <label for="login-username">Usuario o correo</label>
+                        <input class="form-input" type="text" id="login-username" name="username"
+                            autocomplete="username" required />
+                        <span class="error-text" data-error-for="login-username" hidden></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="login-password">Contraseña</label>
+                        <input class="form-input" type="password" id="login-password" name="password"
+                            autocomplete="current-password" required />
+                        <span class="error-text" data-error-for="login-password" hidden></span>
+                        <div style="text-align: right; margin-top: 0.5rem;">
+                            <a href="#" style="font-size: 0.9rem; color: var(--color-sky);">¿Olvidaste tu
+                                contraseña?</a>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 1rem;" type="submit"
+                        id="loginSubmit">
+                        Entrar
+                    </button>
+                </form>
+
+                <p class="link-row">
+                    ¿Aún no tienes cuenta? <a href="/register.html"
+                        style="font-weight: 700; color: var(--color-sky);">Regístrate aquí</a>.
+                </p>
             </div>
-            <div class="form-field">
-                <label for="login-username">Usuario o correo</label>
-                <input
-                        class="input-control"
-                        type="text"
-                        id="login-username"
-                        name="username"
-                        autocomplete="username"
-                        required
-                        maxlength="80"
-                />
-                <span class="helper-text"
-                >Ingresa el usuario que configuraste al registrarte.</span
-                >
-                <span
-                        class="error-text"
-                        data-error-for="login-username"
-                        hidden
-                ></span>
-            </div>
-            <div class="form-field">
-                <label for="login-password">Contraseña</label>
-                <input
-                        class="input-control"
-                        type="password"
-                        id="login-password"
-                        name="password"
-                        autocomplete="current-password"
-                        required
-                        minlength="8"
-                />
-                <span class="helper-text"
-                >Usa una contraseña segura con al menos 8 caracteres.</span
-                >
-                <span
-                        class="error-text"
-                        data-error-for="login-password"
-                        hidden
-                ></span>
-            </div>
-            <button class="btn btn-primary" type="submit" id="loginSubmit">
-                Entrar
-            </button>
-        </form>
-        <p class="link-row">
-            ¿Aún no tienes cuenta? <a href="/register.html">Regístrate</a>.
-        </p>
-    </article>
-</main>
-<script type="module">
-    import { initLoginForm, hasActiveSession} from "../scripts/auth.js";
-    if (hasActiveSession()) {
-        window.location.replace("app/index.html");
-    }
-    const params = new URLSearchParams(window.location.search);
-    const redirect = params.get("redirect");
-    if (redirect === "protected") {
-        const notice = document.getElementById("protectedNotice");
-        notice.style.display = "block";
-    }
-    initLoginForm({
-        formId: "loginForm",
-        statusId: "loginStatus",
-        submitId: "loginSubmit",
-    });
-</script>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initLoginForm, hasActiveSession } from "../scripts/auth.js";
+
+        // Custom greeting based on role
+        const params = new URLSearchParams(window.location.search);
+        const role = params.get("role");
+        const roleConfig = {
+            'parent': { icon: '👨‍👩‍👧', title: 'Portal de Padres', sub: 'Gestiona el progreso de tus hijos.' },
+            'specialist': { icon: '👩‍⚕️', title: 'Portal Especialistas', sub: 'Accede a tus pacientes.' },
+            'child': { icon: '🚀', title: '¡A Jugar!', sub: 'Tu aventura comienza aquí.' }
+        };
+
+        if (role && roleConfig[role]) {
+            document.getElementById('role-icon').textContent = roleConfig[role].icon;
+            document.getElementById('titulo-login').textContent = roleConfig[role].title;
+            document.getElementById('subtitulo-login').textContent = roleConfig[role].sub;
+        }
+
+        if (hasActiveSession()) {
+            // Redirect logic should technically be handled by verifying session type, 
+            // but simple redirect for now if already active.
+            // We'll let the auth script handle precise redirection on login.
+            window.location.replace("/dashboard-parent.html"); // Default fallback
+        }
+
+        initLoginForm({
+            formId: "loginForm",
+            statusId: "loginStatus",
+            submitId: "loginSubmit",
+        });
+    </script>
 </body>
+
 </html>

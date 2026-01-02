@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,7 +25,7 @@
         .login-container {
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             padding: 50px 40px;
             max-width: 450px;
             width: 100%;
@@ -179,6 +180,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="login-container">
         <div class="logo">
@@ -191,26 +193,14 @@
         <form id="loginForm">
             <div class="form-group">
                 <label for="username">Usuario del niño</label>
-                <input
-                    type="text"
-                    id="username"
-                    name="username"
-                    placeholder="Ingresa el usuario de tu hijo/a"
-                    required
-                    autocomplete="username"
-                >
+                <input type="text" id="username" name="username" placeholder="Ingresa el usuario de tu hijo/a" required
+                    autocomplete="username">
             </div>
 
             <div class="form-group">
                 <label for="parentPassword">Contraseña de Padres</label>
-                <input
-                    type="password"
-                    id="parentPassword"
-                    name="parentPassword"
-                    placeholder="Ingresa tu contraseña parental"
-                    required
-                    autocomplete="current-password"
-                >
+                <input type="password" id="parentPassword" name="parentPassword"
+                    placeholder="Ingresa tu contraseña parental" required autocomplete="current-password">
             </div>
 
             <button type="submit" class="btn-submit" id="submitBtn">
@@ -266,7 +256,7 @@
                 if (response.ok) {
                     showAlert('✓ Acceso concedido. Redirigiendo...', 'success');
                     setTimeout(() => {
-                        window.location.href = '/parents.html';
+                        window.location.href = '/dashboard-parent.html';
                     }, 1000);
                 } else {
                     showAlert(data.error || 'Error al iniciar sesión', 'error');
@@ -292,5 +282,5 @@
         }
     </script>
 </body>
-</html>
 
+</html>

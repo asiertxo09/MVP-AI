@@ -35,14 +35,14 @@ export const onRequestPost = async ({ request, env }) => {
         }
 
         const secret = readSessionSecret(env);
-        const { token } = await createSessionToken({ userId: user.id, username: user.username, secret });
+        const { token } = await createSessionToken({ userId: user.id, username: user.username, role: user.role_name, secret });
         const headers = new Headers({
             "Set-Cookie": serializeSessionCookie(token),
             "Cache-Control": "no-store",
             "Content-Type": "application/json"
         });
 
-        return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+        return new Response(JSON.stringify({ ok: true, role: user.role_name }), { status: 200, headers });
     } catch (err) {
         if (err instanceof MissingDatabaseBindingError) {
             console.error("login missing DB", err);

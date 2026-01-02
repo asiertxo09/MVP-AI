@@ -1,20 +1,12 @@
 import { requireDb } from "../lib/d1";
-import { verifySessionToken, readSessionSecret, SESSION_COOKIE_NAME } from "../lib/session";
+import { getSession } from "../lib/session";
 
 // Crear o actualizar perfil del estudiante basado en evaluación
 export const onRequestPost = async ({ request, env }) => {
     try {
-        const secret = readSessionSecret(env);
-        const cookieHeader = request.headers.get("Cookie") || "";
-        const token = cookieHeader.split(';').find(c => c.trim().startsWith(SESSION_COOKIE_NAME + '='))?.split('=')[1];
-
-        if (!token) {
-            return jsonResponse({ error: "No autenticado" }, 401);
-        }
-
-        const session = await verifySessionToken(decodeURIComponent(token), secret);
+        const session = await getSession(request, env);
         if (!session) {
-            return jsonResponse({ error: "Sesión inválida o expirada" }, 401);
+            return jsonResponse({ error: "No autenticado" }, 401);
         }
 
         const db = requireDb(env);
@@ -124,17 +116,9 @@ export const onRequestPost = async ({ request, env }) => {
 // Obtener perfil del estudiante
 export const onRequestGet = async ({ request, env }) => {
     try {
-        const secret = readSessionSecret(env);
-        const cookieHeader = request.headers.get("Cookie") || "";
-        const token = cookieHeader.split(';').find(c => c.trim().startsWith(SESSION_COOKIE_NAME + '='))?.split('=')[1];
-
-        if (!token) {
-            return jsonResponse({ error: "No autenticado" }, 401);
-        }
-
-        const session = await verifySessionToken(decodeURIComponent(token), secret);
+        const session = await getSession(request, env);
         if (!session) {
-            return jsonResponse({ error: "Sesión inválida o expirada" }, 401);
+            return jsonResponse({ error: "No autenticado" }, 401);
         }
 
         const db = requireDb(env);

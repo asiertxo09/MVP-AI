@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Caza-Fonemas · EduPlay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../styles/gamification.css">
+    <style>
+        :root {
+            --bg: #fefcf6;
+            --card-bg: #ffffff;
+            --correct: #2ecc71;
+            --wrong: #e74c3c;
+            --accent: #f1c40f;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Baloo 2', cursive, sans-serif;
+            background: linear-gradient(180deg, #bfe4ff 0%, #fefcf6 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: var(--card-bg);
+            border-radius: 28px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .game-header h2 {
+            font-size: 1.8rem;
+            color: #082a41;
+            margin-bottom: 8px;
+        }
+
+        .game-header p {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 16px;
+        }
+
+        .score-display {
+            background: #eef7ff;
+            padding: 8px 16px;
+            border-radius: 16px;
+            display: inline-block;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .phoneme-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .phoneme-card {
+            background: #faf7ef;
+            border: 4px solid #e8e1d3;
+            border-radius: 20px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .phoneme-card:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .phoneme-card:active {
+            transform: scale(0.97);
+        }
+
+        .phoneme-card img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+
+        .card-label {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #333;
+            text-transform: capitalize;
+        }
+
+        /* States */
+        .phoneme-card.correct {
+            border-color: var(--correct);
+            background: #e8f8f0;
+        }
+
+        .phoneme-card.correct::after {
+            content: '✓';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 1.5rem;
+            color: var(--correct);
+        }
+
+        .phoneme-card.wrong {
+            animation: shake 0.3s ease;
+            border-color: var(--wrong);
+        }
+
+        .phoneme-card.disabled {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-8px);
+            }
+
+            75% {
+                transform: translateX(8px);
+            }
+        }
+
+        .back-btn {
+            background: #1c7ed6;
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .back-btn:hover {
+            background: #1567b3;
+        }
+
+        .loading {
+            font-size: 1.2rem;
+            padding: 40px;
+            color: #555;
+        }
+
+        /* Win Modal */
+        .win-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .win-content {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            text-align: center;
+        }
+
+        .win-content h2 {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .win-content p {
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+
+        .win-content button {
+            background: var(--accent);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 8px;
+        }
+
+        .win-content button:hover {
+            background: #d4a200;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game" class="game-container">
+        <p class="loading">Cargando...</p>
+    </div>
+
+    <script type="module">
+        import { PhonemeHuntGame } from '../scripts/phoneme-game.js';
+
+        // Get phoneme from URL params or default to 'R'
+        const params = new URLSearchParams(window.location.search);
+        const phoneme = params.get('phoneme') || 'R';
+
+        const game = new PhonemeHuntGame('game');
+        game.init(phoneme);
+    </script>
+</body>
+
+</html>

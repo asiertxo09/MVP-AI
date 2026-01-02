@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="es">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,130 +8,116 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-            rel="stylesheet"
-            href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap"
-    />
+        href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles/base.css" />
 </head>
+
 <body>
-<a class="skip-link" href="#registerForm">Saltar al formulario</a>
-<main class="container">
-    <article class="form-card" aria-labelledby="titulo-registro">
-        <header>
-            <h1 id="titulo-registro">Activa tu cuenta EduPlay</h1>
-            <p>
-                Solo necesitas un usuario y contraseña. Después podrás sumar
-                perfiles de niñas y niños desde la app.
-            </p>
-        </header>
-        <form id="registerForm" novalidate>
-            <div class="status-message" id="registerStatus" role="status" hidden>
-                Enviando datos…
-            </div>
-            <div class="form-field">
-                <label for="register-username">Usuario o correo</label>
-                <input
-                        class="input-control"
-                        type="email"
-                        id="register-username"
-                        name="username"
-                        autocomplete="email"
-                        inputmode="email"
-                        required
-                        maxlength="80"
-                />
-                <span class="helper-text"
-                >Recomendamos usar un correo válido para recuperar tu
-              cuenta.</span
-                >
-                <span
-                        class="error-text"
-                        data-error-for="register-username"
-                        hidden
-                ></span>
-            </div>
-            <div class="form-field">
-                <label for="register-role">Tipo de usuario</label>
-                <select class="input-control" id="register-role" name="role" required>
-                    <option value="" disabled selected>Selecciona un rol</option>
-                    <option value="Padre">Padre</option>
-                    <option value="Hijo">Hijo</option>
-                    <option value="Médico">Médico</option>
-                </select>
-                <span class="error-text" data-error-for="register-role" hidden></span>
-            </div>
-            <div class="form-field">
-                <label for="register-password">Contraseña</label>
-                <input
-                        class="input-control"
-                        type="password"
-                        id="register-password"
-                        name="password"
-                        autocomplete="new-password"
-                        required
-                        minlength="8"
-                />
-                <span class="helper-text"
-                >Debe tener al menos 8 caracteres y combinar letras y
-              números.</span
-                >
-                <span
-                        class="error-text"
-                        data-error-for="register-password"
-                        hidden
-                ></span>
-            </div>
-            <div class="form-field">
-                <label for="register-confirm">Confirma tu contraseña</label>
-                <input
-                        class="input-control"
-                        type="password"
-                        id="register-confirm"
-                        name="passwordConfirm"
-                        autocomplete="new-password"
-                        required
-                        minlength="8"
-                />
-                <span class="helper-text"
-                >Escribe la misma contraseña para asegurarnos que no hay
-              errores.</span
-                >
-                <span
-                        class="error-text"
-                        data-error-for="register-confirm"
-                        hidden
-                ></span>
-            </div>
-            <div class="form-field">
-                <label>
-                    <input type="checkbox" id="register-consent" required />
-                    <span
-                    >Confirmo que cuento con autorización familiar para crear esta
-                cuenta.</span
-                    >
-                </label>
-                <span
-                        class="error-text"
-                        data-error-for="register-consent"
-                        hidden
-                ></span>
-            </div>
-            <button class="btn btn-primary" type="submit" id="registerSubmit">
-                Crear cuenta
-            </button>
-        </form>
-        <p class="link-row">
-            ¿Ya tienes cuenta? <a href="/login.html">Inicia sesión</a>.
-        </p>
-    </article>
-</main>
-<script type="module">
-    import { initRegisterForm } from "../scripts/auth.js";
-    initRegisterForm({
-        formId: "registerForm",
-        statusId: "registerStatus",
-        submitId: "registerSubmit",
-    });
-</script>
+    <a class="skip-link" href="#registerForm">Saltar al formulario</a>
+
+    <header class="site-header" role="banner">
+        <div class="container site-nav">
+            <a class="brand" href="index.html">
+                <span class="brand-logo" aria-hidden="true"><img src="assets/logo.png" alt="Logo de EduPlay" /></span>
+                <span>EduPlay</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="auth-container animate-fade-in">
+            <article class="form-card" aria-labelledby="titulo-registro" style="max-width: 520px;">
+                <header>
+                    <h1 id="titulo-registro">Crea tu cuenta</h1>
+                    <p>Elige tu perfil para comenzar.</p>
+                </header>
+
+                <form id="registerForm" novalidate>
+                    <div class="status-message" id="registerStatus" role="status" hidden>
+                        Enviando datos…
+                    </div>
+
+                    <div class="form-field">
+                        <label>Soy...</label>
+                        <div class="role-select">
+                            <div class="role-option" onclick="selectRole('Padre', this)">
+                                <span class="role-icon">👨‍👩‍👧</span>
+                                <strong>Padre/Madre</strong>
+                            </div>
+                            <div class="role-option" onclick="selectRole('Médico', this)">
+                                <span class="role-icon">👩‍⚕️</span>
+                                <strong>Especialista</strong>
+                            </div>
+                            <!-- Child registration usually handled by parent, but keeping for completeness if standalone -->
+                            <!-- <div class="role-option" onclick="selectRole('Hijo', this)">
+                            <span class="role-icon">🚀</span>
+                            <strong>Hijo</strong>
+                        </div> -->
+                        </div>
+                        <input type="hidden" id="register-role" name="role" required />
+                        <span class="error-text" data-error-for="register-role" hidden></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="register-username">Usuario o correo</label>
+                        <input class="form-input" type="email" id="register-username" name="username"
+                            autocomplete="email" required />
+                        <span class="error-text" data-error-for="register-username" hidden></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="register-password">Contraseña</label>
+                        <input class="form-input" type="password" id="register-password" name="password"
+                            autocomplete="new-password" required minlength="8" />
+                        <span class="helper-text">Mínimo 8 caracteres.</span>
+                        <span class="error-text" data-error-for="register-password" hidden></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="register-confirm">Confirma tu contraseña</label>
+                        <input class="form-input" type="password" id="register-confirm" name="passwordConfirm"
+                            autocomplete="new-password" required />
+                        <span class="error-text" data-error-for="register-confirm" hidden></span>
+                    </div>
+
+                    <div class="form-field">
+                        <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" id="register-consent" required style="margin-top: 0.3rem;" />
+                            <span style="font-weight: 400; font-size: 0.95rem;">Acepto los términos y condiciones y
+                                confirmo que tengo autorización.</span>
+                        </label>
+                        <span class="error-text" data-error-for="register-consent" hidden></span>
+                    </div>
+
+                    <button class="btn btn-primary" type="submit" id="registerSubmit" style="width: 100%;">
+                        Crear cuenta
+                    </button>
+                </form>
+                <p class="link-row">
+                    ¿Ya tienes cuenta? <a href="/login.html" style="font-weight: 700; color: var(--color-sky);">Inicia
+                        sesión</a>.
+                </p>
+            </article>
+        </div>
+    </main>
+
+    <script>
+        function selectRole(role, element) {
+            document.getElementById('register-role').value = role;
+            document.querySelectorAll('.role-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+    </script>
+
+    <script type="module">
+        import { initRegisterForm } from "../scripts/auth.js";
+        initRegisterForm({
+            formId: "registerForm",
+            statusId: "registerStatus",
+            submitId: "registerSubmit",
+        });
+    </script>
 </body>
+
 </html>

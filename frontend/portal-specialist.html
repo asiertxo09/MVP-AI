@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portal Especialistas · EduPlay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles/base.css" />
+    <style>
+        .patient-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s;
+            cursor: pointer;
+            border-left: 5px solid var(--color-purple);
+        }
+
+        .patient-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .patient-info h3 {
+            margin-bottom: 0.2rem;
+        }
+
+        .patient-info p {
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(16, 37, 66, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 500px;
+            box-shadow: var(--shadow-strong);
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="site-header" role="banner">
+        <div class="container site-nav">
+            <a class="brand" href="index.html">
+                <span class="brand-logo" aria-hidden="true" style="background: var(--color-purple);"><img
+                        src="assets/logo.png" alt="Logo de EduPlay" /></span>
+                <span>Portal Especialistas</span>
+            </a>
+            <div class="flex">
+                <span class="btn btn-outline" style="border: none; pointer-events: none;">Dr/a. Especialista</span>
+                <button class="btn btn-secondary" id="logoutBtn">Cerrar Sesión</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container" style="padding-top: 3rem;">
+        <!-- Welcome Section -->
+        <section class="animate-fade-in">
+            <div class="flex"
+                style="justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap;">
+                <div>
+                    <h1>Mis Pacientes</h1>
+                    <p>Seguimiento clínico y asignación de tareas.</p>
+                </div>
+                <button class="btn btn-primary" onclick="openLinkModal()"
+                    style="background: var(--color-purple); box-shadow: 0 4px 15px rgba(142, 68, 173, 0.4);">+ Vincular
+                    Paciente</button>
+            </div>
+
+            <!-- Patients Grid -->
+            <div class="grid" id="patientsGrid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+                <!-- Loading State -->
+                <div class="glass-card text-center">
+                    <p>Cargando pacientes...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Link Account Modal -->
+    <div class="modal" id="linkModal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 1rem;">Vincular Paciente</h2>
+            <p>Ingresa las credenciales del paciente para acceder a sus métricas.</p>
+            <form id="linkForm">
+                <div class="form-field">
+                    <label>Usuario del Paciente</label>
+                    <input class="form-input" name="childUsername" required placeholder="ej. paciente01">
+                </div>
+                <div class="form-field">
+                    <label>Contraseña del Paciente</label>
+                    <input class="form-input" type="password" name="childPassword" required placeholder="********">
+                </div>
+                <div class="status-message error" id="linkError" hidden></div>
+                <div class="status-message success" id="linkSuccess" hidden>¡Paciente vinculado!</div>
+                <div class="flex" style="margin-top: 1.5rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeLinkModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"
+                        style="background: var(--color-purple);">Vincular</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initLogoutButton, requireSession } from "./scripts/auth.js";
+        import { post, get } from "./scripts/api-client.js";
+
+        requireSession();
+        initLogoutButton("logoutBtn");
+
+        async function loadPatients() {
+            const grid = document.getElementById('patientsGrid');
+            try {
+                const data = await get("/api/children"); // Reusing same endpoint as it returns linked children/patients
+                const patients = data.children || [];
+
+                if (patients.length === 0) {
+                    grid.innerHTML = `
+                    <div class="glass-card text-center" style="grid-column: 1 / -1;">
+                        <span style="font-size: 3rem;">📋</span>
+                        <h3>No hay pacientes vinculados</h3>
+                        <p>Vincula un paciente para comenzar el seguimiento.</p>
+                    </div>
+                `;
+                    return;
+                }
+
+                grid.innerHTML = patients.map(p => `
+                <div class="patient-card animate-fade-in">
+                    <div class="flex" style="align-items: center;">
+                        <div style="background: var(--color-purple); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 1.2rem;">
+                            ${p.username.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div class="patient-info">
+                            <h3>${p.username}</h3>
+                            <p>Última sesión: ${p.last_activity_date ? new Date(p.last_activity_date).toLocaleDateString() : 'Sin actividad'}</p>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-weight: 800; font-size: 1.2rem; color: var(--color-purple);">${p.energy_level ? p.energy_level.toFixed(1) : '-'}</div>
+                        <div style="font-size: 0.8rem; color: var(--color-muted);">Nivel Energía</div>
+                    </div>
+                </div>
+            `).join('');
+
+            } catch (error) {
+                console.error(error);
+                grid.innerHTML = '<div class="status-message error">Error al cargar datos.</div>';
+            }
+        }
+
+        // Modal Logic
+        window.openLinkModal = () => document.getElementById('linkModal').classList.add('active');
+        window.closeLinkModal = () => document.getElementById('linkModal').classList.remove('active');
+
+        document.getElementById('linkForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            const errorEl = document.getElementById('linkError');
+            const successEl = document.getElementById('linkSuccess');
+
+            errorEl.hidden = true;
+            successEl.hidden = true;
+
+            try {
+                await post('/api/link-account', data);
+                successEl.hidden = false;
+                setTimeout(() => {
+                    closeLinkModal();
+                    loadPatients();
+                }, 1000);
+            } catch (err) {
+                errorEl.textContent = err.message || "Error al vincular cuenta";
+                errorEl.hidden = false;
+            }
+        });
+
+        // Close modal on click outside
+        document.getElementById('linkModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('linkModal')) closeLinkModal();
+        });
+
+        loadPatients();
+    </script>
+</body>
+
+</html>

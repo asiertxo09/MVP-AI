@@ -34,7 +34,7 @@ export const onRequestPost = async ({ request, env }) => {
     }
 };
 
-// Obtener evaluación del usuario
+// Obtener evaluación del usuario (o hijo vinculado)
 export const onRequestGet = async ({ request, env }) => {
     try {
         const secret = readSessionSecret(env);
@@ -53,12 +53,27 @@ export const onRequestGet = async ({ request, env }) => {
         const db = requireDb(env);
         const url = new URL(request.url);
         const assessmentId = url.searchParams.get('id');
+        const childId = url.searchParams.get('childId');
+
+        let targetUserId = session.sub;
+
+        // Si se solicita información de un hijo, verificar la vinculación
+        if (childId) {
+            const link = await db.prepare(
+                `SELECT * FROM user_links WHERE supervisor_id = ? AND child_id = ?`
+            ).bind(session.sub, childId).first();
+
+            if (!link) {
+                return jsonResponse({ error: "No tienes permiso para ver este usuario" }, 403);
+            }
+            targetUserId = childId;
+        }
 
         if (assessmentId) {
             // Obtener evaluación específica con todos los detalles
             const assessment = await db.prepare(
                 `SELECT * FROM initial_assessments WHERE id = ? AND user_id = ?`
-            ).bind(assessmentId, session.sub).first();
+            ).bind(assessmentId, targetUserId).first();
 
             if (!assessment) {
                 return jsonResponse({ error: "Evaluación no encontrada" }, 404);
@@ -89,7 +104,7 @@ export const onRequestGet = async ({ request, env }) => {
             // Obtener todas las evaluaciones del usuario
             const assessments = await db.prepare(
                 `SELECT * FROM initial_assessments WHERE user_id = ? ORDER BY assessment_date DESC`
-            ).bind(session.sub).all();
+            ).bind(targetUserId).all();
 
             return jsonResponse({ assessments: assessments.results });
         }

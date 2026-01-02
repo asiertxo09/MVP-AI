@@ -46,6 +46,12 @@ async function apiFetch(path, options = {}) {
     }
   }
 
+  // CHECK FOR CHILD TOKEN (Simultaneous Session Support)
+  const childToken = sessionStorage.getItem('child_session_token');
+  if (childToken) {
+    requestInit.headers['Authorization'] = `Bearer ${childToken}`;
+  }
+
   let response;
   try {
     response = await fetch(path, requestInit);

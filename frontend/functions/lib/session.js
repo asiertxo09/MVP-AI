@@ -10,13 +10,13 @@ export function readSessionSecret(env) {
     return secret;
 }
 
-export async function createSessionToken({ userId, username, secret, ttlSeconds = SESSION_TTL_SECONDS }) {
+export async function createSessionToken({ userId, username, role, secret, ttlSeconds = SESSION_TTL_SECONDS }) {
     if (!userId) throw new Error("userId is required to create a session token");
     if (!username) throw new Error("username is required to create a session token");
     if (!secret) throw new Error("secret is required to create a session token");
 
     const exp = Math.floor(Date.now() / 1000) + Math.max(1, Math.floor(ttlSeconds));
-    const payload = { sub: userId, u: username, exp };
+    const payload = { sub: userId, u: username, role, exp };
     const token = await signPayload(payload, secret);
     return { token, payload, expiresAt: exp };
 }
@@ -83,4 +83,34 @@ function hexToBytes(hex) {
 
 function bytesToHex(bytes) {
     return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export async function getSession(request, env) {
+    const secret = readSessionSecret(env);
+
+    // 1. Check Authorization Header (Bearer Token)
+    const authHeader = request.headers.get("Authorization");
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.substring(7);
+        const session = await verifySessionToken(token, secret);
+        if (session) return session;
+    }
+
+    // 2. Check Cookie
+    const cookieHeader = request.headers.get("Cookie");
+    if (!cookieHeader) return null;
+
+    // Parse cookies
+    const cookies = {};
+    cookieHeader.split(';').forEach(cookie => {
+        const [name, ...rest] = cookie.trim().split('=');
+        if (name && rest) {
+            cookies[name] = decodeURIComponent(rest.join('=')); // Handle values with =
+        }
+    });
+
+    const token = cookies[SESSION_COOKIE_NAME];
+    if (!token) return null;
+
+    return verifySessionToken(token, secret);
 }

@@ -1,0 +1,84 @@
+/* Placeholders.css
+   Fallback styles for missing gamification assets.
+   Import this in your main CSS or HTML to use these variables.
+*/
+
+:root {
+    /* Colors representing assets */
+    --asset-node-locked-color: #bdc3c7;
+    /* Gray */
+    --asset-node-current-color: #f1c40f;
+    /* Yellow */
+    --asset-node-done-color: #2ecc71;
+    /* Green */
+
+    --asset-badge-star-color: #e67e22;
+    /* Orange */
+
+    --asset-animal-frog-color: #27ae60;
+    --asset-animal-cat-color: #d35400;
+    --asset-object-rock-color: #7f8c8d;
+    --asset-flower-rose-color: #c0392b;
+
+    --asset-ui-heart-color: #e74c3c;
+    --asset-ui-coin-color: #f1c40f;
+}
+
+/* Helper classes to visualize placeholders for debugging */
+.placeholder-asset {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.8rem;
+    color: white;
+    border-radius: 8px;
+    background-color: var(--asset-node-locked-color);
+    /* Default */
+    width: 64px;
+    height: 64px;
+}
+
+.placeholder-node-locked {
+    background-color: var(--asset-node-locked-color);
+}
+
+.placeholder-node-current {
+    background-color: var(--asset-node-current-color);
+}
+
+.placeholder-node-done {
+    background-color: var(--asset-node-done-color);
+}
+
+.placeholder-badge {
+    background-color: var(--asset-badge-star-color);
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+.placeholder-frog {
+    background-color: var(--asset-animal-frog-color);
+}
+
+.placeholder-cat {
+    background-color: var(--asset-animal-cat-color);
+}
+
+.placeholder-rock {
+    background-color: var(--asset-object-rock-color);
+}
+
+.placeholder-rose {
+    background-color: var(--asset-flower-rose-color);
+}
+
+.placeholder-heart {
+    background-color: var(--asset-ui-heart-color);
+    clip-path: path("M10,30 A20,20 0,0,1 50,30 A20,20 0,0,1 90,30 Q90,60 50,90 Q10,60 10,30 Z");
+}
+
+.placeholder-coin {
+    background-color: var(--asset-ui-coin-color);
+    border-radius: 50%;
+    border: 4px solid #f39c12;
+}

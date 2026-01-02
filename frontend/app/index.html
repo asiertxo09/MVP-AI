@@ -289,188 +289,233 @@
             cursor: not-allowed;
         }
     </style>
+    <!-- Gamification Styles -->
+    <link rel="stylesheet" href="../styles/gamification.css">
+    <link rel="stylesheet" href="../styles/placeholders.css">
     <!-- Markdown renderer (subset). Si prefieres parser propio, quita este script y usa un renderizador seguro a medida. -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body>
-<main class="app" role="main" aria-label="AI EduPlay">
-    <header>
-        <h1>🧸 AI EduPlay</h1>
-        <div class="pill" id="status">Modo adaptativo con IA</div>
-        <div class="pill">
-            <a href=../index.html style="color:inherit;text-decoration:none;">Inicio</a>
-        </div>
-        <button id="logout-button" class="pill" style="border:none; cursor:pointer;">Cerrar sesión</button>
-    </header>
+    <main class="app" role="main" aria-label="AI EduPlay">
+        <header>
+            <h1>🧸 AI EduPlay</h1>
+            <div class="pill" id="status">Modo adaptativo con IA</div>
+            <div class="pill">
+                <a href="#" onclick="exitToParentPortal()" style="color:inherit;text-decoration:none;">Portal Padres</a>
+            </div>
+            <div class="pill">
+                <a href="../index.html" style="color:inherit;text-decoration:none;">Inicio</a>
+            </div>
+            <button id="logout-button" class="pill" style="border:none; cursor:pointer;">Cerrar sesión</button>
+        </header>
 
-    <section class="screen" id="screen"></section>
+        <section class="screen" id="screen"></section>
 
-    <footer>
-        <div class="levels" id="levels">Adaptándose...</div>
-        <button class="small" id="btnHome">Inicio</button>
-    </footer>
-</main>
+        <footer>
+            <div class="levels" id="levels">Adaptándose...</div>
+            <button class="small" id="btnHome">Inicio</button>
+        </footer>
+    </main>
 
-<script type="module">
-    // ===== Config IA (backend separado) =====
-    const USE_AI = true;
-    const API_URL = 'https://eduplay-backend.onrender.com/api/generate';
-    const IMAGE_URL = 'https://eduplay-backend.onrender.com/image';
-    const NODE_URL = 'https://eduplay-backend.onrender.com/api';
+    <script type="module">
+        // ===== Config IA (backend separado) =====
+        const USE_AI = true;
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-    import { hasActiveSession, initLogoutButton } from '../scripts/auth.js';
+        // Python Backend (FastAPI on port 5001 locally)
+        const API_URL = isLocal
+            ? 'http://localhost:5001/api/generate'
+            : 'https://eduplay-backend.onrender.com/api/generate';
 
-    if (!hasActiveSession()) {
-        window.location.replace('/index.html');
-    }
+        const IMAGE_URL = isLocal
+            ? 'http://localhost:5001/image'
+            : 'https://eduplay-backend.onrender.com/image';
 
-    initLogoutButton('logout-button');
+        // Node Backend (Cloudflare Pages Functions or separate service)
+        // Locally, wrangler serves functions at /api
+        const NODE_URL = isLocal
+            ? '/api'
+            : 'https://eduplay-backend.onrender.com/api';
 
-    async function generateWithAI(prompt) {
-        if (!USE_AI) return null;
-        try {
-            const res = await fetch(API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt })
-            });
-            if (!res.ok) throw new Error('IA no disponible');
-            const data = await res.json();
-            return (data.text || '').trim();
-        } catch (e) {
-            console.warn('IA error', e);
-            return null;
+        // Handle Child Token from URL (Simultaneous Session)
+        const urlParams = new URLSearchParams(window.location.search);
+        const childToken = urlParams.get('child_token');
+        if (childToken) {
+            sessionStorage.setItem('child_session_token', childToken);
+            // We also set the session key in localStorage so hasActiveSession() passes
+            // This is a bit of a hack since hasActiveSession checks cookie presence via this flag
+            // But since api-client prefers the token, it works out.
+            localStorage.setItem('eduplay_session', 'active');
+
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
-    }
 
-    async function generateImage(prompt, style) {
-        // Try Flask image service first (port 5001), then fallback to Node service (port 3001)
-        const payload = { prompt, style };
-        // Primary: Flask
-        try {
-            const res = await fetch(IMAGE_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) throw new Error('flask fail');
-            return await res.blob();
-        } catch (e) {
-            console.warn('Flask image error, trying Node fallback', e);
+        import { hasActiveSession, initLogoutButton } from '../scripts/auth.js';
+
+        if (!hasActiveSession()) {
+            window.location.replace('/index.html');
         }
-        // Fallback: Node backend at /api/image (combines style server-side if supported)
-        try {
-            const res = await fetch('http://localhost:3001/api/image', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'image/png' },
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) throw new Error('node fail');
-            return await res.blob();
-        } catch (e2) {
-            console.warn('Node image error', e2);
-            return null;
+
+        initLogoutButton('logout-button');
+
+        window.exitToParentPortal = function () {
+            // Clear child session token
+            sessionStorage.removeItem('child_session_token');
+            localStorage.removeItem('eduplay_session'); // Assuming this was set to 'active'
+
+            // Navigate
+            window.location.href = '/dashboard-parent.html';
         }
-    }
 
-    // Markdown seguro (ya integrado). Si se requiere sanitizar, integrar DOMPurify.
-    marked.setOptions({ mangle: false, headerIds: false, breaks: true });
-    function renderMarkdown(text) {
-        if (!text) return '';
-        return `<div class="md">${marked.parse(text)}</div>`;
-    }
-    async function aiTip(prompt) {
-        const t = await generateWithAI(prompt);
-        return t ? renderMarkdown(t) : '';
-    }
-
-    // ===== Estado simplificado - solo memoria de interacciones =====
-    const state = {
-        // Memoria de últimas 10 interacciones para cada sección
-        interactions: {
-            math: [],
-            write: [],
-            speak: []
+        async function generateWithAI(prompt) {
+            if (!USE_AI) return null;
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                if (!res.ok) throw new Error('IA no disponible');
+                const data = await res.json();
+                return (data.text || '').trim();
+            } catch (e) {
+                console.warn('IA error', e);
+                return null;
+            }
         }
-    };
 
-    const INTERACTION_LIMIT = 10; // Guardamos las últimas 10 interacciones
+        async function generateImage(prompt, style) {
+            // Try Flask image service first (port 5001), then fallback to Node service (port 3001)
+            const payload = { prompt, style };
+            // Primary: Flask
+            try {
+                const res = await fetch(IMAGE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('flask fail');
+                return await res.blob();
+            } catch (e) {
+                console.warn('Flask image error, trying Node fallback', e);
+            }
+            // Fallback: Node backend at /api/image (combines style server-side if supported)
+            try {
+                // Use dynamic NODE_URL derived from environment
+                const url = `${NODE_URL}/image`;
 
-    const screen = document.getElementById('screen');
-    const btnHome = document.getElementById('btnHome');
-    const levelsBox = document.getElementById('levels');
-    btnHome.addEventListener('click', renderHome);
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'image/png' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('node fail');
+                return await res.blob();
+            } catch (e2) {
+                console.warn('Node image error', e2);
+                return null;
+            }
+        }
 
-    function updateStatusUI() {
-        const totalInteractions = Object.values(state.interactions).reduce((sum, arr) => sum + arr.length, 0);
-        levelsBox.textContent = `${totalInteractions} interacciones registradas`;
-    }
+        // Markdown seguro (ya integrado). Si se requiere sanitizar, integrar DOMPurify.
+        marked.setOptions({ mangle: false, headerIds: false, breaks: true });
+        function renderMarkdown(text) {
+            if (!text) return '';
+            return `<div class="md">${marked.parse(text)}</div>`;
+        }
+        async function aiTip(prompt) {
+            const t = await generateWithAI(prompt);
+            return t ? renderMarkdown(t) : '';
+        }
 
-    function saveInteraction(section, challenge, userResponse, isCorrect) {
-        const interaction = {
-            challenge,
-            userResponse,
-            isCorrect,
-            timestamp: Date.now()
+        // ===== Estado simplificado - solo memoria de interacciones =====
+        const state = {
+            // Memoria de últimas 10 interacciones para cada sección
+            interactions: {
+                math: [],
+                write: [],
+                speak: []
+            }
         };
 
-        state.interactions[section].push(interaction);
-        if (state.interactions[section].length > INTERACTION_LIMIT) {
-            state.interactions[section].shift(); // Mantener solo las últimas 10
+        const INTERACTION_LIMIT = 10; // Guardamos las últimas 10 interacciones
+
+        const screen = document.getElementById('screen');
+        const btnHome = document.getElementById('btnHome');
+        const levelsBox = document.getElementById('levels');
+        btnHome.addEventListener('click', renderHome);
+
+        function updateStatusUI() {
+            const totalInteractions = Object.values(state.interactions).reduce((sum, arr) => sum + arr.length, 0);
+            levelsBox.textContent = `${totalInteractions} interacciones registradas`;
         }
-        updateStatusUI();
 
-        // Enviar métrica a la base de datos
-        saveMetricToDatabase(section, challenge, userResponse, isCorrect);
-    }
-
-    // Nueva función para guardar métricas en la base de datos
-    async function saveMetricToDatabase(activityType, challenge, userResponse, isCorrect) {
-        try {
-            const activityNames = {
-                'math': 'Problema Matemático',
-                'write': 'Ejercicio de Escritura',
-                'speak': 'Práctica de Pronunciación'
+        function saveInteraction(section, challenge, userResponse, isCorrect) {
+            const interaction = {
+                challenge,
+                userResponse,
+                isCorrect,
+                timestamp: Date.now()
             };
 
-            const starsEarned = isCorrect ? (activityType === 'math' ? 3 : 2) : 0;
-            const energyChange = isCorrect ? 1 : -1;
+            state.interactions[section].push(interaction);
+            if (state.interactions[section].length > INTERACTION_LIMIT) {
+                state.interactions[section].shift(); // Mantener solo las últimas 10
+            }
+            updateStatusUI();
 
-            await fetch('/api/metrics', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    activityType,
-                    activityName: activityNames[activityType] || activityType,
-                    starsEarned,
-                    energyChange,
-                    isCorrect,
-                    challengeData: { challenge },
-                    userResponse: { response: userResponse },
-                    metadata: {
-                        timestamp: Date.now(),
-                        interactionCount: state.interactions[activityType].length
-                    }
-                })
-            });
-        } catch (error) {
-            console.warn('Error guardando métrica:', error);
-            // No bloquear la experiencia del usuario si falla el guardado
+            // Enviar métrica a la base de datos
+            saveMetricToDatabase(section, challenge, userResponse, isCorrect);
         }
-    }
 
-    // ===== Generación dinámica de contenido con IA =====
-    async function generateMathProblem() {
-        const interactions = state.interactions.math;
-        const interactionContext = interactions.length > 0
-            ? `Historial de últimas interacciones matemáticas: ${JSON.stringify(interactions)}`
-            : "Sin historial previo en matemáticas.";
+        // Nueva función para guardar métricas en la base de datos
+        async function saveMetricToDatabase(activityType, challenge, userResponse, isCorrect) {
+            try {
+                const activityNames = {
+                    'math': 'Problema Matemático',
+                    'write': 'Ejercicio de Escritura',
+                    'speak': 'Práctica de Pronunciación'
+                };
 
-        const prompt = `Eres un tutor de matemáticas adaptativo para niños de 5-12 años.
+                const starsEarned = isCorrect ? (activityType === 'math' ? 3 : 2) : 0;
+                const energyChange = isCorrect ? 1 : -1;
+
+                await fetch('/api/metrics', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        activityType,
+                        activityName: activityNames[activityType] || activityType,
+                        starsEarned,
+                        energyChange,
+                        isCorrect,
+                        challengeData: { challenge },
+                        userResponse: { response: userResponse },
+                        metadata: {
+                            timestamp: Date.now(),
+                            interactionCount: state.interactions[activityType].length
+                        }
+                    })
+                });
+            } catch (error) {
+                console.warn('Error guardando métrica:', error);
+                // No bloquear la experiencia del usuario si falla el guardado
+            }
+        }
+
+        // ===== Generación dinámica de contenido con IA =====
+        async function generateMathProblem() {
+            const interactions = state.interactions.math;
+            const interactionContext = interactions.length > 0
+                ? `Historial de últimas interacciones matemáticas: ${JSON.stringify(interactions)}`
+                : "Sin historial previo en matemáticas.";
+
+            const prompt = `Eres un tutor de matemáticas adaptativo para niños de 5-12 años.
 
 ${interactionContext}
 
@@ -493,48 +538,48 @@ Progresión sugerida de dificultad:
 
 Evita repetir problemas similares del historial.`;
 
-        try {
-            const response = await generateWithAI(prompt);
-            const problemData = JSON.parse(response);
-            return problemData;
-        } catch (e) {
-            console.warn('Error generando problema con IA, usando fallback:', e);
-            return generateFallbackMathProblem();
+            try {
+                const response = await generateWithAI(prompt);
+                const problemData = JSON.parse(response);
+                return problemData;
+            } catch (e) {
+                console.warn('Error generando problema con IA, usando fallback:', e);
+                return generateFallbackMathProblem();
+            }
         }
-    }
 
-    function generateFallbackMathProblem() {
-        // Fallback simple basado en el rendimiento reciente
-        const recentCorrect = state.interactions.math.slice(-5).filter(i => i.isCorrect).length;
-        const max = recentCorrect >= 4 ? 20 : (recentCorrect >= 2 ? 10 : 5);
+        function generateFallbackMathProblem() {
+            // Fallback simple basado en el rendimiento reciente
+            const recentCorrect = state.interactions.math.slice(-5).filter(i => i.isCorrect).length;
+            const max = recentCorrect >= 4 ? 20 : (recentCorrect >= 2 ? 10 : 5);
 
-        const a = Math.floor(Math.random() * max);
-        const b = Math.floor(Math.random() * max);
-        const answer = a + b;
-        const distractors = [];
-        for (let i = 0; i < 5; i++) {
-            let distractor;
-            do {
-                distractor = answer + Math.floor(Math.random() * 10) - 5;
-            } while (distractor === answer || distractor < 0 || distractors.includes(distractor));
-            distractors.push(distractor);
+            const a = Math.floor(Math.random() * max);
+            const b = Math.floor(Math.random() * max);
+            const answer = a + b;
+            const distractors = [];
+            for (let i = 0; i < 5; i++) {
+                let distractor;
+                do {
+                    distractor = answer + Math.floor(Math.random() * 10) - 5;
+                } while (distractor === answer || distractor < 0 || distractors.includes(distractor));
+                distractors.push(distractor);
+            }
+            return {
+                question: `${a} + ${b}`,
+                answer,
+                distractors
+            };
         }
-        return {
-            question: `${a} + ${b}`,
-            answer,
-            distractors
-        };
-    }
 
-    async function generateWord(section) {
-        const interactions = state.interactions[section];
-        const interactionContext = interactions.length > 0
-            ? `Historial de últimas interacciones de ${section}: ${JSON.stringify(interactions)}`
-            : `Sin historial previo en ${section}.`;
+        async function generateWord(section) {
+            const interactions = state.interactions[section];
+            const interactionContext = interactions.length > 0
+                ? `Historial de últimas interacciones de ${section}: ${JSON.stringify(interactions)}`
+                : `Sin historial previo en ${section}.`;
 
-        const activityType = section === 'write' ? 'escritura' : 'pronunciaci��n';
+            const activityType = section === 'write' ? 'escritura' : 'pronunciaci��n';
 
-        const prompt = `Eres un tutor de ${activityType} adaptativo para niños de 5-12 años.
+            const prompt = `Eres un tutor de ${activityType} adaptativo para niños de 5-12 años.
 
 ${interactionContext}
 
@@ -554,208 +599,219 @@ Ejemplos de respuestas INCORRECTAS: "intenta contar paso a paso", "tú puedes"
 
 Genera una palabra apropiada para practicar ${activityType}:`;
 
-        try {
-            const response = await generateWithAI(prompt);
-            if (!response) {
+            try {
+                const response = await generateWithAI(prompt);
+                if (!response) {
+                    return generateFallbackWord(section);
+                }
+
+                // Limpiar y validar la respuesta
+                let word = response.toLowerCase().trim();
+
+                // Remover cualquier texto después de espacios, puntos, comas, etc.
+                word = word.split(/[\s.,;:!?]/)[0];
+
+                // Mantener solo letras españolas
+                word = word.replace(/[^a-záéíóúñü]/g, '');
+
+                // Validar que sea una palabra válida (3-12 caracteres)
+                if (word.length >= 3 && word.length <= 12) {
+                    return word;
+                } else {
+                    console.warn('Palabra generada por IA inválida:', response, 'usando fallback');
+                    return generateFallbackWord(section);
+                }
+            } catch (e) {
+                console.warn('Error generando palabra con IA, usando fallback:', e);
                 return generateFallbackWord(section);
             }
+        }
 
-            // Limpiar y validar la respuesta
-            let word = response.toLowerCase().trim();
+        function generateFallbackWord(section) {
+            // Fallback basado en el rendimiento reciente
+            const recentCorrect = state.interactions[section].slice(-5).filter(i => i.isCorrect).length;
 
-            // Remover cualquier texto después de espacios, puntos, comas, etc.
-            word = word.split(/[\s.,;:!?]/)[0];
-
-            // Mantener solo letras españolas
-            word = word.replace(/[^a-záéíóúñü]/g, '');
-
-            // Validar que sea una palabra válida (3-12 caracteres)
-            if (word.length >= 3 && word.length <= 12) {
-                return word;
+            let wordPool;
+            if (recentCorrect >= 4) {
+                wordPool = ['mariposa', 'guitarra', 'ferrocarril', 'zanahoria', 'helicóptero'];
+            } else if (recentCorrect >= 2) {
+                wordPool = ['perro', 'gato', 'flor', 'casa', 'libro', 'coche'];
             } else {
-                console.warn('Palabra generada por IA inválida:', response, 'usando fallback');
-                return generateFallbackWord(section);
+                wordPool = ['sol', 'mar', 'pan', 'luz', 'paz'];
             }
-        } catch (e) {
-            console.warn('Error generando palabra con IA, usando fallback:', e);
-            return generateFallbackWord(section);
-        }
-    }
 
-    function generateFallbackWord(section) {
-        // Fallback basado en el rendimiento reciente
-        const recentCorrect = state.interactions[section].slice(-5).filter(i => i.isCorrect).length;
+            const recentWords = state.interactions[section].slice(-3).map(i => i.challenge);
+            const availableWords = wordPool.filter(w => !recentWords.includes(w));
 
-        let wordPool;
-        if (recentCorrect >= 4) {
-            wordPool = ['mariposa', 'guitarra', 'ferrocarril', 'zanahoria', 'helicóptero'];
-        } else if (recentCorrect >= 2) {
-            wordPool = ['perro', 'gato', 'flor', 'casa', 'libro', 'coche'];
-        } else {
-            wordPool = ['sol', 'mar', 'pan', 'luz', 'paz'];
+            return availableWords.length > 0
+                ? availableWords[Math.floor(Math.random() * availableWords.length)]
+                : wordPool[Math.floor(Math.random() * wordPool.length)];
         }
 
-        const recentWords = state.interactions[section].slice(-3).map(i => i.challenge);
-        const availableWords = wordPool.filter(w => !recentWords.includes(w));
+        // ===== Utilidades =====
+        function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
 
-        return availableWords.length > 0
-            ? availableWords[Math.floor(Math.random() * availableWords.length)]
-            : wordPool[Math.floor(Math.random() * wordPool.length)];
-    }
+        // ===== Inicio =====
+        // ===== Inicio (Mapa del Héroe) =====
+        import { MapController } from '../scripts/map-logic.js';
 
-    // ===== Utilidades =====
-    function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; }
+        // Mock Progress (Pending Real API Implementation)
+        const userProgress = {
+            current_level: 1,
+            current_node_index: 2, // 0-based, so 3rd node is active
+            stars: 12,
+            coins: 50
+        };
 
-    // ===== Inicio =====
-    function renderHome() {
-        screen.innerHTML = '';
-        updateStatusUI();
-
-        const title = document.createElement('div');
-        title.className = 'card title';
-        title.textContent = 'Elige una actividad para practicar';
-
-        const grid = document.createElement('div');
-        grid.className = 'grid3';
-        grid.appendChild(bigButton('➕', 'Matemáticas', 'btn-math', renderMath));
-        grid.appendChild(bigButton('✏️', 'Escritura', 'btn-write', renderWriting));
-        grid.appendChild(bigButton('🎤', 'Habla', 'btn-speak', renderSpeech));
-
-        const gridWrap = document.createElement('div');
-        gridWrap.className = 'card section';
-        gridWrap.appendChild(grid);
-
-        screen.appendChild(title);
-        screen.appendChild(gridWrap);
-    }
-
-    function bigButton(emoji, label, cls, onClick) {
-        const b = document.createElement('button');
-        b.className = `big-btn ${cls}`;
-        b.onclick = onClick;
-        b.innerHTML = `<div style="font-size:38px">${emoji}</div><div>${label}</div>`;
-        return b;
-    }
-
-    // ===== Matemáticas =====
-    async function renderMath() {
-        screen.innerHTML = '';
-
-        const wrap = document.createElement('div');
-        wrap.className = 'card section';
-
-        // Mostrar indicador de carga
-        wrap.innerHTML = '<div class="prompt">🧠 La IA está generando un problema personalizado...</div>';
-        screen.appendChild(wrap);
-
-        try {
-            const p = await generateMathProblem();
-
-            wrap.innerHTML = '';
-            const prompt = document.createElement('div');
-            prompt.className = 'prompt';
-            prompt.innerHTML = `¿Cuánto es <b>${p.question}</b>?`;
-
-            const choices = document.createElement('div');
-            choices.className = 'choices';
-
-            shuffle([p.answer, ...p.distractors]).slice(0, 6).forEach(v => {
-                const btn = document.createElement('button');
-                btn.className = 'choice';
-                btn.textContent = v;
-                btn.onclick = async () => {
-                    const ok = Number(v) === Number(p.answer);
-
-                    // Guardar interacci��n
-                    saveInteraction('math', p.question, v, ok);
-
-                    const fb = document.createElement('div');
-                    fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
-                    fb.innerHTML = ok ? `✅ ¡Muy bien! ${v} es correcto 🎉` : `❌ Casi. Intenta otra vez.`;
-                    wrap.appendChild(fb);
-
-                    const tip = await aiTip(
-                        ok ? `Refuerzo positivo breve por acertar ${p.question}`
-                            : `Pista muy breve para ayudar con ${p.question} sin dar la respuesta`
-                    );
-                    if (tip) wrap.insertAdjacentHTML('beforeend', tip);
-
-                    setTimeout(renderMath, 1500);
-                };
-                choices.appendChild(btn);
-            });
-
-            wrap.appendChild(prompt);
-            wrap.appendChild(choices);
-        } catch (e) {
-            wrap.innerHTML = '<div class="feedback bad">Error generando problema. Int��ntalo de nuevo.</div>';
-            setTimeout(renderMath, 2000);
+        function renderHome() {
+            screen.innerHTML = '';
+            screen.classList.remove('grid3'); // Remove grid layout if present
+            
+            // Initialize Map
+            const map = new MapController('screen', userProgress);
+            map.render();
         }
-    }
 
-    // ===== Escritura =====
-    async function renderWriting() {
-        screen.innerHTML = '';
+        // Listen for node selection
+        document.addEventListener('node-selected', (e) => {
+            const { level, state } = e.detail;
+            console.log("Navigating to activity:", level.type);
+            
+            if (level.type === 'math') renderMath();
+            else if (level.type === 'reading' || level.type === 'write') renderWriting();
+            else if (level.type === 'speaking') renderSpeech();
+            else if (level.type === 'start') alert("¡Bienvenido al inicio!");
+            else if (level.type === 'boss') alert("¡Jefe Final! (Próximamente)");
+            else alert("Actividad: " + level.type);
+        });
 
-        const box = document.createElement('div');
-        box.className = 'card section';
-        box.innerHTML = '<div class="prompt">🧠 La IA está seleccionando una palabra personalizada...</div>';
-        screen.appendChild(box);
+        function bigButton(emoji, label, cls, onClick) {
+            const b = document.createElement('button');
+            b.className = `big-btn ${cls}`;
+            b.onclick = onClick;
+            b.innerHTML = `<div style="font-size:38px">${emoji}</div><div>${label}</div>`;
+            return b;
+        }
 
-        try {
-            const target = await generateWord('write');
+        // ===== Matemáticas =====
+        async function renderMath() {
+            screen.innerHTML = '';
 
-            box.innerHTML = `
+            const wrap = document.createElement('div');
+            wrap.className = 'card section';
+
+            // Mostrar indicador de carga
+            wrap.innerHTML = '<div class="prompt">🧠 La IA está generando un problema personalizado...</div>';
+            screen.appendChild(wrap);
+
+            try {
+                const p = await generateMathProblem();
+
+                wrap.innerHTML = '';
+                const prompt = document.createElement('div');
+                prompt.className = 'prompt';
+                prompt.innerHTML = `¿Cuánto es <b>${p.question}</b>?`;
+
+                const choices = document.createElement('div');
+                choices.className = 'choices';
+
+                shuffle([p.answer, ...p.distractors]).slice(0, 6).forEach(v => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice';
+                    btn.textContent = v;
+                    btn.onclick = async () => {
+                        const ok = Number(v) === Number(p.answer);
+
+                        // Guardar interacci��n
+                        saveInteraction('math', p.question, v, ok);
+
+                        const fb = document.createElement('div');
+                        fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
+                        fb.innerHTML = ok ? `✅ ¡Muy bien! ${v} es correcto 🎉` : `❌ Casi. Intenta otra vez.`;
+                        wrap.appendChild(fb);
+
+                        const tip = await aiTip(
+                            ok ? `Refuerzo positivo breve por acertar ${p.question}`
+                                : `Pista muy breve para ayudar con ${p.question} sin dar la respuesta`
+                        );
+                        if (tip) wrap.insertAdjacentHTML('beforeend', tip);
+
+                        setTimeout(renderMath, 1500);
+                    };
+                    choices.appendChild(btn);
+                });
+
+                wrap.appendChild(prompt);
+                wrap.appendChild(choices);
+            } catch (e) {
+                wrap.innerHTML = '<div class="feedback bad">Error generando problema. Int��ntalo de nuevo.</div>';
+                setTimeout(renderMath, 2000);
+            }
+        }
+
+        // ===== Escritura =====
+        async function renderWriting() {
+            screen.innerHTML = '';
+
+            const box = document.createElement('div');
+            box.className = 'card section';
+            box.innerHTML = '<div class="prompt">🧠 La IA está seleccionando una palabra personalizada...</div>';
+            screen.appendChild(box);
+
+            try {
+                const target = await generateWord('write');
+
+                box.innerHTML = `
                 <div class="prompt">Escribe la palabra: <b>${target}</b></div>
                 <input id='writeInput' class='input' type='text' placeholder='Escribe aquí...'>
                 <button class='small' id='checkBtn'>Comprobar ✅</button>
             `;
 
-            document.getElementById('writeInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') document.getElementById('checkBtn').click();
-            });
+                document.getElementById('writeInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') document.getElementById('checkBtn').click();
+                });
 
-            document.getElementById('checkBtn').onclick = async () => {
-                const v = document.getElementById('writeInput').value.trim().toLowerCase();
-                const ok = v === target;
+                document.getElementById('checkBtn').onclick = async () => {
+                    const v = document.getElementById('writeInput').value.trim().toLowerCase();
+                    const ok = v === target;
 
-                // Guardar interacción
-                saveInteraction('write', target, v, ok);
+                    // Guardar interacción
+                    saveInteraction('write', target, v, ok);
 
-                const fb = document.createElement('div');
-                fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
-                fb.innerHTML = ok ? '✅ ¡Perfecto!' : `❌ Se escribe <b>${target}</b>`;
-                box.appendChild(fb);
+                    const fb = document.createElement('div');
+                    fb.className = 'feedback ' + (ok ? 'ok' : 'bad');
+                    fb.innerHTML = ok ? '✅ ¡Perfecto!' : `❌ Se escribe <b>${target}</b>`;
+                    box.appendChild(fb);
 
-                const tip = await aiTip(
-                    ok ? `Refuerzo positivo breve por escribir bien "${target}"`
-                        : `Corrección amable: escribió "${v}", lo correcto es "${target}"`
-                );
-                if (tip) box.insertAdjacentHTML('beforeend', tip);
+                    const tip = await aiTip(
+                        ok ? `Refuerzo positivo breve por escribir bien "${target}"`
+                            : `Corrección amable: escribió "${v}", lo correcto es "${target}"`
+                    );
+                    if (tip) box.insertAdjacentHTML('beforeend', tip);
 
-                setTimeout(renderWriting, 1500);
-            };
-        } catch (e) {
-            box.innerHTML = '<div class="feedback bad">Error generando palabra. Inténtalo de nuevo.</div>';
-            setTimeout(renderWriting, 2000);
+                    setTimeout(renderWriting, 1500);
+                };
+            } catch (e) {
+                box.innerHTML = '<div class="feedback bad">Error generando palabra. Inténtalo de nuevo.</div>';
+                setTimeout(renderWriting, 2000);
+            }
         }
-    }
 
-    // ===== Habla =====
-    async function renderSpeech() {
-        screen.innerHTML = '';
+        // ===== Habla =====
+        async function renderSpeech() {
+            screen.innerHTML = '';
 
-        const box = document.createElement('div');
-        box.className = 'card section';
-        box.innerHTML = '<div class="prompt">🧠 La IA está seleccionando una palabra personalizada...</div>';
-        screen.appendChild(box);
+            const box = document.createElement('div');
+            box.className = 'card section';
+            box.innerHTML = '<div class="prompt">🧠 La IA está seleccionando una palabra personalizada...</div>';
+            screen.appendChild(box);
 
-        try {
-            const target = await generateWord('speak');
+            try {
+                const target = await generateWord('speak');
 
-            const support = ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+                const support = ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
 
-            box.innerHTML = `
+                box.innerHTML = `
                 <div class="prompt">Di la palabra: <b>${target}</b></div>
                 <div class="input-container">
                     <div class="speech-input">
@@ -769,106 +825,106 @@ Genera una palabra apropiada para practicar ${activityType}:`;
                 <div id='speechResult' class='feedback'></div>
             `;
 
-            if (!support) {
-                document.getElementById('speechResult').innerHTML = '<div class="feedback bad">⚠️ Micrófono no disponible en este navegador.</div>';
-                return;
-            }
-
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-            async function ensureMicPermission() {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-                s.getTracks().forEach(t => t.stop());
-            }
-
-            document.getElementById('speakBtn').onclick = async () => {
-                const result = document.getElementById('speechResult');
-                const display = document.getElementById('speechDisplay');
-                const btn = document.getElementById('speakBtn');
-
-                try {
-                    await ensureMicPermission();
-                } catch {
-                    result.innerHTML = '<div class="feedback bad">⚠️ Permiso de micrófono denegado.</div>';
+                if (!support) {
+                    document.getElementById('speechResult').innerHTML = '<div class="feedback bad">⚠️ Micrófono no disponible en este navegador.</div>';
                     return;
                 }
 
-                // Crear nueva instancia del reconocedor para evitar concatenación
-                const recog = new SR();
-                recog.lang = 'es-ES';
-                recog.interimResults = false;
-                recog.maxAlternatives = 1;
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-                // Actualizar UI durante grabación
-                btn.disabled = true;
-                btn.textContent = '🔴 Escuchando...';
-                display.textContent = '👂 Te estoy escuchando, di la palabra ahora...';
-                result.innerHTML = '';
+                async function ensureMicPermission() {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+                    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    s.getTracks().forEach(t => t.stop());
+                }
 
-                recog.onresult = async (e) => {
-                    const said = e.results[0][0].transcript.trim().toLowerCase();
-                    const ok = said === target;
+                document.getElementById('speakBtn').onclick = async () => {
+                    const result = document.getElementById('speechResult');
+                    const display = document.getElementById('speechDisplay');
+                    const btn = document.getElementById('speakBtn');
 
-                    // Restaurar botón
-                    btn.disabled = false;
-                    btn.textContent = '🎤 Empezar a hablar';
-                    display.textContent = `Dijiste: "${said}"`;
+                    try {
+                        await ensureMicPermission();
+                    } catch {
+                        result.innerHTML = '<div class="feedback bad">⚠️ Permiso de micrófono denegado.</div>';
+                        return;
+                    }
 
-                    // Guardar interacción
-                    saveInteraction('speak', target, said, ok);
+                    // Crear nueva instancia del reconocedor para evitar concatenación
+                    const recog = new SR();
+                    recog.lang = 'es-ES';
+                    recog.interimResults = false;
+                    recog.maxAlternatives = 1;
 
-                    result.className = 'feedback ' + (ok ? 'ok' : 'bad');
-                    result.innerHTML = ok
-                        ? `✅ ¡Muy bien! Dijiste <b>${target}</b> correctamente 🎉`
-                        : `❌ Dijiste "${said}". Intenta decir <b>${target}</b>`;
+                    // Actualizar UI durante grabación
+                    btn.disabled = true;
+                    btn.textContent = '🔴 Escuchando...';
+                    display.textContent = '👂 Te estoy escuchando, di la palabra ahora...';
+                    result.innerHTML = '';
 
-                    const tip = await aiTip(
-                        ok ? `Refuerzo positivo breve por pronunciar bien "${target}"`
-                            : `Anima brevemente al niño a repetir "${target}"`
-                    );
-                    if (tip) box.insertAdjacentHTML('beforeend', tip);
+                    recog.onresult = async (e) => {
+                        const said = e.results[0][0].transcript.trim().toLowerCase();
+                        const ok = said === target;
 
-                    setTimeout(renderSpeech, 2000);
-                };
+                        // Restaurar botón
+                        btn.disabled = false;
+                        btn.textContent = '🎤 Empezar a hablar';
+                        display.textContent = `Dijiste: "${said}"`;
 
-                recog.onerror = (e) => {
-                    btn.disabled = false;
-                    btn.textContent = '🎤 Empezar a hablar';
-                    display.textContent = 'Error al escuchar. Intenta de nuevo.';
-                    result.innerHTML = '<div class="feedback bad">⚠�� No pude escucharte. Verifica tu micrófono e intenta otra vez.</div>';
-                };
+                        // Guardar interacción
+                        saveInteraction('speak', target, said, ok);
 
-                recog.onend = () => {
-                    btn.disabled = false;
-                    btn.textContent = '🎤 Empezar a hablar';
-                    if (display.textContent === '👂 Te estoy escuchando, di la palabra ahora...') {
-                        display.textContent = 'No se detectó audio. Intenta otra vez.';
+                        result.className = 'feedback ' + (ok ? 'ok' : 'bad');
+                        result.innerHTML = ok
+                            ? `✅ ¡Muy bien! Dijiste <b>${target}</b> correctamente 🎉`
+                            : `❌ Dijiste "${said}". Intenta decir <b>${target}</b>`;
+
+                        const tip = await aiTip(
+                            ok ? `Refuerzo positivo breve por pronunciar bien "${target}"`
+                                : `Anima brevemente al niño a repetir "${target}"`
+                        );
+                        if (tip) box.insertAdjacentHTML('beforeend', tip);
+
+                        setTimeout(renderSpeech, 2000);
+                    };
+
+                    recog.onerror = (e) => {
+                        btn.disabled = false;
+                        btn.textContent = '🎤 Empezar a hablar';
+                        display.textContent = 'Error al escuchar. Intenta de nuevo.';
+                        result.innerHTML = '<div class="feedback bad">⚠�� No pude escucharte. Verifica tu micrófono e intenta otra vez.</div>';
+                    };
+
+                    recog.onend = () => {
+                        btn.disabled = false;
+                        btn.textContent = '🎤 Empezar a hablar';
+                        if (display.textContent === '👂 Te estoy escuchando, di la palabra ahora...') {
+                            display.textContent = 'No se detectó audio. Intenta otra vez.';
+                        }
+                    };
+
+                    try {
+                        recog.start();
+                    } catch (e) {
+                        btn.disabled = false;
+                        btn.textContent = '🎤 Empezar a hablar';
+                        display.textContent = 'Error al iniciar grabación';
+                        result.innerHTML = '<div class="feedback bad">⚠️ Error al acceder al micrófono.</div>';
                     }
                 };
-
-                try {
-                    recog.start();
-                } catch (e) {
-                    btn.disabled = false;
-                    btn.textContent = '🎤 Empezar a hablar';
-                    display.textContent = 'Error al iniciar grabación';
-                    result.innerHTML = '<div class="feedback bad">⚠️ Error al acceder al micrófono.</div>';
-                }
-            };
-        } catch (e) {
-            box.innerHTML = '<div class="feedback bad">Error generando palabra. Inténtalo de nuevo.</div>';
-            setTimeout(renderSpeech, 2000);
+            } catch (e) {
+                box.innerHTML = '<div class="feedback bad">Error generando palabra. Inténtalo de nuevo.</div>';
+                setTimeout(renderSpeech, 2000);
+            }
         }
-    }
 
-    // ===== Dibuja con IA =====
-    async function renderDraw() {
-        screen.innerHTML = '';
+        // ===== Dibuja con IA =====
+        async function renderDraw() {
+            screen.innerHTML = '';
 
-        const box = document.createElement('div');
-        box.className = 'card section';
-        box.innerHTML = `
+            const box = document.createElement('div');
+            box.className = 'card section';
+            box.innerHTML = `
             <div class="prompt">Describe lo que quieres ver:</div>
             <input id='imgPrompt' class='input' type='text' placeholder='Un perro astronauta...'>
             <div class="prompt">Elige un estilo:</div>
@@ -881,32 +937,32 @@ Genera una palabra apropiada para practicar ${activityType}:`;
             <button class='small' id='imgBtn'>Generar 🎨</button>
             <div id='imgResult'></div>
         `;
-        screen.appendChild(box);
-        const BAD = ['violencia', 'sangre', 'arma', 'matar', 'desnudo'];
+            screen.appendChild(box);
+            const BAD = ['violencia', 'sangre', 'arma', 'matar', 'desnudo'];
 
-        document.getElementById('imgBtn').onclick = async () => {
-            const prompt = document.getElementById('imgPrompt').value.trim();
-            const style = document.getElementById('imgStyle').value;
-            const result = document.getElementById('imgResult');
-            if (!prompt) return;
-            if (BAD.some(b => prompt.toLowerCase().includes(b))) {
-                result.innerHTML = '<div class="feedback bad">Palabras no permitidas.</div>';
-                return;
-            }
-            result.innerHTML = '⌛ Generando imagen...';
-            const blob = await generateImage(prompt, style);
-            if (!blob) {
-                result.innerHTML = '<div class="feedback bad">Error generando imagen.</div>';
-                return;
-            }
-            const url = URL.createObjectURL(blob);
-            result.innerHTML = `<img src="${url}" alt="Imagen generada" style="max-width:100%;border-radius:16px;">`;
-        };
-    }
+            document.getElementById('imgBtn').onclick = async () => {
+                const prompt = document.getElementById('imgPrompt').value.trim();
+                const style = document.getElementById('imgStyle').value;
+                const result = document.getElementById('imgResult');
+                if (!prompt) return;
+                if (BAD.some(b => prompt.toLowerCase().includes(b))) {
+                    result.innerHTML = '<div class="feedback bad">Palabras no permitidas.</div>';
+                    return;
+                }
+                result.innerHTML = '⌛ Generando imagen...';
+                const blob = await generateImage(prompt, style);
+                if (!blob) {
+                    result.innerHTML = '<div class="feedback bad">Error generando imagen.</div>';
+                    return;
+                }
+                const url = URL.createObjectURL(blob);
+                result.innerHTML = `<img src="${url}" alt="Imagen generada" style="max-width:100%;border-radius:16px;">`;
+            };
+        }
 
-    // ==== Start ====
-    document.addEventListener('DOMContentLoaded', renderHome);
-</script>
+        // ==== Start ====
+        document.addEventListener('DOMContentLoaded', renderHome);
+    </script>
 </body>
 
 </html>

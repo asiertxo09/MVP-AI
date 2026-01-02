@@ -54,3 +54,42 @@ export async function createUser(db, { username, passwordHash, passwordSalt, pas
         .bind(username.trim(), passwordHash, passwordSalt, passwordIterations, passwordAlgo, roleId)
         .run();
 }
+
+export async function linkUser(db, { supervisorId, childId, type }) {
+    // Verify roles
+    const supervisor = await db.prepare("SELECT role_id FROM users WHERE id = ?").bind(supervisorId).first();
+    const child = await db.prepare("SELECT role_id FROM users WHERE id = ?").bind(childId).first();
+
+    if (!supervisor || !child) {
+        throw new Error("Usuario no encontrado");
+    }
+
+    // You might want to add stricter role checks here based on role_id
+    // For now assuming the logic calling this function has done some checks or we rely on the type
+
+    return db.prepare(
+        "INSERT OR IGNORE INTO user_links (supervisor_id, child_id, relationship_type) VALUES (?, ?, ?)"
+    ).bind(supervisorId, childId, type).run();
+}
+
+export async function getLinkedChildren(db, supervisorId) {
+    return db.prepare(`
+        SELECT 
+            u.id, 
+            u.username, 
+            u.created_at,
+            ucs.total_stars,
+            ucs.energy_level,
+            ucs.last_activity_date
+        FROM user_links ul
+        JOIN users u ON ul.child_id = u.id
+        LEFT JOIN user_current_state ucs ON u.id = ucs.user_id
+        WHERE ul.supervisor_id = ?
+    `).bind(supervisorId).all();
+}
+
+export async function unlinkUser(db, { supervisorId, childId }) {
+    return db.prepare(
+        "DELETE FROM user_links WHERE supervisor_id = ? AND child_id = ?"
+    ).bind(supervisorId, childId).run();
+}
