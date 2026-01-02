@@ -1,143 +1,359 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap');
 @import url("base.css");
 
-.child-app {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: var(--space-4) var(--space-3) var(--space-5);
+:root {
+  /* Design System Colors */
+  --color-primary: #6C5CE7; /* Royal Purple */
+  --color-accent: #FF9F43; /* Vibrant Orange */
+  --color-secondary: #00D2D3; /* Cyan */
+  --color-success: #2ECC71; /* Emerald */
+  --color-error: #FF6B6B; /* Pastel Red */
+  --color-warning: #FDCB6E; /* Mustard Yellow */
+  --bg-app: #F0F3F8; /* Soft Blue-Grey */
+  --bg-card: #FFFFFF; /* Pure White */
+
+  /* Font */
+  --font-main: 'Fredoka', sans-serif;
 }
 
-.child-app h1 {
-  font-family: var(--font-heading);
-  text-align: center;
-  font-size: clamp(2.2rem, 3.4vw, 2.8rem);
-  color: var(--color-navy);
-  margin-bottom: var(--space-3);
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-app);
+  margin: 0;
+  overflow: hidden; /* App-like feel */
+  user-select: none;
 }
 
-.child-app p.lead {
-  text-align: center;
-  color: var(--color-muted);
-  font-size: 1.1rem;
-  margin-bottom: var(--space-4);
+/* --- HUD (Heads-Up Display) --- */
+.hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
 }
 
-.activity-grid {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+.hud-left, .hud-center, .hud-right {
+  display: flex;
+  align-items: center;
 }
 
-.activity-card {
-  background: var(--color-cloud);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3);
-  box-shadow: var(--shadow-soft);
+.avatar-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 3px solid var(--color-primary);
+  box-shadow: 0 0 10px rgba(108, 92, 231, 0.3);
+  background: #eee;
+  overflow: hidden;
+}
+
+.avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.streak-counter {
+  background: rgba(255, 159, 67, 0.1);
+  color: var(--color-accent);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.currency-counter {
+  background: rgba(253, 203, 110, 0.1);
+  color: #E17055; /* Darker orange for text visibility */
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hud-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* --- Adventure Map --- */
+.adventure-map {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 80px; /* Space for HUD */
+  padding-bottom: 100px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  align-items: center;
+  scrollbar-width: none; /* Hide scrollbar Firefox */
+}
+.adventure-map::-webkit-scrollbar {
+  display: none; /* Hide scrollbar Chrome */
 }
 
-.activity-card button {
-  align-self: flex-start;
-}
-
-.progress-board {
-  margin-top: var(--space-4);
-  background: rgba(76, 158, 227, 0.12);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3);
-  border: 2px solid rgba(76, 158, 227, 0.25);
-}
-
-.progress-board h2 {
-  margin-top: 0;
-  font-family: var(--font-heading);
-  color: var(--color-navy);
-}
-
-.progress-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-
-.progress-item {
+.path-container {
+  position: relative;
+  width: 100%;
+  max-width: 600px; /* Limit width on desktop */
+  min-height: 1000px; /* Force scroll */
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-md);
-  background: var(--color-cloud);
-  box-shadow: 0 6px 16px rgba(31, 60, 136, 0.1);
+  justify-content: flex-start;
+  padding-top: 50px;
 }
 
-.progress-item strong {
-  color: var(--color-navy);
+.path-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
-.metric-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  background: rgba(58, 183, 149, 0.16);
-  color: var(--color-grass);
-  font-weight: 700;
+.path-bg svg {
+    width: 100%;
+    height: 100%;
 }
 
-.metric-badge[data-trend="down"] {
-  background: rgba(242, 95, 92, 0.16);
-  color: var(--color-berry);
-}
-
-#logoutButton {
-  margin: var(--space-3) auto;
-  display: block;
-}
-
-.dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(16, 37, 66, 0.6);
-  display: none;
+.node {
+  position: relative; /* Positioned relative to flow, or absolute if we want strict coord map */
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 4px solid #BDC3C7;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-3);
-  z-index: 50;
+  z-index: 10;
+  margin: 30px 0; /* Vertical spacing */
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 0 #95A5A6;
 }
 
-.dialog-backdrop[aria-hidden="false"] {
-  display: flex;
+.node img {
+  width: 30px;
+  height: 30px;
 }
 
-.dialog {
-  background: var(--color-cloud);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4) var(--space-3);
-  max-width: 480px;
+/* Node States */
+.node.locked {
+  background: #ECF0F1;
+  border-color: #BDC3C7;
+  filter: grayscale(100%);
+}
+
+.node.completed {
+  background: var(--color-secondary);
+  border-color: #00B8B9;
+  box-shadow: 0 4px 0 #00A8A9;
+}
+.node.completed img {
+    filter: brightness(0) invert(1);
+}
+
+.node.current {
+  width: 90px;
+  height: 90px;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  box-shadow: 0 6px 0 #4834d4, 0 0 20px rgba(108, 92, 231, 0.5);
+  animation: pulse 2s infinite;
+}
+
+.node.current::after {
+    content: "PLAY";
+    position: absolute;
+    bottom: -30px;
+    background: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-weight: 800;
+    color: var(--color-primary);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.node.current img {
+    width: 50px;
+    height: 50px;
+}
+
+/* Alternating positions for zig-zag effect */
+.node:nth-child(odd) {
+  transform: translateX(-40px);
+}
+.node:nth-child(even) {
+  transform: translateX(40px);
+}
+.node.current:nth-child(odd) {
+    transform: translateX(-40px) scale(1.1);
+}
+.node.current:nth-child(even) {
+    transform: translateX(40px) scale(1.1);
+}
+
+
+/* --- Activity Modal (Bottom Sheet) --- */
+.activity-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
   width: 100%;
-  box-shadow: var(--shadow-strong);
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
-.dialog h2 {
-  margin-top: 0;
+.activity-modal.active {
+  visibility: visible;
+  opacity: 1;
 }
 
-.dialog button + button {
-  margin-left: var(--space-2);
+.modal-content {
+  background: var(--bg-card);
+  width: 100%;
+  max-width: 500px;
+  border-radius: 30px 30px 0 0;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-@media (max-width: 640px) {
-  .progress-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
+.activity-modal.active .modal-content {
+  transform: translateY(0);
+}
 
-  .activity-card button {
-    align-self: stretch;
-  }
+.modal-hero {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 1rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+.modal-title {
+  font-size: 1.8rem;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.modal-desc {
+  color: #636e72;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.btn-play {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  font-family: var(--font-main);
+  font-size: 1.2rem;
+  font-weight: 700;
+  padding: 1rem 3rem;
+  border-radius: 50px;
+  box-shadow: 0 6px 0 #4834d4;
+  cursor: pointer;
+  transition: transform 0.1s;
+  width: 100%;
+}
+
+.btn-play:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #4834d4;
+}
+
+.btn-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #b2bec3;
+}
+
+
+/* --- Animations --- */
+@keyframes pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(108, 92, 231, 0.7); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(108, 92, 231, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(108, 92, 231, 0); }
+}
+
+/* Need to handle pulse combined with translate for nodes */
+/* So I'll apply pulse to an inner element or adjust the keyframes */
+/* Actually, simpler to put pulse on ::before/after or wrapper. */
+/* For now, simplified pulse above. */
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.shake {
+  animation: shake 0.5s;
+}
+
+/* Utility */
+.hidden { display: none !important; }
+
+/* Responsive adjustments */
+@media (min-width: 600px) {
+    .modal-content {
+        border-radius: 30px;
+        margin-bottom: 2rem;
+    }
+    .activity-modal {
+        align-items: center;
+    }
 }
