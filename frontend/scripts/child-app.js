@@ -1,19 +1,20 @@
 import { requireSession, initLogoutButton } from "./auth.js";
+import { GameManager } from "./game-manager.js";
 
 // --- Game State & Configuration ---
 const LEVELS = [
-    { id: 1, type: 'start', title: 'Inicio del Viaje', desc: '¡Comienza tu aventura!', icon: 'icon-frog.svg' },
-    { id: 2, type: 'math', title: 'Bosque de Números', desc: 'Resuelve sumas para cruzar el bosque.', icon: 'icon-frog.svg' }, // Using frog as placeholder for now or specific icon
+    { id: 1, type: 'phoneme_hunt', title: 'Caza-Fonemas', desc: '¡Encuentra las palabras con R!', icon: 'frog.svg' },
+    { id: 2, type: 'math', title: 'Bosque de Números', desc: 'Resuelve sumas para cruzar el bosque.', icon: 'icon-frog.svg' },
     { id: 3, type: 'reading', title: 'Cueva de Letras', desc: 'Encuentra las palabras escondidas.', icon: 'icon-frog.svg' },
     { id: 4, type: 'speaking', title: 'Montaña del Eco', desc: 'Pronuncia las palabras mágicas.', icon: 'icon-frog.svg' },
     { id: 5, type: 'boss', title: 'Castillo del Sabio', desc: 'Demuestra todo lo que aprendiste.', icon: 'icon-frog.svg' }
 ];
 
 const STATE = {
-    currentLevel: 2, // 0-based index? No, let's use ID. So level 2 is current.
+    currentLevel: 1, // Set to 1 to test Phoneme Hunt immediately
     streak: 5,
     coins: 120,
-    completedLevels: [1]
+    completedLevels: []
 };
 
 // --- Elements ---
@@ -25,6 +26,8 @@ const btnPlay = document.getElementById('btnPlay');
 const closeModal = document.getElementById('closeModal');
 const streakValue = document.getElementById('streakValue');
 const coinValue = document.getElementById('coinValue');
+
+const gameManager = new GameManager('gameStage');
 
 // --- Initialization ---
 function init() {
@@ -40,12 +43,6 @@ function renderHUD() {
 }
 
 function renderMap() {
-    // Keep the background, clear nodes
-    // Actually, path-bg is static. We append nodes.
-    // We need to clear existing nodes if re-rendering, but let's assume static container structure for now.
-    // The path-bg is already there. We just append nodes.
-
-    // Clear previous nodes if any (preserving the bg)
     const existingNodes = pathContainer.querySelectorAll('.node');
     existingNodes.forEach(n => n.remove());
 
@@ -71,7 +68,8 @@ function renderMap() {
         } else if (status === 'locked') {
             img.src = '../assets/icons/icon-lock.svg';
         } else {
-            // Current or just icon
+            // Check if icon exists in both paths or assume specific logic
+            // For now, assume if it doesn't start with icon-, it's one of ours
             img.src = `../assets/icons/${level.icon}`;
         }
 
@@ -86,14 +84,12 @@ function renderMap() {
 
 function handleNodeClick(level, status, nodeElement) {
     if (status === 'locked') {
-        // Shake animation
         nodeElement.classList.add('shake');
         setTimeout(() => nodeElement.classList.remove('shake'), 500);
         return;
     }
 
     if (status === 'completed') {
-        // Replay? For now just show modal as replay
         openModal(level, true);
         return;
     }
@@ -107,18 +103,23 @@ function openModal(level, isReplay) {
     modalTitle.textContent = level.title;
     modalDesc.textContent = isReplay ? "¡Ya completaste esto! ¿Jugar de nuevo?" : level.desc;
 
-    // Reset animation state
     activityModal.classList.remove('active');
-    // Force reflow
     void activityModal.offsetWidth;
     activityModal.classList.add('active');
 
     btnPlay.onclick = () => {
-        // Navigate to actual game logic or load game
+        // Start Game
         console.log(`Starting level ${level.id}: ${level.type}`);
-        // Here we would swap the screen to the game interface
-        // For now, let's simulate completion after a delay or alert
-        alert("¡Cargando actividad...!");
+        activityModal.classList.remove('active');
+
+        // Launch specific game
+        // Ideally mapping level.type to gameId
+        // For now, we only implemented 'phoneme_hunt'
+        if (level.type === 'phoneme_hunt') {
+            gameManager.startGame('phoneme_hunt');
+        } else {
+            alert("Juego no implementado aún: " + level.type);
+        }
     };
 }
 
@@ -127,7 +128,6 @@ function setupListeners() {
         activityModal.classList.remove('active');
     });
 
-    // Close on click outside
     activityModal.addEventListener('click', (e) => {
         if (e.target === activityModal) {
             activityModal.classList.remove('active');

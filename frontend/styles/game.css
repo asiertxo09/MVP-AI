@@ -1,0 +1,226 @@
+/* Shared Game Container */
+.game-stage {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-app);
+  background-image: radial-gradient(var(--color-secondary) 2px, transparent 2px);
+  background-size: 30px 30px; /* Polka dots */
+  z-index: 3000; /* Above modal and HUD */
+  display: flex;
+  flex-direction: column;
+  display: none; /* Hidden by default */
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.game-stage.active {
+  display: flex;
+  opacity: 1;
+}
+
+/* Header */
+.game-header {
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 80px;
+}
+
+.progress-bar-container {
+  flex: 1;
+  margin: 0 2rem;
+  background: rgba(0,0,0,0.1);
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+}
+
+.progress-segment {
+  flex: 1;
+  background: #dfe6e9;
+  border-right: 2px solid var(--bg-app);
+}
+.progress-segment:last-child {
+  border-right: none;
+}
+.progress-segment.filled {
+  background: var(--color-success);
+}
+
+.btn-close-game {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: var(--color-error);
+  cursor: pointer;
+  font-family: var(--font-main);
+  font-weight: bold;
+}
+
+/* Main Area */
+.game-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Footer */
+.game-footer {
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.btn-primary-action {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 1rem 4rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  box-shadow: 0 6px 0 #4834d4;
+  cursor: pointer;
+  font-family: var(--font-main);
+  transition: transform 0.1s;
+}
+
+.btn-primary-action:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #4834d4;
+}
+.btn-primary-action:disabled {
+    background: #bdc3c7;
+    box-shadow: 0 6px 0 #95a5a6;
+    cursor: not-allowed;
+}
+
+/* --- GAME A: Phoneme Hunt --- */
+.phoneme-instruction {
+  font-size: 2rem;
+  color: var(--color-primary);
+  margin-bottom: 2rem;
+  text-align: center;
+  font-weight: 700;
+}
+.highlight-text {
+    color: var(--color-accent);
+}
+
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+}
+@media(min-width: 600px) {
+    .grid-cards {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.game-card {
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  border: 4px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.game-card img {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 0.5rem;
+}
+
+.game-card span {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2d3436;
+}
+
+/* Card States */
+.game-card.selected {
+  border-color: var(--color-primary);
+  transform: scale(1.05);
+}
+
+.game-card.correct {
+  border-color: var(--color-success);
+  background: #eaffea;
+  animation: pop 0.3s;
+}
+
+.game-card.wrong {
+  border-color: var(--color-error);
+  background: #ffeaea;
+  animation: shake 0.5s;
+}
+
+/* Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px) rotate(-5deg); }
+  75% { transform: translateX(5px) rotate(5deg); }
+}
+
+@keyframes slide-in-right {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slide-out-left {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-100%); opacity: 0; }
+}
+
+/* Level Complete Overlay */
+.level-complete-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    display: none;
+}
+.level-complete-overlay.active {
+    display: flex;
+    animation: slide-up 0.5s ease-out;
+}
+.stars-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.star {
+    font-size: 60px;
+    color: #dfe6e9;
+}
+.star.filled {
+    color: var(--color-warning);
+    animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
