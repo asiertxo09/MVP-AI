@@ -1,0 +1,14 @@
+
+/* Parent Button override */
+.btn-parent-zone {
+    z-index: 1001; /* Ensure above other HUD elements if needed */
+    position: relative;
+    font-family: var(--font-main);
+    font-weight: 700;
+    box-shadow: 0 4px 0 #4834d4;
+    transition: transform 0.1s;
+}
+.btn-parent-zone:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #4834d4;
+}
