@@ -1,11 +1,15 @@
 import { requireSession, initLogoutButton } from "./auth.js";
 import { GameManager } from "./game-manager.js";
+import { GameEngine } from "./GameEngine.js";
+
+const engine = new GameEngine();
+engine.init();
 
 // --- Game State & Configuration ---
 const LEVELS = [
     { id: 1, type: 'phoneme_hunt', title: 'Caza-Fonemas', desc: '¡Encuentra las palabras con R!', icon: 'frog.svg' },
     { id: 2, type: 'math', title: 'Bosque de Números', desc: 'Resuelve sumas para cruzar el bosque.', icon: 'icon-frog.svg' },
-    { id: 3, type: 'reading', title: 'Cueva de Letras', desc: 'Encuentra las palabras escondidas.', icon: 'icon-frog.svg' },
+    { id: 3, type: 'dictation', title: 'Dojo de Escritura', desc: 'Escucha y escribe la palabra correcta.', icon: 'icon-frog.svg' },
     { id: 4, type: 'speaking', title: 'Montaña del Eco', desc: 'Pronuncia las palabras mágicas.', icon: 'icon-frog.svg' },
     { id: 5, type: 'boss', title: 'Castillo del Sabio', desc: 'Demuestra todo lo que aprendiste.', icon: 'icon-frog.svg' }
 ];
@@ -27,7 +31,7 @@ const closeModal = document.getElementById('closeModal');
 const streakValue = document.getElementById('streakValue');
 const coinValue = document.getElementById('coinValue');
 
-const gameManager = new GameManager('gameStage');
+const gameManager = new GameManager('gameStage', engine);
 
 // --- Initialization ---
 function init() {
@@ -40,6 +44,32 @@ function init() {
 function renderHUD() {
     streakValue.textContent = `${STATE.streak} Días`;
     coinValue.textContent = `${STATE.coins}`;
+
+    // Add Parent Zone Button if not exists
+    if (!document.getElementById('btnParentZone')) {
+        const hudLeft = document.querySelector('.hud-left');
+        const btnParent = document.createElement('button');
+        btnParent.id = 'btnParentZone';
+        btnParent.innerText = 'Padres';
+        btnParent.className = 'btn-parent-zone'; // Add styles later or inline
+        btnParent.style.marginLeft = '10px';
+        btnParent.style.padding = '5px 10px';
+        btnParent.style.backgroundColor = '#6c5ce7';
+        btnParent.style.color = 'white';
+        btnParent.style.border = 'none';
+        btnParent.style.borderRadius = '5px';
+        btnParent.style.cursor = 'pointer';
+
+        btnParent.onclick = () => {
+            engine.requestParentAccess((success) => {
+                if (success) {
+                    window.location.href = 'dashboard-parent.html';
+                }
+            });
+        };
+
+        hudLeft.appendChild(btnParent);
+    }
 }
 
 function renderMap() {
@@ -117,6 +147,10 @@ function openModal(level, isReplay) {
         // For now, we only implemented 'phoneme_hunt'
         if (level.type === 'phoneme_hunt') {
             gameManager.startGame('phoneme_hunt');
+        } else if (level.type === 'math') {
+            gameManager.startGame('speed_math');
+        } else if (level.type === 'dictation') {
+            gameManager.startGame('dictation_dojo');
         } else {
             alert("Juego no implementado aún: " + level.type);
         }
