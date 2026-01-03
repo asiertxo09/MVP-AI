@@ -1,47 +1,30 @@
-import { readSessionSecret, verifySessionToken, SESSION_COOKIE_NAME } from "./lib/session";
+import { verifySessionToken } from "./lib/session";
 
-const PUBLIC_PATHS = new Set(["/", "/login", "/register.html", "/assessment.html"]);
-
-export const onRequest = async ({ request, next, env }) => {
+export async function onRequest(context) {
+    const { request, next, env } = context;
     const url = new URL(request.url);
 
-    if (PUBLIC_PATHS.has(url.pathname)) {
+    // Permitir acceso público a login, assets, etc.
+    const publicPaths = [
+        "/login", "/register", "/index.html", "/assets/", "/styles/", "/scripts/", "/api/login", "/api/register", "/api/parent-login", "/api/parent-setup", "/parent-login.html"
+    ];
+
+    if (publicPaths.some(p => url.pathname.startsWith(p)) || url.pathname === "/") {
         return next();
     }
 
-    if (url.pathname.startsWith("/app/")) {
-        const cookieHeader = request.headers.get("Cookie") || "";
-        const token = extractCookie(cookieHeader, SESSION_COOKIE_NAME);
-        if (!token) {
-            return redirectToLogin(url);
+    // Verificar cookie de sesión para rutas protegidas
+    /*
+    const cookieHeader = request.headers.get("Cookie");
+    if (!cookieHeader || !cookieHeader.includes("session=")) {
+        // Redirigir a login si es una página HTML, o error 401 si es API
+        if (url.pathname.startsWith("/api/")) {
+             return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
         }
-
-        try {
-            const secret = readSessionSecret(env);
-            const payload = await verifySessionToken(token, secret);
-            if (!payload) {
-                return redirectToLogin(url);
-            }
-            request.session = payload;
-        } catch (err) {
-            console.error("middleware", err);
-            return redirectToLogin(url);
-        }
+        return Response.redirect(new URL("/login.html", request.url), 302);
     }
+    */
 
+    // Dejar pasar y que cada endpoint maneje su seguridad específica o descomentar arriba para global
     return next();
-};
-
-function extractCookie(cookieHeader, name) {
-    const value = cookieHeader
-        .split(";")
-        .map((c) => c.trim())
-        .filter(Boolean)
-        .map((c) => c.split("="))
-        .find(([key]) => key === name)?.[1];
-    return value ? decodeURIComponent(value) : null;
-}
-
-function redirectToLogin(url) {
-    return Response.redirect(new URL("/login", url), 302);
 }
