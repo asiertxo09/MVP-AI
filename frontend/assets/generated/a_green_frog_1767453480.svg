@@ -1,0 +1,28 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Body -->
+  <ellipse cx="256" cy="256" rx="140" ry="120" fill="#2ECC71"/>
+  
+  <!-- Eyes -->
+  <circle cx="220" cy="220" r="30" fill="#FFFFFF"/>
+  <circle cx="292" cy="220" r="30" fill="#FFFFFF"/>
+  <circle cx="220" cy="220" r="15" fill="#2D3436"/>
+  <circle cx="292" cy="220" r="15" fill="#2D3436"/>
+  
+  <!-- Mouth -->
+  <path d="M256 280 Q270 300 282 280" stroke="#2D3436" stroke-width="8" stroke-linecap="round" fill="none"/>
+  
+  <!-- Legs -->
+  <ellipse cx="200" cy="320" rx="40" ry="60" fill="#2ECC71"/>
+  <ellipse cx="312" cy="320" rx="40" ry="60" fill="#2ECC71"/>
+  <ellipse cx="200" cy="380" rx="30" ry="40" fill="#2ECC71"/>
+  <ellipse cx="312" cy="380" rx="30" ry="40" fill="#2ECC71"/>
+  
+  <!-- Highlight -->
+  <ellipse cx="180" cy="180" rx="40" ry="20" fill="#FFFFFF" opacity="0.3" transform="rotate(-45 180 180)"/>
+  
+  <!-- Shadow -->
+  <path d="M256 496 A240 240 0 0 0 496 256" fill="#2D3436" opacity="0.1"/>
+  
+  <!-- Outline -->
+  <ellipse cx="256" cy="256" rx="140" ry="120" stroke="#2D3436" stroke-width="16" stroke-linejoin="round" fill="none"/>
+</svg>

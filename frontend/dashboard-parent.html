@@ -764,6 +764,25 @@
             document.getElementById('totalTime').textContent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
         }
 
+        function calculatePCPM(dailyMetrics) {
+            const pcpmByDate = {};
+            dailyMetrics.forEach(day => {
+                const date = new Date(day.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+                const types = JSON.parse(day.activities_by_type || '{}');
+                const readingCount = (types.phoneme_hunt || 0) + (types.dictation_dojo || 0);
+
+                if (readingCount > 0 && day.total_time_played_seconds > 0) {
+                    const estimatedWords = readingCount * 5;
+                    const minutes = day.total_time_played_seconds / 60;
+                    const pcpm = Math.round(estimatedWords / minutes);
+                    pcpmByDate[date] = pcpm;
+                } else {
+                    pcpmByDate[date] = 0;
+                }
+            });
+            return pcpmByDate;
+        }
+
         function updateActivityChart(dailyMetrics) {
             const chart = document.getElementById('activityChart');
             if (!dailyMetrics || dailyMetrics.length === 0) {
@@ -771,28 +790,27 @@
                 return;
             }
 
-            const activityTypes = {};
-            dailyMetrics.forEach(day => {
-                if (day.activities_by_type) {
-                    const types = JSON.parse(day.activities_by_type);
-                    Object.keys(types).forEach(type => {
-                        activityTypes[type] = (activityTypes[type] || 0) + types[type];
-                    });
-                }
-            });
+            const pcpmData = calculatePCPM(dailyMetrics);
+            const dates = Object.keys(pcpmData).slice(-7);
 
-            const maxValue = Math.max(...Object.values(activityTypes), 1);
+            if (dates.length === 0) {
+                chart.innerHTML = '<div style="width:100%; text-align:center; color:#bdc3c7;">Sin datos suficientes</div>';
+                return;
+            }
 
-            chart.innerHTML = Object.entries(activityTypes).map(([type, count]) => {
-                const height = (count / maxValue) * 100;
+            const maxVal = Math.max(...Object.values(pcpmData), 10);
+
+            chart.innerHTML = dates.map(date => {
+                const val = pcpmData[date] || 0;
+                const height = Math.min((val / maxVal) * 100, 100);
                 return `
-                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
-                            <div class="chart-bar" style="height: ${height}%">
-                                <div class="chart-bar-value">${count}</div>
-                            </div>
-                            <div class="chart-bar-label">${getActivityTypeName(type)}</div>
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin: 0 5px;">
+                        <div class="chart-bar" style="height: ${height}%; width: 100%; min-width: 20px; background: var(--color-primary); border-radius: 5px 5px 0 0; position: relative; transition: height 0.5s;">
+                             <span style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:0.8rem; font-weight:bold;">${val}</span>
                         </div>
-                    `;
+                        <div class="chart-bar-label" style="margin-top: 5px; font-size: 0.8rem;">${date}</div>
+                    </div>
+                `;
             }).join('');
         }
 

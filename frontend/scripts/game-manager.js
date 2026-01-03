@@ -72,7 +72,7 @@ export class GameManager {
         this.speakWord = this.speakWord.bind(this);
     }
 
-    startGame(gameId, onComplete) {
+    async startGame(gameId, onComplete) {
         const gameConfig = GAMES_DATA[gameId];
         if (!gameConfig) {
             console.error('Game not found:', gameId);
@@ -94,6 +94,51 @@ export class GameManager {
 
         this.currentGameConfig = gameConfig;
 
+        // Dynamic Loading Logic
+        if (this.currentGameConfig.type === 'math' || this.currentGameConfig.type === 'phoneme_hunt') {
+            // Show Loading Overlay
+            this.container.innerHTML = `
+                <div style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--color-primary);">
+                    <div class="loader" style="font-size:3rem; margin-bottom:20px;">🤖</div>
+                    <h2>Creando tu aventura con IA...</h2>
+                </div>
+             `;
+            this.container.classList.add('active');
+
+            try {
+                const response = await fetch('http://localhost:5001/api/generate-levels', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        gameType: this.currentGameConfig.type === 'phoneme_hunt' ? 'phoneme' : 'math',
+                        difficulty: 'medium',
+                        limit: 5
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.levels && data.levels.length > 0) {
+                        // Merge or Replace Levels
+                        // For math: Map simple objects {q, a} to level objects
+                        if (this.currentGameConfig.type === 'math') {
+                            this.currentGameConfig.levels = data.levels.map((item, idx) => ({
+                                id: idx + 1,
+                                q: item.q,
+                                a: item.a
+                            }));
+                        }
+                        // For Phoneme hunt, we need complex mapping?
+                        // Backend prompt for phoneme was: [{word, icon, isTarget}]
+                        // Frontend expects: level.cards = [...]
+                    }
+                }
+            } catch (e) {
+                console.error("AI Generation failed, using offline fallback", e);
+                // Fallback is usage of existing config or random generation
+            }
+        }
+
         if (this.currentGameConfig.type === 'math') {
             this.renderMathGameStage();
         } else if (this.currentGameConfig.type === 'dictation') {
@@ -106,7 +151,7 @@ export class GameManager {
 
         this.loadLevel(0);
 
-        // Show container
+        // Show container (ensure it's active)
         this.container.classList.add('active');
     }
 
@@ -298,41 +343,48 @@ export class GameManager {
     loadMathLevel(level, content) {
         this.state.mathInput = '';
 
-        // Adaptive Question Generation
-        const diff = this.engine ? this.engine.difficultyMultiplier : 1.0;
+        // Adaptive Question Generation or Use Dynamic Level
         let q, a;
 
-        if (diff < 1.2) {
-            // Simple Addition
-            const x = Math.floor(Math.random() * 5) + 1;
-            const y = Math.floor(Math.random() * 5) + 1;
-            q = `${x} + ${y}`;
-            a = x + y;
-        } else if (diff < 1.6) {
-            // Harder Addition
-            const x = Math.floor(Math.random() * 10) + 1;
-            const y = Math.floor(Math.random() * 10) + 1;
-            q = `${x} + ${y}`;
-            a = x + y;
-        } else if (diff < 2.0) {
-            // Subtraction
-            const x = Math.floor(Math.random() * 10) + 5;
-            const y = Math.floor(Math.random() * 5) + 1;
-            q = `${x} - ${y}`;
-            a = x - y;
-        } else if (diff < 2.5) {
-            // Multiplication
-            const x = Math.floor(Math.random() * 5) + 1;
-            const y = Math.floor(Math.random() * 5) + 1;
-            q = `${x} X ${y}`;
-            a = x * y;
+        if (level.q && level.a !== undefined) {
+            q = level.q;
+            a = level.a;
         } else {
-            // Division (Simple)
-            const y = Math.floor(Math.random() * 4) + 2;
-            const res = Math.floor(Math.random() * 5) + 1;
-            const x = y * res;
-            q = `${x} / ${y}`;
-            a = res;
+            // Fallback: Random Generation
+            const diff = this.engine ? this.engine.difficultyMultiplier : 1.0;
+
+            if (diff < 1.2) {
+                // Simple Addition
+                const x = Math.floor(Math.random() * 5) + 1;
+                const y = Math.floor(Math.random() * 5) + 1;
+                q = `${x} + ${y}`;
+                a = x + y;
+            } else if (diff < 1.6) {
+                // Harder Addition
+                const x = Math.floor(Math.random() * 10) + 1;
+                const y = Math.floor(Math.random() * 10) + 1;
+                q = `${x} + ${y}`;
+                a = x + y;
+            } else if (diff < 2.0) {
+                // Subtraction
+                const x = Math.floor(Math.random() * 10) + 5;
+                const y = Math.floor(Math.random() * 5) + 1;
+                q = `${x} - ${y}`;
+                a = x - y;
+            } else if (diff < 2.5) {
+                // Multiplication
+                const x = Math.floor(Math.random() * 5) + 1;
+                const y = Math.floor(Math.random() * 5) + 1;
+                q = `${x} X ${y}`;
+                a = x * y;
+            } else {
+                // Division (Simple)
+                const y = Math.floor(Math.random() * 4) + 2;
+                const res = Math.floor(Math.random() * 5) + 1;
+                const x = y * res;
+                q = `${x} / ${y}`;
+                a = res;
+            }
         }
 
         // Store Answer for validation
@@ -590,52 +642,53 @@ export class GameManager {
 
         const nextInput = this.state.mathInput + num;
 
+        // Visual Update First - Fix for missing second digit
+        this.state.mathInput = nextInput;
+        const qText = document.getElementById('mathQuestion').innerText.split('=')[0];
+        document.getElementById('mathQuestion').innerText = `${qText}= ${nextInput}`;
+
         // If length matches target length, validate
         if (nextInput.length >= target.length) {
-            if (nextInput === target) {
-                // Correct
-                document.getElementById('mathQuestion').style.color = 'var(--color-success)';
 
-                if (this.engine) this.engine.reportResult(true, 'math', 'speed_math');
+            // Temporary block interactions if needed?
+            // With delay of 500ms, user sees the number.
 
-                setTimeout(() => {
-                    this.state.currentLevelIndex++;
+            setTimeout(() => {
+                if (nextInput === target) {
+                    // Correct
+                    document.getElementById('mathQuestion').style.color = 'var(--color-success)';
 
-                    // Adaptive Infinite Levels for Math? Or Cap at 5?
-                    // If dynamic, we can just reload loadMathLevel without incrementing index if we want infinite.
-                    // But for 'Free Play' flow, we want a cap.
-                    // Math levels in config are empty now, so we need logic to end.
-                    if (this.state.currentLevelIndex >= 5) {
-                        this.handleLevelComplete(0);
-                    } else {
-                        this.renderProgressBar();
-                        // For math with empty levels array, we pass dummy object or handle in loadMathLevel
-                        this.loadLevel(this.state.currentLevelIndex);
-                    }
-                }, 500);
-            } else {
-                // Wrong
-                document.getElementById('mathQuestion').style.color = 'var(--color-error)';
-                document.getElementById('mathQuestion').classList.add('shake');
-                if (this.engine) this.engine.reportResult(false, 'math', 'speed_math');
+                    if (this.engine) this.engine.reportResult(true, 'math', 'speed_math');
 
-                setTimeout(() => {
-                    document.getElementById('mathQuestion').classList.remove('shake');
-                    document.getElementById('mathQuestion').style.color = 'var(--color-primary)';
-                }, 500);
+                    setTimeout(() => {
+                        this.state.currentLevelIndex++;
 
-                this.state.mathInput = ''; // Reset input
-            }
-        } else {
-            this.state.mathInput = nextInput;
-            // Get Q from somewhere or reconstruct it? 
-            // Better to only update the answer part.
-            // Simplified: The Q is static, we append answer.
-            // But we need to remember the Q.
-            // Actually innerText was "Q = ?"
-            // We want "Q = Answer"
-            const qText = document.getElementById('mathQuestion').innerText.split('=')[0];
-            document.getElementById('mathQuestion').innerText = `${qText}= ${nextInput}`;
+                        // Adaptive Infinite Levels for Math? Or Cap at 5?
+                        if (this.state.currentLevelIndex >= 5) {
+                            this.handleLevelComplete(0);
+                        } else {
+                            this.renderProgressBar();
+                            // For math with empty levels array, we pass dummy object or handle in loadMathLevel
+                            this.loadLevel(this.state.currentLevelIndex);
+                        }
+                    }, 500); // Wait to see green
+                } else {
+                    // Wrong
+                    document.getElementById('mathQuestion').style.color = 'var(--color-error)';
+                    document.getElementById('mathQuestion').classList.add('shake');
+                    if (this.engine) this.engine.reportResult(false, 'math', 'speed_math');
+
+                    setTimeout(() => {
+                        document.getElementById('mathQuestion').classList.remove('shake');
+                        document.getElementById('mathQuestion').style.color = 'var(--color-primary)';
+
+                        // Clear input visually and in state
+                        const originalQ = document.getElementById('mathQuestion').innerText.split('=')[0];
+                        document.getElementById('mathQuestion').innerText = `${originalQ}= ?`;
+                        this.state.mathInput = '';
+                    }, 1000);
+                }
+            }, 300); // 300ms delay to allow visual update of 2nd digit
         }
     }
 

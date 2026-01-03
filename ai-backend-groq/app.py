@@ -290,7 +290,106 @@ async def generate(request: GenerateRequest):
             detail=f"Error en generate: {str(e)}"
         )
 
-# ==================== CORS PREFLIGHT HANDLERS ====================
+# ==================== DYNAMIC LEVEL GENERATION ====================
+
+class GenerateLevelRequest(BaseModel):
+    gameType: str = Field(..., description="Type of game: math, phoneme, dictation")
+    difficulty: str = Field(default="medium", description="easy, medium, hard")
+    limit: int = Field(default=5, ge=1, le=10)
+
+@app.post('/api/generate-levels')
+async def generate_levels(request: GenerateLevelRequest):
+    """
+    Generates dynamic game levels using Groq
+    """
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=503, detail="Groq API key missing")
+
+    prompt = ""
+    if request.gameType == 'math':
+        prompt = f"""
+        Generate {request.limit} {request.difficulty} math problems for a 5-7 year old. 
+        Operations: Addition/Subtraction.
+        Format: JSON Array only.
+        Example: [{{"q": "2 + 2", "a": 4, "ops": "+"}}]
+        Response must be ONLY valid JSON.
+        """
+    elif request.gameType == 'phoneme':
+        prompt = f"""
+        Generate {request.limit} simple spanish words for a child learning to read.
+        The words should have clear visual representation.
+        Format: JSON Array only.
+        Example: [{{"word": "Gato", "icon": "cat", "isTarget": true}}]
+        Response must be ONLY valid JSON.
+        """
+    else:
+         raise HTTPException(status_code=400, detail="Unknown game type")
+
+    try:
+        headers = {
+            'Authorization': f'Bearer {GROQ_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Enforce JSON mode if supported or just via prompt
+        payload = {
+            'model': 'llama-3.3-70b-versatile',
+            'messages': [{'role': 'user', 'content': prompt}],
+            'temperature': 0.7,
+            'response_format': {"type": "json_object"} 
+        }
+
+        response = requests.post(f'{GROQ_API_URL}/chat/completions', headers=headers, json=payload, timeout=30)
+        
+        if not response.ok:
+             raise HTTPException(status_code=response.status_code, detail=response.text)
+
+        result = response.json()
+        content = result['choices'][0]['message']['content']
+        
+        # Parse JSON from content
+        import json
+        try:
+            # Llama sometimes wraps in ```json ... ```
+            clean_content = content.replace("```json", "").replace("```", "").strip()
+            data = json.loads(clean_content)
+            
+            # If wrapped in object key usually "levels" or "items"
+            if isinstance(data, dict):
+                # Try to find list values
+                for k, v in data.items():
+                    if isinstance(v, list):
+                        data = v
+                        break
+            
+            # If still dict and no list found, might be single object?
+            if not isinstance(data, list):
+                if isinstance(data, dict):
+                     # Maybe raw wrapper?
+                     pass 
+                else: 
+                     data = []
+
+            return {"levels": data}
+        except Exception as e:
+            print(f"JSON Parse Error: {e} - Content: {content}")
+            return {"levels": [], "error": "Failed to parse AI response"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.options("/api/generate-levels")
+async def generate_levels_options():
+    return Response(
+        status_code=200,
+        headers={
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+        }
+    )
+
+# ==================== CORS PREFLIGHT HANDLERS (Existing) ====================
 
 @app.options("/transcribe")
 async def transcribe_options():
