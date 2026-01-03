@@ -22,12 +22,16 @@ const GAMES_DATA = {
         id: 'speed_math',
         type: 'math',
         instruction: '¡Calcula Rápido!',
+        levels: [{}, {}, {}, {}, {}] // Dynamic levels, require length > 0
+    },
+    speaking_dojo: {
+        id: 'speaking_dojo',
+        type: 'speaking',
+        instruction: 'Habla conmigo',
         levels: [
-            { id: 1, q: '5 + 3', a: 8 },
-            { id: 2, q: '2 + 4', a: 6 },
-            { id: 3, q: '10 - 2', a: 8 },
-            { id: 4, q: '7 + 2', a: 9 },
-            { id: 5, q: '12 - 4', a: 8 }
+            { id: 1, prompt: "¿Cuál es tu animal favorito?", icon: 'cat' },
+            { id: 2, prompt: "¿Qué te gusta comer?", icon: 'frog' },
+            { id: 3, prompt: "Dí 'Hola Mundo'", icon: 'sun' }
         ]
     },
     dictation_dojo: {
@@ -68,12 +72,14 @@ export class GameManager {
         this.speakWord = this.speakWord.bind(this);
     }
 
-    startGame(gameId) {
+    startGame(gameId, onComplete) {
         const gameConfig = GAMES_DATA[gameId];
         if (!gameConfig) {
             console.error('Game not found:', gameId);
             return;
         }
+
+        this.onComplete = onComplete; // Store callback
 
         this.state = {
             gameId: gameId,
@@ -92,6 +98,8 @@ export class GameManager {
             this.renderMathGameStage();
         } else if (this.currentGameConfig.type === 'dictation') {
             this.renderDictationGameStage();
+        } else if (this.currentGameConfig.type === 'speaking') {
+            this.renderSpeakingGameStage();
         } else {
             this.renderGameStage();
         }
@@ -189,7 +197,7 @@ export class GameManager {
         const bar = document.getElementById('progressBar');
         bar.innerHTML = '';
         const total = this.currentGameConfig.levels.length;
-        for(let i=0; i<total; i++) {
+        for (let i = 0; i < total; i++) {
             const seg = document.createElement('div');
             seg.className = `progress-segment ${i < this.state.currentLevelIndex ? 'filled' : ''}`;
             bar.appendChild(seg);
@@ -212,6 +220,8 @@ export class GameManager {
             this.loadMathLevel(level, content);
         } else if (this.currentGameConfig.type === 'dictation') {
             this.loadDictationLevel(level, content);
+        } else if (this.currentGameConfig.type === 'speaking') {
+            this.loadSpeakingLevel(level, content);
         } else {
             this.loadPhonemeLevel(level, content);
         }
@@ -256,8 +266,77 @@ export class GameManager {
         content.appendChild(grid);
     }
 
+    renderSpeakingGameStage() {
+        this.container.innerHTML = `
+            <div class="game-header">
+                <div class="progress-bar-container" id="progressBar"></div>
+                <button class="btn-close-game" id="btnCloseGame">X</button>
+            </div>
+            <div class="game-content speaking-mode" id="gameContent" style="flex-direction: column; align-items: center; justify-content: center;">
+                <!-- Speaking Content -->
+            </div>
+            <div class="game-footer">
+                <button class="btn-primary-action" id="btnAction" disabled>SIGUIENTE</button>
+            </div>
+             <!-- Overlay -->
+            <div class="level-complete-overlay" id="levelCompleteOverlay">
+                <div class="stars-container" id="starsContainer">
+                    <span class="star">★</span><span class="star">★</span><span class="star">★</span>
+                </div>
+                <h2 style="color:var(--color-primary); font-size: 2rem;">¡Bien Hablado!</h2>
+                <button class="btn-primary-action" onclick="document.getElementById('btnCloseGame').click()">SALIR</button>
+            </div>
+        `;
+        document.getElementById('btnCloseGame').addEventListener('click', this.closeGame);
+        // Action is handled by voice result or manual skip
+        document.getElementById('btnAction').onclick = () => {
+            this.handleLevelComplete(0);
+        };
+        this.renderProgressBar();
+    }
+
     loadMathLevel(level, content) {
         this.state.mathInput = '';
+
+        // Adaptive Question Generation
+        const diff = this.engine ? this.engine.difficultyMultiplier : 1.0;
+        let q, a;
+
+        if (diff < 1.2) {
+            // Simple Addition
+            const x = Math.floor(Math.random() * 5) + 1;
+            const y = Math.floor(Math.random() * 5) + 1;
+            q = `${x} + ${y}`;
+            a = x + y;
+        } else if (diff < 1.6) {
+            // Harder Addition
+            const x = Math.floor(Math.random() * 10) + 1;
+            const y = Math.floor(Math.random() * 10) + 1;
+            q = `${x} + ${y}`;
+            a = x + y;
+        } else if (diff < 2.0) {
+            // Subtraction
+            const x = Math.floor(Math.random() * 10) + 5;
+            const y = Math.floor(Math.random() * 5) + 1;
+            q = `${x} - ${y}`;
+            a = x - y;
+        } else if (diff < 2.5) {
+            // Multiplication
+            const x = Math.floor(Math.random() * 5) + 1;
+            const y = Math.floor(Math.random() * 5) + 1;
+            q = `${x} X ${y}`;
+            a = x * y;
+        } else {
+            // Division (Simple)
+            const y = Math.floor(Math.random() * 4) + 2;
+            const res = Math.floor(Math.random() * 5) + 1;
+            const x = y * res;
+            q = `${x} / ${y}`;
+            a = res;
+        }
+
+        // Store Answer for validation
+        this.currentGameConfig.currentAnswer = a;
 
         // Question Display
         const qContainer = document.createElement('div');
@@ -267,7 +346,7 @@ export class GameManager {
         qContainer.style.justifyContent = 'center';
 
         const qText = document.createElement('h1');
-        qText.innerText = `${level.q} = ?`;
+        qText.innerText = `${q} = ?`;
         qText.style.fontSize = '4rem';
         qText.style.color = 'var(--color-primary)';
         qText.id = 'mathQuestion';
@@ -282,7 +361,7 @@ export class GameManager {
         padContainer.style.maxWidth = '300px';
         padContainer.style.marginBottom = '20px';
 
-        [1,2,3,4,5,6,7,8,9,0].forEach(num => {
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 0].forEach(num => {
             const btn = document.createElement('button');
             btn.innerText = num;
             btn.style.fontSize = '2rem';
@@ -294,13 +373,87 @@ export class GameManager {
             btn.style.cursor = 'pointer';
             btn.onclick = () => this.handleMathInput(num);
 
-            if(num === 0) btn.style.gridColumn = '2';
+            if (num === 0) btn.style.gridColumn = '2';
 
             padContainer.appendChild(btn);
         });
 
         content.appendChild(qContainer);
         content.appendChild(padContainer);
+    }
+
+    loadSpeakingLevel(level, content) {
+        // Simple Interaction: Computer speaks prompt -> User speaks (simulated or real) -> Computer responds
+
+        // Icon / Avatar
+        const imgContainer = document.createElement('div');
+        imgContainer.innerHTML = AssetFactory.getSvg(level.icon, 120, 120);
+        imgContainer.className = 'pulse'; // CSS animation
+
+        // Prompt Text
+        const text = document.createElement('h2');
+        text.innerText = level.prompt;
+        text.style.textAlign = 'center';
+        text.style.marginTop = '20px';
+        text.style.color = 'var(--color-primary)';
+
+        // Mic Button
+        const micBtn = document.createElement('button');
+        micBtn.innerText = "🎤 Hablar";
+        micBtn.style.marginTop = '30px';
+        micBtn.className = 'btn-primary-action';
+        micBtn.style.background = '#e74c3c'; // Red for recording
+
+        const feedback = document.createElement('p');
+        feedback.id = 'speechFeedback';
+        feedback.style.marginTop = '20px';
+        feedback.style.fontStyle = 'italic';
+        feedback.style.color = '#7f8c8d';
+        feedback.innerText = "Presiona hablar...";
+
+        micBtn.onclick = () => {
+            // Web Speech API Mock / Implementation
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const recognition = new SpeechRecognition();
+                recognition.lang = 'es-ES';
+                recognition.start();
+
+                feedback.innerText = "Escuchando...";
+                micBtn.disabled = true;
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    feedback.innerText = `Dijiste: "${transcript}"`;
+                    this.speakWord(`¡Qué interesante! Dijiste ${transcript}`);
+                    document.getElementById('btnAction').disabled = false;
+                    micBtn.disabled = false;
+                    // Determine sentiment or keyword? For now just allow pass.
+                    if (this.engine) this.engine.reportResult(true, 'speaking', 'speaking_dojo');
+                };
+
+                recognition.onerror = (event) => {
+                    feedback.innerText = "No te entendí bien, intenta de nuevo.";
+                    micBtn.disabled = false;
+                };
+            } else {
+                // Fallback
+                alert("Tu navegador no soporta reconocimiento de voz.");
+                feedback.innerText = "Simulando voz...";
+                setTimeout(() => {
+                    feedback.innerText = "Dijiste: 'Me gustan los gatos'";
+                    document.getElementById('btnAction').disabled = false;
+                    if (this.engine) this.engine.reportResult(true, 'speaking', 'speaking_dojo');
+                }, 1000);
+            }
+        };
+
+        content.appendChild(imgContainer);
+        content.appendChild(text);
+        content.appendChild(micBtn);
+        content.appendChild(feedback);
+
+        this.speakWord(level.prompt);
     }
 
     loadDictationLevel(level, content) {
@@ -401,19 +554,13 @@ export class GameManager {
             input.style.borderBottomColor = 'var(--color-success)';
             input.style.color = 'var(--color-success)';
 
-            if (this.engine) this.engine.reportResult(true, 'dictation');
+            if (this.engine) this.engine.reportResult(true, 'dictation', 'dictation_dojo');
 
             setTimeout(() => {
                 this.state.currentLevelIndex++;
                 // Check if all levels done
                 if (this.state.currentLevelIndex >= this.currentGameConfig.levels.length) {
-                    // Show Overlay
-                    const overlay = document.getElementById('levelCompleteOverlay');
-                    const starEls = document.querySelectorAll('.star');
-                    overlay.classList.add('active');
-                    starEls.forEach((el, idx) => {
-                        setTimeout(() => el.classList.add('filled'), idx * 200);
-                    });
+                    this.handleLevelComplete(0);
                 } else {
                     this.renderProgressBar();
                     this.loadLevel(this.state.currentLevelIndex);
@@ -425,7 +572,7 @@ export class GameManager {
             input.style.borderBottomColor = 'var(--color-error)';
             input.classList.add('shake');
 
-            if (this.engine) this.engine.reportResult(false, 'dictation');
+            if (this.engine) this.engine.reportResult(false, 'dictation', 'dictation_dojo');
 
             setTimeout(() => {
                 input.classList.remove('shake');
@@ -439,40 +586,56 @@ export class GameManager {
         // For Speed Math, maybe check immediately if answer length matches?
         // Or check every input.
 
-        const currentLevel = this.currentGameConfig.levels[this.state.currentLevelIndex];
-        const target = currentLevel.a.toString();
+        const target = this.currentGameConfig.currentAnswer.toString();
 
         const nextInput = this.state.mathInput + num;
 
         // If length matches target length, validate
         if (nextInput.length >= target.length) {
-             if (nextInput === target) {
-                 // Correct
-                 document.getElementById('mathQuestion').style.color = 'var(--color-success)';
+            if (nextInput === target) {
+                // Correct
+                document.getElementById('mathQuestion').style.color = 'var(--color-success)';
 
-                 if (this.engine) this.engine.reportResult(true, 'math');
+                if (this.engine) this.engine.reportResult(true, 'math', 'speed_math');
 
-                 setTimeout(() => {
-                     this.state.currentLevelIndex++;
-                     this.renderProgressBar();
-                     this.loadLevel(this.state.currentLevelIndex);
-                 }, 500);
-             } else {
-                 // Wrong
-                 document.getElementById('mathQuestion').style.color = 'var(--color-error)';
-                 document.getElementById('mathQuestion').classList.add('shake');
-                 if (this.engine) this.engine.reportResult(false, 'math');
+                setTimeout(() => {
+                    this.state.currentLevelIndex++;
 
-                 setTimeout(() => {
+                    // Adaptive Infinite Levels for Math? Or Cap at 5?
+                    // If dynamic, we can just reload loadMathLevel without incrementing index if we want infinite.
+                    // But for 'Free Play' flow, we want a cap.
+                    // Math levels in config are empty now, so we need logic to end.
+                    if (this.state.currentLevelIndex >= 5) {
+                        this.handleLevelComplete(0);
+                    } else {
+                        this.renderProgressBar();
+                        // For math with empty levels array, we pass dummy object or handle in loadMathLevel
+                        this.loadLevel(this.state.currentLevelIndex);
+                    }
+                }, 500);
+            } else {
+                // Wrong
+                document.getElementById('mathQuestion').style.color = 'var(--color-error)';
+                document.getElementById('mathQuestion').classList.add('shake');
+                if (this.engine) this.engine.reportResult(false, 'math', 'speed_math');
+
+                setTimeout(() => {
                     document.getElementById('mathQuestion').classList.remove('shake');
                     document.getElementById('mathQuestion').style.color = 'var(--color-primary)';
-                 }, 500);
+                }, 500);
 
-                 this.state.mathInput = ''; // Reset input
-             }
+                this.state.mathInput = ''; // Reset input
+            }
         } else {
             this.state.mathInput = nextInput;
-            document.getElementById('mathQuestion').innerText = `${currentLevel.q} = ${nextInput}`;
+            // Get Q from somewhere or reconstruct it? 
+            // Better to only update the answer part.
+            // Simplified: The Q is static, we append answer.
+            // But we need to remember the Q.
+            // Actually innerText was "Q = ?"
+            // We want "Q = Answer"
+            const qText = document.getElementById('mathQuestion').innerText.split('=')[0];
+            document.getElementById('mathQuestion').innerText = `${qText}= ${nextInput}`;
         }
     }
 
@@ -538,7 +701,7 @@ export class GameManager {
 
             // Report to Engine
             if (this.engine) {
-                this.engine.reportResult(false, this.currentGameConfig.type);
+                this.engine.reportResult(false, this.currentGameConfig.type, this.currentGameConfig.id);
             }
 
             // Play "Boing" sound (mock)
@@ -559,7 +722,12 @@ export class GameManager {
 
         // Report to Engine
         if (this.engine) {
-            this.engine.reportResult(true, this.currentGameConfig.type);
+            this.engine.reportResult(true, this.currentGameConfig.type, this.currentGameConfig.id);
+        }
+
+        // Notify App to Unlock Next Level
+        if (this.onComplete) {
+            this.onComplete();
         }
 
         // Calculate Stars (Simple logic)

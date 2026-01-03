@@ -694,8 +694,16 @@
             if (childInfo) statsTitle.textContent = `Progreso de ${childInfo.username}`;
 
             // Add Actions Container
+            // Remove existing actions if any to avoid duplicates on re-open
+            const existingActions = statsSection.querySelector('.child-actions-container');
+            if (existingActions) existingActions.remove();
+
+            // Add Actions Container
             const actionsContainer = document.createElement('div');
-            actionsContainer.className = 'flex gap-2 mb-12 justify-end'; // Increased margin-bottom further
+            // Added child-actions-container class for reliable selection
+            // Increased margin-bottom via inline style for assured spacing
+            actionsContainer.className = 'flex gap-2 justify-end child-actions-container';
+            actionsContainer.style.marginBottom = '5rem';
             actionsContainer.innerHTML = `
                 <button onclick="window.playAsChild(${childId})" class="btn btn-primary" style="font-size: 1.1rem; padding: 0.75rem 1.5rem;">
                     🎮 Jugar como ${childInfo?.username || 'Hijo'}
@@ -707,9 +715,6 @@
 
             // Insert actions after title
             const header = statsSection.querySelector('.section-header') || statsSection.firstElementChild;
-            // Remove existing actions if any to avoid duplicates on re-open
-            const existingActions = statsSection.querySelector('.gap-2.mb-4');
-            if (existingActions) existingActions.remove();
 
             header.insertAdjacentElement('afterend', actionsContainer);
 
@@ -879,7 +884,7 @@
 
                 if (response.ok && data.token) {
                     // Open with token parameter in the same tab
-                    window.location.href = `/app/index.html?child_token=${data.token}`;
+                    window.location.href = `/app/index.html?child_token=${data.token}&child_id=${data.childId}`;
                 } else {
                     alert('Error al iniciar juego: ' + (data?.error || 'Desconocido'));
                 }

@@ -66,6 +66,17 @@ export class AssetFactory {
             star: `
                 <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                     <polygon points="50,5 61,35 95,35 68,57 79,91 50,70 21,91 32,57 5,35 39,35" fill="#f1c40f" />
+                </svg>`,
+            play: `
+                <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="45" fill="#2ecc71" />
+                    <polygon points="40,30 70,50 40,70" fill="#ffffff" />
+                </svg>`,
+            tree: `
+                <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="40" y="60" width="20" height="30" fill="#8B4513" />
+                    <path d="M 20 60 L 50 10 L 80 60 Z" fill="#2ecc71" />
+                    <path d="M 20 40 L 50 0 L 80 40 Z" fill="#27ae60" opacity="0.8" />
                 </svg>`
         };
 

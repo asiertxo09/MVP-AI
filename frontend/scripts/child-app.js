@@ -10,8 +10,7 @@ const LEVELS = [
     { id: 1, type: 'phoneme_hunt', title: 'Caza-Fonemas', desc: '¡Encuentra las palabras con R!', icon: 'frog.svg' },
     { id: 2, type: 'math', title: 'Bosque de Números', desc: 'Resuelve sumas para cruzar el bosque.', icon: 'icon-frog.svg' },
     { id: 3, type: 'dictation', title: 'Dojo de Escritura', desc: 'Escucha y escribe la palabra correcta.', icon: 'icon-frog.svg' },
-    { id: 4, type: 'speaking', title: 'Montaña del Eco', desc: 'Pronuncia las palabras mágicas.', icon: 'icon-frog.svg' },
-    { id: 5, type: 'boss', title: 'Castillo del Sabio', desc: 'Demuestra todo lo que aprendiste.', icon: 'icon-frog.svg' }
+    { id: 4, type: 'speaking', title: 'Montaña del Eco', desc: 'Habla con la montaña mágica.', icon: 'icon-frog.svg' }
 ];
 
 const STATE = {
@@ -35,10 +34,75 @@ const gameManager = new GameManager('gameStage', engine);
 
 // --- Initialization ---
 function init() {
+    // Check for child token in URL (from dashboard-parent playAsChild)
+    const urlParams = new URLSearchParams(window.location.search);
+    let childToken = urlParams.get('child_token');
+    let childId = urlParams.get('child_id');
+
+    // If not in URL, check sessionStorage (reload case)
+    if (!childToken) {
+        childToken = sessionStorage.getItem('child_session_token');
+    }
+    if (!childId) {
+        childId = sessionStorage.getItem('eduplay_child_id');
+    }
+
+    if (childToken) {
+        sessionStorage.setItem('child_session_token', childToken);
+        if (childId) sessionStorage.setItem('eduplay_child_id', childId);
+
+        localStorage.setItem('eduplay_session', 'active');
+
+        // Clean URL if it was there
+        if (urlParams.get('child_token')) {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+        }
+    }
+
     requireSession(); // Ensure user is logged in
+
+    // Session Isolation: specific to child ID if available, else token hash
+    let storageKey;
+    if (childId) {
+        storageKey = `eduplay_completed_levels_${childId}`;
+    } else {
+        const tokenHash = childToken ? simpleHash(childToken) : 'guest';
+        storageKey = `eduplay_completed_levels_${tokenHash}`;
+    }
+
+    STATE.storageKey = storageKey; // Store key for saving
+
+    // Load progress
+    const savedLevels = localStorage.getItem(storageKey);
+    if (savedLevels) {
+        STATE.completedLevels = JSON.parse(savedLevels);
+    } else {
+        STATE.completedLevels = [];
+    }
+
+    // Determine current level
+    if (STATE.completedLevels.length > 0) {
+        const maxCompleted = Math.max(...STATE.completedLevels);
+        STATE.currentLevel = maxCompleted + 1;
+    } else {
+        STATE.currentLevel = 1;
+    }
+
     renderHUD();
     renderMap();
     setupListeners();
+}
+
+// Simple string hash function
+function simpleHash(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString(16);
 }
 
 function renderHUD() {
@@ -63,7 +127,7 @@ function renderHUD() {
         btnParent.onclick = () => {
             engine.requestParentAccess((success) => {
                 if (success) {
-                    window.location.href = 'dashboard-parent.html';
+                    window.location.href = '/dashboard-parent';
                 }
             });
         };
@@ -73,8 +137,15 @@ function renderHUD() {
 }
 
 function renderMap() {
-    const existingNodes = pathContainer.querySelectorAll('.node');
-    existingNodes.forEach(n => n.remove());
+    pathContainer.innerHTML = ''; // Clear existing
+
+    // Check for Free Play Mode (All 4 levels completed)
+    const allCompleted = LEVELS.every(l => STATE.completedLevels.includes(l.id));
+
+    if (allCompleted) {
+        renderFreePlayMode();
+        return;
+    }
 
     LEVELS.forEach((level, index) => {
         const node = document.createElement('div');
@@ -98,8 +169,6 @@ function renderMap() {
         } else if (status === 'locked') {
             img.src = '../assets/icons/icon-lock.svg';
         } else {
-            // Check if icon exists in both paths or assume specific logic
-            // For now, assume if it doesn't start with icon-, it's one of ours
             img.src = `../assets/icons/${level.icon}`;
         }
 
@@ -110,6 +179,59 @@ function renderMap() {
 
         pathContainer.appendChild(node);
     });
+}
+
+function renderFreePlayMode() {
+    const container = document.createElement('div');
+    container.className = 'free-play-container';
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    container.style.gap = '20px';
+    container.style.width = '100%';
+    container.style.padding = '20px';
+
+    const header = document.createElement('h2');
+    header.innerText = "¡Juego Libre!";
+    header.style.gridColumn = '1 / -1';
+    header.style.textAlign = 'center';
+    header.style.color = 'var(--color-primary)';
+    container.appendChild(header);
+
+    const games = [
+        { id: 'phoneme', name: 'Fonemas', type: 'phoneme_hunt', color: '#ff7675' },
+        { id: 'math', name: 'Números', type: 'math', color: '#74b9ff' },
+        { id: 'dictation', name: 'Escritura', type: 'dictation', color: '#a29bfe' },
+        { id: 'speaking', name: 'Hablar', type: 'speaking', color: '#55efc4' }
+    ];
+
+    games.forEach(g => {
+        const btn = document.createElement('button');
+        btn.innerText = g.name;
+        btn.style.padding = '30px';
+        btn.style.fontSize = '1.5rem';
+        btn.style.borderRadius = '15px';
+        btn.style.border = 'none';
+        btn.style.backgroundColor = g.color;
+        btn.style.color = 'white';
+        btn.style.cursor = 'pointer';
+        btn.style.boxShadow = '0 5px 0 rgba(0,0,0,0.1)';
+        btn.style.transition = 'transform 0.1s';
+
+        btn.onmousedown = () => btn.style.transform = 'scale(0.95)';
+        btn.onmouseup = () => btn.style.transform = 'scale(1)';
+
+        btn.onclick = () => {
+            // Launch game directly without modal or callback (free play doesn't need to unlock anything)
+            if (g.type === 'phoneme_hunt') gameManager.startGame('phoneme_hunt');
+            else if (g.type === 'math') gameManager.startGame('speed_math');
+            else if (g.type === 'dictation') gameManager.startGame('dictation_dojo');
+            else if (g.type === 'speaking') gameManager.startGame('speaking_dojo');
+        };
+
+        container.appendChild(btn);
+    });
+
+    pathContainer.appendChild(container);
 }
 
 function handleNodeClick(level, status, nodeElement) {
@@ -142,15 +264,38 @@ function openModal(level, isReplay) {
         console.log(`Starting level ${level.id}: ${level.type}`);
         activityModal.classList.remove('active');
 
+        const onLevelComplete = () => {
+            console.log(`Level ${level.id} completed!`);
+            if (!STATE.completedLevels.includes(level.id)) {
+                STATE.completedLevels.push(level.id);
+                // Save to user-specific key
+                localStorage.setItem(STATE.storageKey, JSON.stringify(STATE.completedLevels));
+
+                // Advance current level
+                if (level.id === STATE.currentLevel) {
+                    STATE.currentLevel = level.id + 1;
+                }
+
+                // Refresh map
+                renderMap();
+
+                // Update coins/streak in UI (mock update)
+                STATE.coins += 50;
+                renderHUD();
+            }
+        };
+
         // Launch specific game
         // Ideally mapping level.type to gameId
         // For now, we only implemented 'phoneme_hunt'
         if (level.type === 'phoneme_hunt') {
-            gameManager.startGame('phoneme_hunt');
+            gameManager.startGame('phoneme_hunt', onLevelComplete);
         } else if (level.type === 'math') {
-            gameManager.startGame('speed_math');
+            gameManager.startGame('speed_math', onLevelComplete);
         } else if (level.type === 'dictation') {
-            gameManager.startGame('dictation_dojo');
+            gameManager.startGame('dictation_dojo', onLevelComplete);
+        } else if (level.type === 'speaking') {
+            gameManager.startGame('speaking_dojo', onLevelComplete);
         } else {
             alert("Juego no implementado aún: " + level.type);
         }

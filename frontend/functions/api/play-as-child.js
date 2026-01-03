@@ -48,7 +48,7 @@ export const onRequestPost = async ({ request, env }) => {
             secret
         });
 
-        return jsonResponse({ ok: true, token, redirectUrl: `/app/index.html` }, 200);
+        return jsonResponse({ ok: true, token, childId: childUser.id, redirectUrl: `/app/index.html?child_id=${childUser.id}` }, 200);
 
     } catch (err) {
         console.error("play-as-child", err);

@@ -139,8 +139,11 @@ const login = async (payload) => {
 
 
 
-const rememberSession = () => {
+const rememberSession = (username) => {
   localStorage.setItem(SESSION_KEY, "active");
+  if (username) {
+    localStorage.setItem('eduplay_username', username);
+  }
 };
 
 const hasActiveSession = () => {
@@ -252,7 +255,7 @@ const initLoginForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
 
     try {
       const response = await login(values);
-      rememberSession();
+      rememberSession(values.username);
       showStatus(
         statusElement,
         "¡Bienvenida/o de nuevo! Redirigiendo…",

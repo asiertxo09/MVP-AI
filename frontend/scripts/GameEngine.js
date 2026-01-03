@@ -7,7 +7,10 @@ export class GameEngine {
         this.interval = null;
 
         // Parental Control
-        this.parentPin = localStorage.getItem('eduplay_parent_pin'); // Plain text for prototype as requested
+        // Parental Control
+        const username = localStorage.getItem('eduplay_username') || 'guest';
+        this.pinKey = `eduplay_parent_pin_${username}`;
+        this.parentPin = localStorage.getItem(this.pinKey);
 
         // Difficulty Logic
         this.streak = 0; // Consecutive correct answers
@@ -35,6 +38,7 @@ export class GameEngine {
             const { post } = await import('./api-client.js');
             await post('/api/metrics', {
                 activityType: activityType,
+                activityName: details.activityName || activityType,
                 isCorrect: isCorrect,
                 metadata: {
                     ...details,
@@ -107,15 +111,36 @@ export class GameEngine {
         missionText.style.color = '#feca57';
         missionText.style.maxWidth = '80%';
 
+        // Back to Dashboard Button
+        const btnBack = document.createElement('button');
+        btnBack.innerText = "Volver al Dashboard (PIN)";
+        btnBack.style.marginTop = '30px';
+        btnBack.style.padding = '15px 30px';
+        btnBack.style.fontSize = '1.5rem';
+        btnBack.style.backgroundColor = '#6c5ce7';
+        btnBack.style.color = 'white';
+        btnBack.style.border = 'none';
+        btnBack.style.borderRadius = '10px';
+        btnBack.style.cursor = 'pointer';
+
+        btnBack.onclick = () => {
+            this.requestParentAccess((success) => {
+                if (success) {
+                    window.location.href = '/dashboard-parent.html';
+                }
+            });
+        };
+
         overlay.appendChild(title);
         overlay.appendChild(missionTitle);
         overlay.appendChild(missionText);
+        overlay.appendChild(btnBack);
 
         document.body.appendChild(overlay);
 
         // Disable interactions
         const app = document.getElementById('app');
-        if(app) app.style.filter = 'blur(10px)';
+        if (app) app.style.filter = 'blur(10px)';
     }
 
     generateOfflineMission() {
@@ -146,8 +171,18 @@ export class GameEngine {
         setTimeout(() => toast.remove(), 3000);
     }
 
+    getStorageKey() {
+        const childId = sessionStorage.getItem('eduplay_child_id');
+        // Fallback to token hash or guest if no childId (legacy/direct access)
+        if (!childId) {
+            const token = sessionStorage.getItem('child_session_token');
+            return `eduplay_engine_state_${token ? token.substring(0, 10) : 'guest'}`;
+        }
+        return `eduplay_engine_state_${childId}`;
+    }
+
     loadState() {
-        const saved = localStorage.getItem('eduplay_engine_state');
+        const saved = localStorage.getItem(this.getStorageKey());
         if (saved) {
             const parsed = JSON.parse(saved);
             // Reset daily if date changed (simplified logic)
@@ -162,14 +197,14 @@ export class GameEngine {
     }
 
     saveState() {
-        localStorage.setItem('eduplay_engine_state', JSON.stringify({
+        localStorage.setItem(this.getStorageKey(), JSON.stringify({
             remainingSeconds: this.remainingSeconds,
             timestamp: Date.now()
         }));
     }
 
     // Adaptive Difficulty
-    reportResult(isCorrect, activityType = 'unknown') {
+    reportResult(isCorrect, activityType = 'unknown', activityName = null) {
         if (isCorrect) {
             this.streak++;
             this.mistakesInRow = 0;
@@ -184,20 +219,20 @@ export class GameEngine {
                 this.difficultyMultiplier = Math.max(0.5, this.difficultyMultiplier - 0.15);
                 this.mistakesInRow = 0;
                 // Show Hint (handled by game logic, but flagged here)
-                this.saveMetric(activityType, isCorrect, { action: 'show_hint' });
+                this.saveMetric(activityType, isCorrect, { action: 'show_hint', activityName: activityName || activityType });
                 return { action: 'show_hint' };
             }
         }
 
         // Save to backend
-        this.saveMetric(activityType, isCorrect);
+        this.saveMetric(activityType, isCorrect, { activityName: activityName || activityType });
 
         // Critical Failure Check
         // Ideally we track accuracy over last N attempts.
         // Simplified: if multiplier drops too low.
         if (this.difficultyMultiplier < 0.6) {
-             // Trigger breathing?
-             return { action: 'breathing_exercise' };
+            // Trigger breathing?
+            return { action: 'breathing_exercise' };
         }
 
         return { difficulty: this.difficultyMultiplier };
@@ -239,7 +274,9 @@ export class GameEngine {
                 this.renderPinModal("Confirma tu PIN", "Guardar", (pin2, modal2) => {
                     if (pin1 === pin2) {
                         this.parentPin = pin1;
-                        localStorage.setItem('eduplay_parent_pin', pin1);
+                        this.parentPin = pin1;
+                        localStorage.setItem(this.pinKey, pin1);
+                        alert("¡PIN Guardado!");
                         alert("¡PIN Guardado!");
                         modal2.remove();
                         callback(true);
