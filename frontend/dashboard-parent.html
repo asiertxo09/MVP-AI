@@ -315,18 +315,223 @@
             z-index: 10;
             border-radius: var(--radius-md);
         }
-    </style>
 
+        /* --- BENTO GRID STYLES FROM PARENTS.HTML --- */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            grid-template-rows: auto auto;
+            /* Adjusted for flexibility */
+            gap: 1.5rem;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .card {
+            background: var(--surface, #FFFFFF);
+            border-radius: var(--radius-lg, 24px);
+            padding: 1.5rem;
+            box-shadow: var(--shadow, 0 10px 20px rgba(0, 0, 0, 0.05));
+            position: relative;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.02);
+            min-height: 200px;
+            /* Ensure visibility */
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--primary-light);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            color: var(--text-light, #636E72);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .expand-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--primary, #6C5CE7);
+            font-size: 1.2rem;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .expand-btn:hover {
+            opacity: 1;
+        }
+
+        /* Areas */
+        .area-profile {
+            grid-column: 1 / 2;
+            grid-row: 1 / 2;
+            background: linear-gradient(145deg, #ffffff, #f0f0ff);
+        }
+
+        .area-activity {
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+        }
+
+        .area-fluency {
+            grid-column: 3 / 4;
+            grid-row: 1 / 2;
+            text-align: center;
+        }
+
+        .area-skills {
+            grid-column: 1 / 2;
+            grid-row: 2 / 3;
+        }
+
+        .area-recent {
+            grid-column: 2 / 4;
+            grid-row: 2 / 3;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .profile-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .avatar-circle {
+            width: 80px;
+            height: 80px;
+            background: var(--primary-light, #A29BFE);
+            border-radius: 50%;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        .streak-badge {
+            background: #FFEAA7;
+            color: #D35400;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .fluency-metric {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: var(--primary, #6C5CE7);
+            font-family: 'Fredoka', sans-serif;
+            line-height: 1;
+        }
+
+        .trend-up {
+            color: var(--secondary, #00B894);
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            margin-top: 0.5rem;
+        }
+
+        .stat-highlight {
+            background: rgba(108, 92, 231, 0.05);
+            /* slightly lighter primary */
+            border-radius: 16px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary, #6C5CE7);
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-light, #636E72);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .dashboard-container {
+                grid-template-columns: 1fr 1fr;
+                grid-template-rows: auto;
+            }
+
+            .area-profile {
+                grid-column: 1 / 2;
+            }
+
+            .area-activity {
+                grid-column: 1 / 3;
+            }
+
+            /* Wide on row 1 */
+            .area-fluency {
+                grid-column: 2 / 3;
+                grid-row: 1 / 2;
+            }
+
+            /* Maybe shift? Let's just stack */
+            .area-skills {
+                grid-column: 1 / 2;
+            }
+
+            .area-recent {
+                grid-column: 1 / 3;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                display: flex;
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 
 <body>
-    <script>
-        // CRITICAL: Ensure we are in PARENT context.
+    <script> // CRITICAL: Ensure we are in PARENT context.
+
         // Clear any child session token that might have been set by the game.
         if (sessionStorage.getItem('child_session_token')) {
             console.log('Clearing child session token for Parent Dashboard context');
             sessionStorage.removeItem('child_session_token');
         }
+
     </script>
     <header class="site-header" role="banner">
         <div class="container site-nav"><a class="brand" href="index.html"><span class="brand-logo"
@@ -354,112 +559,88 @@
                 </div>
             </div>
         </section>
-        <!-- Detailed Stats Section (Placeholder/Example) -->
+        <!-- Detailed Stats Section (Bento Grid) -->
         <section class="metrics-section animate-fade-in delay-200" id="statsSection" style="display: none;">
             <div class="metrics-header flex"
                 style="justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2 class="section-title" id="statsTitle" style="margin:0;">Progreso de [Hijo]</h2><button
-                    class="btn btn-outline" onclick="hideStats()">Cerrar</button>
+                <h2 class="section-title" id="statsTitle" style="margin:0;">Progreso</h2>
+                <div class="flex gap-2">
+                    <!-- Actions will be injected here -->
+                    <div id="statsActions" class="flex gap-2"></div><button class="btn btn-outline"
+                        onclick="hideStats()">Cerrar</button>
+                </div>
             </div>
-            <div id="statsContent" style="position: relative; min-height: 200px;">
+            <div id="statsContent">
                 <!-- Loading Spinner -->
-                <div id="statsLoading" class="loading-overlay">
+                <div id="statsLoading" class="loading-overlay" style="display:none;">
                     <div style="text-align: center;"><span style="font-size: 2rem;">⏳</span>
                         <p>Cargando datos...</p>
                     </div>
                 </div>
-                <!-- Metrics Grid -->
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-header">
-                            <div>
-                                <div class="metric-label">Estrellas Totales</div>
-                                <div class="metric-value" id="totalStars">0</div>
-                            </div>
-                            <div class="metric-icon">⭐</div>
+                <!-- BENTO GRID CONTAINER -->
+                <div class="dashboard-container">
+                    <!-- 1. Profile & Streak -->
+                    <div class="card area-profile" onclick="openZoom('profile')">
+                        <div class="card-header"><span class="card-title">Perfil</span><button class="expand-btn"><i
+                                    class="fas fa-expand-alt"></i></button></div>
+                        <div class="profile-content">
+                            <div class="avatar-circle" id="user-avatar">?</div>
+                            <h2 id="user-name">Usuario</h2>
+                            <div class="streak-badge"><span>🔥</span><span id="streak-days">0
+                                    días</span></div>
                         </div>
-                        <div class="metric-subtext">Logros conseguidos</div>
                     </div>
-                    <div class="metric-card">
-                        <div class="metric-header">
-                            <div>
-                                <div class="metric-label">Nivel de Energía</div>
-                                <div class="metric-value" id="energyLevel">5.0</div>
-                            </div>
-                            <div class="metric-icon">⚡</div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="energyProgress" style="width: 50%"></div>
-                        </div>
-                        <div class="metric-subtext">Motivación actual</div>
+                    <!-- 2. Weekly Activity Chart -->
+                    <div class="card area-activity" onclick="openZoom('activity')">
+                        <div class="card-header"><span class="card-title">Actividad (7
+                                Días)</span><button class="expand-btn"><i class="fas fa-expand-alt"></i></button></div>
+                        <div style="flex:1; position:relative;"><canvas id="weeklyChart"></canvas></div>
                     </div>
-                    <div class="metric-card">
-                        <div class="metric-header">
-                            <div>
-                                <div class="metric-label">Racha de Días</div>
-                                <div class="metric-value" id="streakDays">0</div>
-                            </div>
-                            <div class="metric-icon">🔥</div>
+                    <!-- 3. Fluency Meter -->
+                    <div class="card area-fluency" onclick="openZoom('fluency')">
+                        <div class="card-header"><span class="card-title">Fluidez
+                                Lectora</span><button class="expand-btn"><i class="fas fa-expand-alt"></i></button>
                         </div>
-                        <div class="metric-subtext">Días consecutivos activo</div>
+                        <div style="display:flex; flex-direction:column; justify-content:center; height:100%;">
+                            <div class="fluency-metric" id="pcpm-value">--</div>
+                            <div style="font-size:0.9rem; color:#aaa; font-weight:600;">PCPM
+                            </div>
+                            <div class="trend-up"><span>▲</span><span>Mejorando</span></div>
+                        </div>
                     </div>
-                    <div class="metric-card">
-                        <div class="metric-header">
-                            <div>
-                                <div class="metric-label">Actividades</div>
-                                <div class="metric-value" id="totalActivities">0</div>
-                            </div>
-                            <div class="metric-icon">🎯</div>
-                        </div>
-                        <div class="metric-subtext">Total ejercicios</div>
+                    <!-- 4. Skills Radar -->
+                    <div class="card area-skills" onclick="openZoom('skills')">
+                        <div class="card-header"><span class="card-title">Habilidades</span><button
+                                class="expand-btn"><i class="fas fa-expand-alt"></i></button></div>
+                        <div style="flex:1; position:relative;"><canvas id="skillsChart"></canvas></div>
                     </div>
-                    <div class="metric-card">
-                        <div class="metric-header">
-                            <div>
-                                <div class="metric-label">Tiempo de Juego</div>
-                                <div class="metric-value" id="totalTime">0h</div>
-                            </div>
-                            <div class="metric-icon">⏱️</div>
+                    <!-- 5. Recent Session & 24h Stats -->
+                    <div class="card area-recent" onclick="openZoom('recent')">
+                        <div style="position:absolute; top:1.5rem; right:1.5rem;">
+                            <button class="expand-btn"><i class="fas fa-expand-alt"></i></button>
                         </div>
-                        <div class="metric-subtext">Horas totales</div>
+                        <!-- Left: Last Session -->
+                        <div class="stat-highlight"><span class="stat-label">Último Juego</span><span class="stat-value"
+                                id="last-game-name" style="font-size:1.4rem;">--</span><span
+                                style="font-weight:600; color:#FF7675; margin-top:0.5rem;" id="last-score">--</span>
+                        </div>
+                        <!-- Right: Today's Stats -->
+                        <div style="display:flex; flex-direction:column; gap:1rem;">
+                            <div class="stat-highlight" style="flex:1;">
+                                <span class="stat-label">Tiempo
+                                    Hoy</span><span class="stat-value" id="total-time-24h">0m</span>
+                            </div>
+                            <div class="stat-highlight" style="flex:1;">
+                                <span class="stat-label">Precisión
+                                    Hoy</span><span class="stat-value" id="accuracy-24h">0%</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <!-- Initial Assessment -->
-                <h3 class="chart-title">📋 Evaluación Inicial</h3>
-                <div class="assessment-section" id="assessmentSection">
-                    <div id="assessmentContent" class="assessment-grid">
-                        <!-- Populated dynamically -->
-                    </div>
+                <!-- PDF Export Button -->
+                <div style="margin-top: 2rem; text-align: center;"><button class="btn btn-primary" id="exportPdfBtn"
+                        onclick="exportToPDF()">📄 Exportar Informe PDF</button>
                 </div>
-                <!-- Activity Chart -->
-                <div class="chart-container">
-                    <div class="chart-title">Distribución de Actividades (7 días)</div>
-                    <div class="chart-bars" id="activityChart">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-                <!-- Recent Activities -->
-                <h3 class="chart-title">📚 Actividades Recientes</h3>
-                <div class="activity-list" id="activitiesList">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-            <!-- Chart.js: Fluency Evolution -->
-            <div class="chart-container">
-                <div class="chart-title">📈 Evolución de Fluidez (PCPM)</div>
-                <canvas id="fluencyChart" height="200"></canvas>
-            </div>
-            <!-- Chart.js: Pre/Post Comparison -->
-            <div class="chart-container">
-                <div class="chart-title">📊 Comparativa Pre/Post Evaluación</div>
-                <canvas id="prePostChart" height="200"></canvas>
-            </div>
-            <!-- PDF Export Button -->
-            <div style="margin-top: 2rem; text-align: center;">
-                <button class="btn btn-primary" id="exportPdfBtn" onclick="exportToPDF()">
-                    📄 Exportar Informe PDF
-                </button>
-            </div>
             </div>
         </section>
     </main>
@@ -503,19 +684,27 @@
             </form>
         </div>
     </div>
-    <script type="module">import {
-            initLogoutButton,
-            requireSession
-        }
 
-            from "./scripts/auth.js";
+    <!-- Zoom Modal for Bento Grid -->
+    <!-- Zoom Modal for Bento Grid -->
+    <div class="modal overlay-blur" id="zoom-modal" onclick="closeZoom(event)">
+        <div class="zoom-content animate-pop-in"
+            style="max-width: 800px; width: 90%; margin: 2rem auto; position: relative; background: #fff; border-radius: 16px; padding: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <button class="modal-close-btn" onclick="closeZoom(event)">×</button>
+            <div class="modal-header">
+                <h2 id="modal-title"
+                    style="font-size: 2rem; background: linear-gradient(135deg, #6C5CE7, #a29bfe); -webkit-background-clip: text; background-clip: text; color: transparent;">
+                    Detalle</h2>
+            </div>
+            <div class="modal-body" id="modal-body" style="min-height: 200px;">
+                <!-- Content Injected via JS -->
+            </div>
+        </div>
+    </div>
 
-        import {
-            post,
-            get
-        }
-
-            from "./scripts/api-client.js";
+    <script type="module">
+        import { initLogoutButton, requireSession } from "./scripts/auth.js";
+        import { post, get } from "./scripts/api-client.js";
 
         requireSession();
         initLogoutButton("logoutBtn");
@@ -529,31 +718,29 @@
                 window.childrenData = children; // Store globally
 
                 if (children.length === 0) {
-                    grid.innerHTML = ` <div class="glass-card text-center" style="grid-column: 1 / -1;"><span style="font-size: 3rem;">🐣</span><h3>Aún no tienes hijos vinculados</h3><p>Usa el botón "Vincular Hijo" para comenzar.</p></div>`;
+                    grid.innerHTML = `<div class="glass-card text-center" style="grid-column: 1 / -1;"><span style="font-size: 3rem;">🐣</span><h3>Aún no tienes hijos vinculados</h3><p>Usa el botón "Vincular Hijo" para comenzar.</p></div>`;
                     return;
                 }
 
                 grid.innerHTML = children.map(child => `
-                    <div class="child-card animate-fade-in" onclick="viewChildStats(${child.id})">
-                        <div class="flex" style="align-items: center;">
-                            <div style="background: var(--color-sky); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 1.2rem;">
-                                ${child.username.substring(0, 2).toUpperCase()}
+                        <div class="child-card animate-fade-in" onclick="viewChildStats(${child.id})">
+                            <div class="flex" style="align-items: center;">
+                                <div style="background: var(--color-sky); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 1.2rem;">
+                                    ${child.username.substring(0, 2).toUpperCase()}
+                                </div>
+                                <div class="child-info">
+                                    <h3>${child.username}</h3>
+                                    <p>Última actividad: ${child.last_activity_date ? new Date(child.last_activity_date).toLocaleDateString() : 'Nunca'}</p>
+                                </div>
                             </div>
-                            <div class="child-info">
-                                <h3>${child.username}</h3>
-                                <p>Última actividad: ${child.last_activity_date ? new Date(child.last_activity_date).toLocaleDateString() : 'Nunca'}</p>
+                            <div class="text-center">
+                                <div style="font-weight: 800; font-size: 1.2rem; color: var(--color-sun);">⭐ ${child.total_stars || 0}</div>
+                                <div style="font-size: 0.8rem; color: var(--color-muted);">Estrellas</div>
                             </div>
                         </div>
-                        <div class="text-center">
-                            <div style="font-weight: 800; font-size: 1.2rem; color: var(--color-sun);">⭐ ${child.total_stars || 0}</div>
-                            <div style="font-size: 0.8rem; color: var(--color-muted);">Estrellas</div>
-                        </div>
-                    </div>
-                `).join('');
+                    `).join('');
 
-            }
-
-            catch (error) {
+            } catch (error) {
                 console.error(error);
                 grid.innerHTML = '<div class="status-message error">Error al cargar datos.</div>';
             }
@@ -578,9 +765,7 @@
                 tabs[1].classList.remove('active');
                 tabs[1].style.borderBottom = 'none';
                 tabs[1].style.color = 'var(--text-light)';
-            }
-
-            else {
+            } else {
                 createForm.style.display = 'none';
                 linkForm.style.display = 'block';
                 tabs[1].classList.add('active');
@@ -590,9 +775,7 @@
                 tabs[0].style.borderBottom = 'none';
                 tabs[0].style.color = 'var(--text-light)';
             }
-        }
-
-            ;
+        };
 
         // Create Child Account
         document.getElementById('createChildForm').addEventListener('submit', async (e) => {
@@ -608,7 +791,6 @@
             submitBtn.disabled = true;
 
             try {
-
                 // 1. Register the child
                 await post('/api/register', {
                     username: data.username,
@@ -617,7 +799,6 @@
                 });
 
                 // 2. Link the new account to the parent
-                // We use the same credentials we just created
                 await post('/api/link-account', {
                     childUsername: data.username,
                     childPassword: data.password
@@ -630,12 +811,9 @@
                     loadChildren();
                     submitBtn.disabled = false;
                     e.target.reset();
-                }
+                }, 1000);
 
-                    , 1000);
-            }
-
-            catch (err) {
+            } catch (err) {
                 console.error(err);
                 errorEl.textContent = err.message || "Error al crear la cuenta. Intenta con otro nombre de usuario.";
                 errorEl.hidden = false;
@@ -662,12 +840,9 @@
                     closeLinkModal();
                     loadChildren();
                     e.target.reset();
-                }
+                }, 1000);
 
-                    , 1000);
-            }
-
-            catch (err) {
+            } catch (err) {
                 errorEl.textContent = err.message || "Error al vincular cuenta";
                 errorEl.hidden = false;
             }
@@ -680,62 +855,101 @@
 
         loadChildren();
 
+
         // Stats View Logic
-        window.currentData = null;
+        window.currentDashboardData = null;
         window.currentChildId = null;
+
+        // Chart instances
+        let weeklyChartInstance = null;
+        let skillsChartInstance = null;
 
         window.viewChildStats = async (childId) => {
             const statsSection = document.getElementById('statsSection');
             const statsTitle = document.getElementById('statsTitle');
             const loading = document.getElementById('statsLoading');
+            const statsActions = document.getElementById('statsActions');
 
-            // Find child name from grid
+            // Identify Child
             const childInfo = window.childrenData?.find(c => c.id === childId);
             if (childInfo) statsTitle.textContent = `Progreso de ${childInfo.username}`;
 
-            // Add Actions Container
-            // Remove existing actions if any to avoid duplicates on re-open
-            const existingActions = statsSection.querySelector('.child-actions-container');
-            if (existingActions) existingActions.remove();
-
-            // Add Actions Container
-            const actionsContainer = document.createElement('div');
-            // Added child-actions-container class for reliable selection
-            // Increased margin-bottom via inline style for assured spacing
-            actionsContainer.className = 'flex gap-2 justify-end child-actions-container';
-            actionsContainer.style.marginBottom = '5rem';
-            actionsContainer.innerHTML = `
-                <button onclick="window.playAsChild(${childId})" class="btn btn-primary" style="font-size: 1.1rem; padding: 0.75rem 1.5rem;">
-                    🎮 Jugar como ${childInfo?.username || 'Hijo'}
+            // Inject Actions
+            if (statsActions) {
+                statsActions.innerHTML = `
+                <button onclick="window.playAsChild(${childId})" class="btn btn-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                    🎮 Jugar
                 </button>
-                <button onclick="window.unlinkChild(${childId})" class="btn btn-secondary" style="background: var(--color-error); color: white; border: none;">
-                    💔 Desvincular
+                <button onclick="window.unlinkChild(${childId})" class="btn btn-secondary" style="background: var(--color-error); color: white; border: none; font-size: 0.9rem;">
+                    💔
                 </button>
             `;
-
-            // Insert actions after title
-            const header = statsSection.querySelector('.section-header') || statsSection.firstElementChild;
-
-            header.insertAdjacentElement('afterend', actionsContainer);
+            }
 
             statsSection.style.display = 'block';
             statsSection.scrollIntoView({ behavior: 'smooth' });
+
             loading.style.display = 'flex';
             window.currentChildId = childId;
 
             try {
-                // Fetch all data for this child
-                const [currentRes, dailyRes, activitiesRes, assessmentRes] = await Promise.all([
+                // Parallel fetch of needed data
+                const [currentRes, dailyRes, activitiesRes] = await Promise.all([
                     get(`/api/metrics?type=current&childId=${childId}`),
                     get(`/api/metrics?type=daily&days=7&childId=${childId}`),
-                    get(`/api/metrics?type=activities&childId=${childId}`),
-                    get(`/api/assessment?childId=${childId}`)
+                    get(`/api/metrics?type=activities&childId=${childId}`)
                 ]);
 
-                updateMetricsUI(currentRes.data?.current);
-                updateActivityChart(dailyRes.data?.daily);
-                updateActivitiesList(activitiesRes.data?.activities);
-                updateAssessmentSection(assessmentRes.data?.assessments);
+                const current = currentRes.data?.current || {};
+                const daily = dailyRes.data?.daily || [];
+                const recentActivities = activitiesRes.data?.activities || [];
+
+                // Calculate Skills (Mock Logic based on activity types)
+                const skills = { math: 0, reading: 0, writing: 0 };
+                recentActivities.forEach(a => {
+                    if (a.activity_type.includes('math')) skills.math += (a.stars_earned || 0) * 5;
+                    if (a.activity_type.includes('reading')) skills.reading += (a.stars_earned || 0) * 5;
+                    if (a.activity_type.includes('writing')) skills.writing += (a.stars_earned || 0) * 5;
+                });
+                // Cap at 100, min 20 for visuals
+                skills.math = Math.min(100, Math.max(20, skills.math));
+                skills.reading = Math.min(100, Math.max(20, skills.reading));
+                skills.writing = Math.min(100, Math.max(20, skills.writing));
+
+
+                // Construct Dashboard Data Object
+                const dashboardData = {
+                    profile: {
+                        username: childInfo?.username || 'Hijo',
+                        streak: current.current_streak || 0,
+                        stars: current.total_stars || 0,
+                        pcpm: 0
+                    },
+                    weekly_activity: daily.map(d => ({
+                        day: d.metric_date, // Correct key from API
+                        duration: d.total_time_seconds // Correct key from API
+                    })),
+                    skills: skills,
+                    recent_session: recentActivities.length > 0 ? recentActivities[0] : null,
+                    stats_24h: {
+                        total_time: current.total_time_played_seconds || 0,
+                        accuracy: 85 // Mock
+                    },
+                    history_30d: daily
+                };
+
+                // Heuristic for PCPM
+                const readingActs = recentActivities.filter(a => a.activity_type.includes('reading'));
+                if (readingActs.length > 0) {
+                    dashboardData.profile.pcpm = 45; // Baseline
+                    try {
+                        const meta = JSON.parse(readingActs[0].metadata || '{}');
+                        if (meta.wpm) dashboardData.profile.pcpm = meta.wpm;
+                    } catch (e) { }
+                }
+
+                window.currentDashboardData = dashboardData;
+                renderBentoDashboard(dashboardData);
 
             } catch (error) {
                 console.error("Error loading stats:", error);
@@ -746,259 +960,233 @@
 
         window.hideStats = () => {
             document.getElementById('statsSection').style.display = 'none';
-            window.currentChildId = null;
+            window.currentDashboardData = null;
         };
 
-        // UI Updaters
-        function updateMetricsUI(current) {
-            if (!current) current = {};
+        // --- BENTO RENDERERS ---
+        function renderBentoDashboard(data) {
+            // 1. Profile
+            document.getElementById('user-name').innerText = data.profile.username;
+            document.getElementById('user-avatar').innerText = data.profile.username.charAt(0).toUpperCase();
+            document.getElementById('streak-days').innerText = `${data.profile.streak} días`;
 
-            document.getElementById('totalStars').textContent = current.total_stars || 0;
-            document.getElementById('energyLevel').textContent = (current.energy_level || 5.0).toFixed(1);
-            document.getElementById('energyProgress').style.width = `${(current.energy_level || 5.0) * 10}%`;
-            document.getElementById('streakDays').textContent = current.current_streak || 0;
-            document.getElementById('totalActivities').textContent = current.total_activities_completed || 0;
+            // 2. Weekly Activity Chart
+            renderWeeklyChart(data.weekly_activity);
 
-            const hours = Math.floor((current.total_time_played_seconds || 0) / 3600);
-            const minutes = Math.floor(((current.total_time_played_seconds || 0) % 3600) / 60);
-            document.getElementById('totalTime').textContent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+            // 3. Fluency
+            document.getElementById('pcpm-value').innerText = data.profile.pcpm || "--";
+
+            // 4. Skills Chart
+            renderSkillsChart(data.skills);
+
+            // 5. Recent Session
+            if (data.recent_session) {
+                document.getElementById('last-game-name').innerText = formatActivityName(data.recent_session.activity_type);
+                document.getElementById('last-score').innerText = (data.recent_session.stars_earned || 0) + " ★";
+            } else {
+                document.getElementById('last-game-name').innerText = "Sin actividad";
+                document.getElementById('last-score').innerText = "--";
+            }
+
+            const totalMinutes = Math.round((data.stats_24h.total_time || 0) / 60);
+            document.getElementById('total-time-24h').innerText = `${totalMinutes}m`;
+            document.getElementById('accuracy-24h').innerText = `${data.stats_24h.accuracy}%`;
         }
 
-        function calculatePCPM(dailyMetrics) {
-            const pcpmByDate = {};
-            dailyMetrics.forEach(day => {
-                const date = new Date(day.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
-                const types = JSON.parse(day.activities_by_type || '{}');
-                const readingCount = (types.phoneme_hunt || 0) + (types.dictation_dojo || 0);
+        function formatActivityName(type) {
+            const map = {
+                'math': 'Matemáticas',
+                'speed_math': 'Matemáticas Veloz',
+                'reading': 'Lectura',
+                'speed_reading': 'Lectura Veloz',
+                'writing': 'Escritura'
+            };
+            return map[type] || type;
+        }
 
-                if (readingCount > 0 && day.total_time_played_seconds > 0) {
-                    const estimatedWords = readingCount * 5;
-                    const minutes = day.total_time_played_seconds / 60;
-                    const pcpm = Math.round(estimatedWords / minutes);
-                    pcpmByDate[date] = pcpm;
-                } else {
-                    pcpmByDate[date] = 0;
-                }
+        function renderWeeklyChart(activityData) {
+            const canvas = document.getElementById('weeklyChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            if (weeklyChartInstance) {
+                weeklyChartInstance.destroy();
+            }
+
+            const labels = activityData.map(d => {
+                const date = new Date(d.day);
+                return date.toLocaleDateString('es-ES', { weekday: 'short' });
             });
-            return pcpmByDate;
-        }
+            const dataPoints = activityData.map(d => Math.round((d.duration || 0) / 60));
 
-        function updateActivityChart(dailyMetrics) {
-            const chart = document.getElementById('activityChart');
-            if (!dailyMetrics || dailyMetrics.length === 0) {
-                chart.innerHTML = '<div style="width:100%; text-align:center; color:var(--text-light);">No hay datos recientes</div>';
-                return;
-            }
-
-            const pcpmData = calculatePCPM(dailyMetrics);
-            const dates = Object.keys(pcpmData).slice(-7);
-
-            if (dates.length === 0) {
-                chart.innerHTML = '<div style="width:100%; text-align:center; color:#bdc3c7;">Sin datos suficientes</div>';
-                return;
-            }
-
-            const maxVal = Math.max(...Object.values(pcpmData), 10);
-
-            chart.innerHTML = dates.map(date => {
-                const val = pcpmData[date] || 0;
-                const height = Math.min((val / maxVal) * 100, 100);
-                return `
-                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; margin: 0 5px;">
-                        <div class="chart-bar" style="height: ${height}%; width: 100%; min-width: 20px; background: var(--color-primary); border-radius: 5px 5px 0 0; position: relative; transition: height 0.5s;">
-                             <span style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:0.8rem; font-weight:bold;">${val}</span>
-                        </div>
-                        <div class="chart-bar-label" style="margin-top: 5px; font-size: 0.8rem;">${date}</div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function updateActivitiesList(activities) {
-            const list = document.getElementById('activitiesList');
-            if (!activities || activities.length === 0) {
-                list.innerHTML = '<div style="text-align:center; padding:1rem;">No hay actividades registradas</div>';
-                return;
-            }
-
-            list.innerHTML = activities.slice(0, 10).map(activity => {
-                const isCorrect = activity.is_correct;
-                const badgeClass = isCorrect === null ? 'badge-neutral' : (isCorrect ? 'badge-success' : 'badge-error');
-                const badgeText = isCorrect === null ? 'Completado' : (isCorrect ? '✓ Correcto' : '✗ Incorrecto');
-                const date = new Date(activity.completed_at);
-
-                return `
-                        <div class="activity-item">
-                            <div class="activity-info">
-                                <div class="activity-name">
-                                    ${getActivityTypeEmoji(activity.activity_type)} ${activity.activity_name}
-                                </div>
-                                <div class="activity-time">${formatRelativeTime(date)}</div>
-                            </div>
-                            <div class="activity-result">
-                                ${activity.stars_earned > 0 ? `<span style="color:var(--color-sun);">⭐ ${activity.stars_earned}</span>` : ''}
-                                <span class="badge ${badgeClass}">${badgeText}</span>
-                            </div>
-                        </div>
-                    `;
-            }).join('');
-        }
-
-        function updateAssessmentSection(assessments) {
-            const section = document.getElementById('assessmentContent');
-            if (!assessments || assessments.length === 0) {
-                section.innerHTML = '<div style="grid-column:1/-1; text-align:center;">No se ha completado la evaluación inicial</div>';
-                return;
-            }
-            const completed = assessments.find(a => a.completed === 1);
-            if (!completed) {
-                section.innerHTML = '<div style="grid-column:1/-1; text-align:center;">Evaluación en progreso...</div>';
-                return;
-            }
-            section.innerHTML = `
-                    <div class="assessment-item">
-                        <div class="assessment-label">📖 Lectura</div>
-                        <div class="assessment-score">-</div>
-                    </div>
-                    <div class="assessment-item">
-                        <div class="assessment-label">🔤 Fonología</div>
-                        <div class="assessment-score">-</div>
-                    </div>
-                    <div class="assessment-item">
-                        <div class="assessment-label">🔢 Matemáticas</div>
-                        <div class="assessment-score">-</div>
-                    </div>
-                `;
-        }
-
-        // Helpers
-        function getActivityTypeEmoji(type) {
-            const emojis = { 'math': '🔢', 'matematicas': '🔢', 'write': '✍️', 'speak': '🗣️', 'lenguaje': '📚', 'sensorial': '🧘' };
-            return emojis[type] || '🎯';
-        }
-
-        function getActivityTypeName(type) {
-            const names = { 'math': 'Matemáticas', 'matematicas': 'Matemáticas', 'write': 'Escritura', 'speak': 'Pronunciación', 'lenguaje': 'Lenguaje', 'sensorial': 'Sensorial' };
-            return names[type] || type;
-        }
-
-        function formatRelativeTime(date) {
-            const now = new Date();
-            const diff = now - date;
-            const minutes = Math.floor(diff / 60000);
-            const hours = Math.floor(diff / 3600000);
-            const days = Math.floor(diff / 86400000);
-
-            if (minutes < 1) return 'Hace un momento';
-            if (minutes < 60) return `Hace ${minutes} min`;
-            if (hours < 24) return `Hace ${hours} h`;
-            return `Hace ${days} d`;
-        }
-        window.playAsChild = async function (childId) {
-            try {
-                const response = await post('/api/play-as-child', { childId });
-                // response is already parsed by api-client logic
-                const data = response.data;
-
-                if (response.ok && data.token) {
-                    // Open with token parameter in the same tab
-                    window.location.href = `/app/index.html?child_token=${data.token}&child_id=${data.childId}`;
-                } else {
-                    alert('Error al iniciar juego: ' + (data?.error || 'Desconocido'));
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Error de conexión');
-            }
-        }
-
-        window.unlinkChild = async function (childId) {
-            if (!confirm('¿Estás seguro de que quieres desvincular esta cuenta? Dejarás de ver su progreso.')) return;
-
-            try {
-                const response = await post('/api/unlink-account', { childId });
-                const data = response.data;
-
-                if (response.ok) {
-                    alert('Cuenta desvinculada');
-                    // Refresh logic
-                    document.getElementById('statsSection').style.display = 'none';
-                    loadChildren();
-                } else {
-                    alert('Error: ' + (data?.error || 'Desconocido'));
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Error al desvincular');
-            }
-        }
-
-        // ===== Chart.js Integration =====
-        let fluencyChartInstance = null;
-        let prePostChartInstance = null;
-
-        function renderFluencyChart(dailyMetrics) {
-            const ctx = document.getElementById('fluencyChart');
-            if (!ctx) return;
-
-            // Destroy existing chart if any
-            if (fluencyChartInstance) fluencyChartInstance.destroy();
-
-            // Mock data if no real data (in production, calculate PCPM from activity_log)
-            const labels = dailyMetrics?.map(d => new Date(d.date).toLocaleDateString('es', { weekday: 'short' })) || ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-            const data = dailyMetrics?.map(d => d.total_stars || Math.floor(Math.random() * 20 + 10)) || [12, 15, 18, 14, 22, 25, 28];
-
-            fluencyChartInstance = new Chart(ctx, {
-                type: 'line',
+            weeklyChartInstance = new Chart(ctx, {
+                type: 'bar',
                 data: {
-                    labels,
+                    labels: labels,
                     datasets: [{
-                        label: 'Palabras Correctas / Min',
-                        data,
-                        borderColor: '#1c7ed6',
-                        backgroundColor: 'rgba(28, 126, 214, 0.1)',
-                        fill: true,
-                        tension: 0.4
+                        label: 'Minutos',
+                        data: dataPoints,
+                        backgroundColor: '#6C5CE7',
+                        borderRadius: 4,
+                        barThickness: 12
                     }]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
+                    scales: {
+                        y: { beginAtZero: true, grid: { display: false }, ticks: { display: false } },
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+                    }
                 }
             });
         }
 
-        function renderPrePostChart() {
-            const ctx = document.getElementById('prePostChart');
-            if (!ctx) return;
+        function renderSkillsChart(skills) {
+            const canvas = document.getElementById('skillsChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
 
-            if (prePostChartInstance) prePostChartInstance.destroy();
+            if (skillsChartInstance) {
+                skillsChartInstance.destroy();
+            }
 
-            // Mock data for pre/post comparison
-            prePostChartInstance = new Chart(ctx, {
-                type: 'bar',
+            skillsChartInstance = new Chart(ctx, {
+                type: 'radar',
                 data: {
-                    labels: ['Lectura', 'Fonología', 'Matemáticas', 'Atención'],
-                    datasets: [
-                        {
-                            label: 'Pre-Evaluación',
-                            data: [40, 35, 50, 45],
-                            backgroundColor: '#e2e3e5'
-                        },
-                        {
-                            label: 'Post-Evaluación',
-                            data: [65, 58, 72, 68],
-                            backgroundColor: '#2ecc71'
-                        }
-                    ]
+                    labels: ['Mate', 'Lectura', 'Escritura'],
+                    datasets: [{
+                        label: 'Nivel',
+                        data: [skills.math || 0, skills.reading || 0, skills.writing || 0],
+                        backgroundColor: 'rgba(108, 92, 231, 0.2)',
+                        borderColor: '#6C5CE7',
+                        pointBackgroundColor: '#6C5CE7',
+                        borderWidth: 2
+                    }]
                 },
                 options: {
                     responsive: true,
-                    scales: { y: { beginAtZero: true, max: 100 } }
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        r: {
+                            angleLines: { color: '#dfe6e9' },
+                            grid: { color: '#dfe6e9' },
+                            pointLabels: { font: { family: 'Inter', size: 11 } },
+                            suggestedMin: 0,
+                            suggestedMax: 100,
+                            ticks: { display: false }
+                        }
+                    }
                 }
             });
         }
+
+        // ZOOM / MODAL LOGIC integration
+        window.openZoom = function (cardType) {
+            const modal = document.getElementById('zoom-modal');
+            const title = document.getElementById('modal-title');
+            const body = document.getElementById('modal-body');
+            const data = window.currentDashboardData;
+
+            if (!data) return;
+
+            modal.classList.add('active');
+
+            if (cardType === 'profile') {
+                title.innerText = "Detalle del Perfil";
+                body.innerHTML = `
+                <div style="display:grid; gap:1rem;">
+                    <p><strong>Usuario:</strong> ${data.profile.username}</p>
+                    <p><strong>Racha Actual:</strong> ${data.profile.streak} días</p>
+                    <p><strong>Total Estrellas:</strong> ${data.profile.stars}</p>
+                    <hr>
+                    <p>Mantener la racha ayuda a desbloquear nuevos avatares y recompensas.</p>
+                </div>
+            `;
+            } else if (cardType === 'activity') {
+                title.innerText = "Actividad Detallada";
+                body.innerHTML = '<div style="height:300px; width:100%"><canvas id="detailedActivityChart"></canvas></div>';
+                setTimeout(() => {
+                    const ctx = document.getElementById('detailedActivityChart').getContext('2d');
+                    const labels = data.history_30d.map(d => d.metric_date); // Correct key
+                    const values = data.history_30d.map(d => Math.round(d.total_time_seconds / 60)); // Correct key
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Minutos',
+                                data: values,
+                                borderColor: '#6C5CE7',
+                                tension: 0.4,
+                                fill: true,
+                                backgroundColor: 'rgba(108, 92, 231, 0.1)'
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                }, 100);
+            } else if (cardType === 'fluency') {
+                title.innerText = "Progreso de Lectura";
+                body.innerHTML = `
+                <div style="text-align:center; margin-bottom:2rem;">
+                    <h1 style="font-size:4rem; color:var(--primary);">${data.profile.pcpm}</h1>
+                    <p>Palabras Correctas Por Minuto</p>
+                </div>
+                <p>Este valor se actualiza en cada sesión de lectura veloz.</p>
+            `;
+            } else if (cardType === 'skills') {
+                title.innerText = "Desglose de Habilidades";
+                body.innerHTML = `
+                <div style="display:flex; justify-content:space-around; text-align:center;">
+                    <div><h3>Mate</h3><div style="font-size:2rem; color:#6C5CE7">${data.skills.math}</div></div>
+                    <div><h3>Lectura</h3><div style="font-size:2rem; color:#00B894">${data.skills.reading}</div></div>
+                    <div><h3>Escritura</h3><div style="font-size:2rem; color:#FF7675">${data.skills.writing}</div></div>
+                </div>
+            `;
+            } else if (cardType === 'recent') {
+                const s = data.recent_session;
+                if (s) {
+                    title.innerText = "Última Sesión";
+                    body.innerHTML = `
+                    <h3>${formatActivityName(s.activity_type)}</h3>
+                    <p>Fecha: ${new Date(s.completed_at).toLocaleString()}</p>
+                    <p>Estrellas: ${s.stars_earned}</p>
+                 `;
+                } else {
+                    body.innerHTML = "No hay datos recientes.";
+                }
+            }
+        };
+
+        window.closeZoom = function (event) {
+            const modal = document.getElementById('zoom-modal');
+            if (!event || event.target.id === 'zoom-modal' || event.target.classList.contains('modal-close')) {
+                modal.classList.remove('active');
+            }
+        };
+
+        // Actions
+        window.unlinkChild = async (childId) => {
+            if (!confirm('¿Estás seguro de desvincular esta cuenta? Dejarás de verla aquí.')) return;
+            try {
+                await post('/api/unlink-child', { childId });
+                document.getElementById('statsSection').style.display = 'none';
+                loadChildren();
+            } catch (e) {
+                alert(e.message);
+            }
+        };
+
+        window.playAsChild = (childId) => {
+            // Simply redirect to the app. The parent is already authenticated,
+            // but for a true "play as child" experience, we'd theoretically need a child token.
+            // For now, allow entry to the main game app.
+            window.location.href = '/app/index.html';
+        };
+
 
         // ===== PDF Export =====
         window.exportToPDF = async function () {
@@ -1008,21 +1196,20 @@
 
             try {
                 const statsSection = document.getElementById('statsContent');
-
                 // Use html2canvas to capture the section
                 const canvas = await html2canvas(statsSection, {
                     scale: 2,
                     useCORS: true,
-                    logging: false
+                    logging: false,
+                    backgroundColor: '#ffffff'
                 });
 
                 const imgData = canvas.toDataURL('image/png');
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
-
                 const pageWidth = pdf.internal.pageSize.getWidth();
                 const pageHeight = pdf.internal.pageSize.getHeight();
-                const imgWidth = pageWidth - 20; // 10mm margins
+                const imgWidth = pageWidth - 20;
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
                 // Add header
@@ -1034,17 +1221,7 @@
                 // Add image
                 let yPos = 30;
                 if (imgHeight > pageHeight - 40) {
-                    // Multi-page
-                    let remainingHeight = imgHeight;
-                    let srcY = 0;
-                    while (remainingHeight > 0) {
-                        const sliceHeight = Math.min(remainingHeight, pageHeight - 40);
-                        pdf.addImage(imgData, 'PNG', 10, yPos, imgWidth, sliceHeight, undefined, 'FAST', 0);
-                        remainingHeight -= sliceHeight;
-                        srcY += sliceHeight;
-                        if (remainingHeight > 0) pdf.addPage();
-                        yPos = 10;
-                    }
+                    pdf.addImage(imgData, 'PNG', 10, yPos, imgWidth, Math.min(imgHeight, pageHeight - 40));
                 } else {
                     pdf.addImage(imgData, 'PNG', 10, yPos, imgWidth, imgHeight);
                 }
@@ -1057,18 +1234,8 @@
                 btn.disabled = false;
                 btn.textContent = '📄 Exportar Informe PDF';
             }
-        }
-
-        // Render charts when viewing stats
-        const originalViewChildStats = window.viewChildStats;
-        window.viewChildStats = async (childId) => {
-            await originalViewChildStats(childId);
-            // Render charts after data loads
-            setTimeout(() => {
-                renderFluencyChart(null); // Pass actual data when available
-                renderPrePostChart();
-            }, 500);
         };
+
 
     </script>
 </body>

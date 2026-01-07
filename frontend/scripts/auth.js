@@ -262,7 +262,7 @@ const initLoginForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
         "success",
       );
 
-      const data = await response.json();
+      const data = response.data;
       const role = data.role;
 
       if (typeof onSuccess === "function") {
