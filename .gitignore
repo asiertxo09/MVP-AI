@@ -3,6 +3,7 @@ ai-backend-groq/node_modules
 sdxl-local
 frontend/.wrangler
 frontend/.dev.vars
+frontend/.env
 frontend/node_modules
 ai-backend-groq/.venv
 ai-services-local/.venv
