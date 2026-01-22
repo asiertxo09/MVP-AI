@@ -41,12 +41,95 @@
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
-    background: linear-gradient(180deg, #eef7ff 0%, #ffffff 100%);
-    /* Sky to white */
     border-radius: 20px;
     position: relative;
     display: flex;
     justify-content: center;
+
+    /* Smooth gradient transition */
+    transition: background 0.8s ease-in-out;
+
+    /* Default: Sky World */
+    background: linear-gradient(180deg, #87CEEB 0%, #E0F4FF 50%, #ffffff 100%);
+}
+
+/* ========================================
+   World Theme Gradients
+   ======================================== */
+
+/* World 1: Jungle - Green/Brown (Bottom of map) */
+.map-viewport[data-world="jungle"],
+.map-viewport.world-jungle {
+    background: linear-gradient(180deg,
+            #2D5016 0%,
+            /* Deep forest canopy */
+            #4A7C23 25%,
+            /* Lush green */
+            #6B8E23 50%,
+            /* Olive transition */
+            #8B7355 75%,
+            /* Earthy brown */
+            #A0826D 100%
+            /* Light soil */
+        );
+}
+
+/* World 2: Sky - Blue/White (Middle of map) */
+.map-viewport[data-world="sky"],
+.map-viewport.world-sky {
+    background: linear-gradient(180deg,
+            #1E90FF 0%,
+            /* Dodger blue */
+            #87CEEB 30%,
+            /* Sky blue */
+            #B0E0E6 50%,
+            /* Powder blue */
+            #E0F4FF 75%,
+            /* Light sky */
+            #FFFFFF 100%
+            /* White clouds */
+        );
+}
+
+/* World 3: Space - Dark Purple (Top of map) */
+.map-viewport[data-world="space"],
+.map-viewport.world-space {
+    background: linear-gradient(180deg,
+            #0D0221 0%,
+            /* Deep space black */
+            #1A0533 20%,
+            /* Dark nebula */
+            #2D1B4E 40%,
+            /* Deep purple */
+            #6C5CE7 70%,
+            /* Nebula Purple (brand) */
+            #A29BFE 100%
+            /* Light purple glow */
+        );
+}
+
+/* Stars overlay for Space world */
+.map-viewport[data-world="space"]::before,
+.map-viewport.world-space::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(2px 2px at 20% 30%, white, transparent),
+        radial-gradient(2px 2px at 40% 70%, white, transparent),
+        radial-gradient(1px 1px at 50% 50%, white, transparent),
+        radial-gradient(2px 2px at 60% 20%, white, transparent),
+        radial-gradient(1px 1px at 70% 60%, white, transparent),
+        radial-gradient(2px 2px at 80% 40%, white, transparent),
+        radial-gradient(1px 1px at 90% 80%, white, transparent),
+        radial-gradient(1px 1px at 10% 90%, white, transparent),
+        radial-gradient(2px 2px at 30% 10%, white, transparent);
+    pointer-events: none;
+    opacity: 0.6;
+    z-index: 0;
 }
 
 .map-svg-container {
@@ -110,7 +193,8 @@
 }
 
 .node-current {
-    /* Animation handled below */
+    position: relative;
+    /* Required for ::after pseudo-element */
 }
 
 /* Current Node Pulse Animation */

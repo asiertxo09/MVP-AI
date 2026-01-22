@@ -1,13 +1,40 @@
+/* ========================================
+   Soft Space Button System
+   ======================================== */
+
+/* Primary Button - Nebula Purple Gradient */
+.btn-primary {
+    background: linear-gradient(135deg, #6C5CE7 0%, #a29bfe 100%);
+    background-size: 200% auto;
+    color: white;
+    font-weight: 700;
+    border: none;
+    box-shadow: 0 6px 20px rgba(108, 92, 231, 0.45);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.btn-primary:hover {
+    background-position: right center;
+    box-shadow: 0 8px 28px rgba(108, 92, 231, 0.55);
+    transform: translateY(-3px);
+}
+
+.btn-primary:active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(108, 92, 231, 0.4);
+}
 
 /* Parent Button override */
 .btn-parent-zone {
-    z-index: 1001; /* Ensure above other HUD elements if needed */
+    z-index: 1001;
+    /* Ensure above other HUD elements if needed */
     position: relative;
     font-family: var(--font-main);
     font-weight: 700;
     box-shadow: 0 4px 0 #4834d4;
     transition: transform 0.1s;
 }
+
 .btn-parent-zone:active {
     transform: translateY(2px);
     box-shadow: 0 2px 0 #4834d4;

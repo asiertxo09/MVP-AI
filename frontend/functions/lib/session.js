@@ -1,4 +1,4 @@
-export const SESSION_COOKIE_NAME = "session";
+export const SESSION_COOKIE_NAME = "eduplay_session";
 export const SESSION_TTL_SECONDS = 60 * 60 * 24; // 24 horas
 const encoder = new TextEncoder();
 

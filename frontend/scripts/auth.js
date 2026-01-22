@@ -139,10 +139,13 @@ const login = async (payload) => {
 
 
 
-const rememberSession = (username) => {
+const rememberSession = (username, role) => {
   localStorage.setItem(SESSION_KEY, "active");
   if (username) {
     localStorage.setItem('eduplay_username', username);
+  }
+  if (role) {
+    localStorage.setItem('eduplay_role', role.toLowerCase());
   }
 };
 
@@ -201,7 +204,9 @@ const initRegisterForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
       // Hacer login automático después del registro
       try {
         await login({ username: values.username, password: values.password });
-        rememberSession();
+        // After registration/login, default role for student is usually child but check config
+        // For now, let's assume register.js returns role or we default to parent
+        rememberSession(values.username, values.role);
 
         showStatus(
           statusElement,
@@ -210,10 +215,15 @@ const initRegisterForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
         );
 
         if (typeof onSuccess === "function") {
-          onSuccess();
+          onSuccess(values.role);
         } else {
           setTimeout(() => {
-            window.location.assign("/dashboard-parent.html");
+            const role = values.role?.toLowerCase();
+            if (role === 'padre' || role === 'parent') {
+              window.location.assign("/dashboard-parent.html");
+            } else {
+              window.location.assign("/app/index.html");
+            }
           }, 800);
         }
       } catch (loginError) {
@@ -255,15 +265,14 @@ const initLoginForm = ({ formId, statusId, submitId, onSuccess } = {}) => {
 
     try {
       const response = await login(values);
-      rememberSession(values.username);
+      const data = response.data;
+      const role = data.role;
+      rememberSession(values.username, role);
       showStatus(
         statusElement,
         "¡Bienvenida/o de nuevo! Redirigiendo…",
         "success",
       );
-
-      const data = response.data;
-      const role = data.role;
 
       if (typeof onSuccess === "function") {
         onSuccess(role);
@@ -316,6 +325,7 @@ authChannel.onmessage = (event) => {
     // Received logout signal from another tab
     console.log("Logged out from another tab");
     localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem('eduplay_role');
     sessionStorage.removeItem('child_session_token'); // Clear child token too
     window.location.assign("/index.html");
   }
@@ -327,6 +337,7 @@ const logout = async () => {
 
   await post("/api/logout", {});
   localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem('eduplay_role');
   sessionStorage.removeItem('child_session_token');
   window.location.assign("/index.html");
 };

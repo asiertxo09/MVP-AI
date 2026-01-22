@@ -128,13 +128,27 @@ export const onRequestGet = async ({ request, env }) => {
         ).bind(session.sub).first();
 
         if (!profile) {
-            return jsonResponse({ error: "Perfil no encontrado" }, 404);
+            // Return a default profile if not found, instead of 404
+            // This ensures GameEngine and other tools work for new children
+            return jsonResponse({
+                profile: {
+                    user_id: session.sub,
+                    reading_level: 'inicial',
+                    math_level: 'inicial',
+                    writing_level: 'inicial',
+                    daily_time_limit: 900,
+                    strengths: [],
+                    areasImprovement: [],
+                    recommendedActivities: []
+                }
+            });
         }
 
         // Parsear campos JSON
         profile.strengths = JSON.parse(profile.strengths || '[]');
         profile.areasImprovement = JSON.parse(profile.areas_improvement || '[]');
         profile.recommendedActivities = JSON.parse(profile.recommended_activities || '[]');
+        profile.daily_time_limit = profile.daily_time_limit_seconds || 900;
 
         return jsonResponse({ profile });
     } catch (err) {

@@ -1,7 +1,7 @@
 export class GameEngine {
     constructor() {
         this.maxDailySeconds = 900; // 15 minutes
-        this.remainingSeconds = this.maxDailySeconds;
+        this.playedSeconds = 0;
         this.isHardStop = false;
         this.warningShown = false;
         this.interval = null;
@@ -12,34 +12,50 @@ export class GameEngine {
         this.pinKey = `eduplay_parent_pin_${username}`;
         this.parentPin = localStorage.getItem(this.pinKey);
 
-        // Difficulty Logic
-        this.streak = 0; // Consecutive correct answers
-        this.mistakesInRow = 0;
-        this.difficultyMultiplier = 1.0; // Speed/Difficulty factor
+        this.activeChildId = null;
 
-        // Load state from local storage
-        this.loadState();
+        // Difficulty Logic
+        this.streak = 0;
+        this.mistakesInRow = 0;
+        this.difficultyMultiplier = 1.0;
     }
 
-    init() {
+    async init() {
+        await this.fetchProfile();
         this.startTimer();
         this.checkTimeLimit();
     }
 
+    async fetchProfile() {
+        try {
+            const { apiFetch } = await import('./api-client.js');
+            const response = await apiFetch('/api/student-profile');
+            if (response.ok && response.data.profile) {
+                const profile = response.data.profile;
+                this.activeChildId = profile.user_id;
+                if (profile.daily_time_limit) {
+                    this.maxDailySeconds = profile.daily_time_limit;
+                    console.log(`Setting maxDailySeconds to ${this.maxDailySeconds} for child ${this.activeChildId}`);
+
+                    // Profile loaded, now we can safely load state
+                    this.loadState();
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to fetch student profile for time limit:", e);
+        }
+    }
+
     // API Support
     async saveMetric(activityType, isCorrect, details = {}) {
-        // Send to backend via standard fetch if ApiClient not available in scope
-        // Or assume this runs in module context where auth/api-client is importable?
-        // GameEngine is imported by child-app.js, which imports api-client.
-        // But GameEngine is a class. Ideally we pass saveMetric callback or import apiFetch here.
-        // For simplicity, we'll try to use the global window.apiFetch if available or dynamic import.
-
         try {
             const { post } = await import('./api-client.js');
             await post('/api/metrics', {
                 activityType: activityType,
                 activityName: details.activityName || activityType,
                 isCorrect: isCorrect,
+                durationSeconds: details.durationSeconds || null,
+                starsEarned: details.starsEarned || 0,
                 metadata: {
                     ...details,
                     difficulty: this.difficultyMultiplier,
@@ -55,19 +71,20 @@ export class GameEngine {
     startTimer() {
         if (this.interval) clearInterval(this.interval);
         this.interval = setInterval(() => {
-            this.remainingSeconds--;
+            this.playedSeconds++;
             this.saveState();
             this.checkTimeLimit();
         }, 1000);
     }
 
     checkTimeLimit() {
-        if (this.remainingSeconds <= 60 && this.remainingSeconds > 0 && !this.warningShown) {
+        const remaining = this.maxDailySeconds - this.playedSeconds;
+        if (remaining <= 60 && remaining > 0 && !this.warningShown) {
             this.warningShown = true;
             this.showToast("¡Casi terminamos por hoy!");
         }
 
-        if (this.remainingSeconds <= 0) {
+        if (remaining <= 0) {
             this.triggerHardStop();
         }
     }
@@ -172,6 +189,8 @@ export class GameEngine {
     }
 
     getStorageKey() {
+        if (this.activeChildId) return `eduplay_engine_state_${this.activeChildId}`;
+
         const childId = sessionStorage.getItem('eduplay_child_id');
         // Fallback to token hash or guest if no childId (legacy/direct access)
         if (!childId) {
@@ -185,26 +204,32 @@ export class GameEngine {
         const saved = localStorage.getItem(this.getStorageKey());
         if (saved) {
             const parsed = JSON.parse(saved);
-            // Reset daily if date changed (simplified logic)
             const lastDate = new Date(parsed.timestamp).toDateString();
             const today = new Date().toDateString();
+
+            // Migrate old remainingSeconds if exists
+            if (parsed.remainingSeconds !== undefined && parsed.playedSeconds === undefined) {
+                parsed.playedSeconds = this.maxDailySeconds - parsed.remainingSeconds;
+            }
+
             if (lastDate === today) {
-                this.remainingSeconds = parsed.remainingSeconds;
+                this.playedSeconds = parsed.playedSeconds || 0;
             } else {
-                this.remainingSeconds = this.maxDailySeconds;
+                this.playedSeconds = 0;
             }
         }
     }
 
     saveState() {
         localStorage.setItem(this.getStorageKey(), JSON.stringify({
-            remainingSeconds: this.remainingSeconds,
+            playedSeconds: this.playedSeconds,
             timestamp: Date.now()
         }));
     }
 
     // Adaptive Difficulty
-    reportResult(isCorrect, activityType = 'unknown', activityName = null) {
+    reportResult(isCorrect, activityType = 'unknown', details = {}) {
+        const activityName = details.activityName || activityType;
         if (isCorrect) {
             this.streak++;
             this.mistakesInRow = 0;
@@ -219,19 +244,16 @@ export class GameEngine {
                 this.difficultyMultiplier = Math.max(0.5, this.difficultyMultiplier - 0.15);
                 this.mistakesInRow = 0;
                 // Show Hint (handled by game logic, but flagged here)
-                this.saveMetric(activityType, isCorrect, { action: 'show_hint', activityName: activityName || activityType });
+                this.saveMetric(activityType, isCorrect, { ...details, action: 'show_hint' });
                 return { action: 'show_hint' };
             }
         }
 
         // Save to backend
-        this.saveMetric(activityType, isCorrect, { activityName: activityName || activityType });
+        this.saveMetric(activityType, isCorrect, details);
 
         // Critical Failure Check
-        // Ideally we track accuracy over last N attempts.
-        // Simplified: if multiplier drops too low.
         if (this.difficultyMultiplier < 0.6) {
-            // Trigger breathing?
             return { action: 'breathing_exercise' };
         }
 

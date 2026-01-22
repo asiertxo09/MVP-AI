@@ -77,6 +77,63 @@ export class AssetFactory {
                     <rect x="40" y="60" width="20" height="30" fill="#8B4513" />
                     <path d="M 20 60 L 50 10 L 80 60 Z" fill="#2ecc71" />
                     <path d="M 20 40 L 50 0 L 80 40 Z" fill="#27ae60" opacity="0.8" />
+                </svg>`,
+            house: `
+                <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="10,40 50,10 90,40" fill="#e74c3c" />
+                    <rect x="20" y="40" width="60" height="50" fill="#ecf0f1" />
+                    <rect x="40" y="60" width="20" height="30" fill="#8B4513" />
+                </svg>`,
+            car: `
+                <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="10" y="40" width="80" height="30" rx="5" fill="#3498db" />
+                    <rect x="20" y="20" width="60" height="20" rx="5" fill="#2980b9" />
+                    <circle cx="25" cy="70" r="10" fill="#333" />
+                    <circle cx="75" cy="70" r="10" fill="#333" />
+                </svg>`,
+            moon: `
+                <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 50 10 A 40 40 0 1 0 50 90 A 30 30 0 1 1 50 10" fill="#f1c40f" />
+                </svg>`,
+            book: `
+                <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="20" y="20" width="60" height="60" fill="#e67e22" />
+                    <rect x="25" y="25" width="50" height="50" fill="#ecf0f1" />
+                    <line x1="50" y1="20" x2="50" y2="80" stroke="#d35400" stroke-width="2" />
+                </svg>`,
+            dog: `
+                <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="35" fill="#f4a261" />
+                    <ellipse cx="35" cy="40" rx="5" ry="10" fill="#000" />
+                    <ellipse cx="65" cy="40" rx="5" ry="10" fill="#000" />
+                    <circle cx="50" cy="65" r="10" fill="#000" />
+                    <path d="M 10 30 L 25 50 L 25 20 Z" fill="#e76f51" />
+                    <path d="M 90 30 L 75 50 L 75 20 Z" fill="#e76f51" />
+                </svg>`,
+            flower: `
+                <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="15" fill="#f1c40f" />
+                    <circle cx="50" cy="20" r="15" fill="#e91e63" opacity="0.8" />
+                    <circle cx="50" cy="80" r="15" fill="#e91e63" opacity="0.8" />
+                    <circle cx="20" cy="50" r="15" fill="#e91e63" opacity="0.8" />
+                    <circle cx="80" cy="50" r="15" fill="#e91e63" opacity="0.8" />
+                </svg>`,
+            cloud: `
+                <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 25,60 Q 30,30 50,45 Q 70,25 85,50 Q 100,60 85,80 L 30,80 Q 10,75 25,60" fill="#ecf0f1" stroke="#bdc3c7" stroke-width="2" />
+                </svg>`,
+            bird: `
+                <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 30 50 Q 10 30 30 10 Q 50 30 70 20 L 80 30 Q 60 50 30 50 L 20 60 L 30 50" fill="#3498db" />
+                    <circle cx="35" cy="25" r="3" fill="#000" />
+                    <path d="M 25 25 L 15 30 L 25 35" fill="#f1c40f" />
+                    <path d="M 50 30 Q 60 10 70 30" fill="#2980b9" />
+                </svg>`,
+            fish: `
+                <svg width="${width}" height="${height}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 80 50 Q 60 20 30 50 Q 60 80 80 50 Z" fill="#e67e22" />
+                    <path d="M 30 50 L 10 30 L 10 70 Z" fill="#e67e22" />
+                    <circle cx="65" cy="45" r="5" fill="#000" />
                 </svg>`
         };
 

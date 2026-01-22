@@ -296,6 +296,8 @@ class GenerateLevelRequest(BaseModel):
     gameType: str = Field(..., description="Type of game: math, phoneme, dictation")
     difficulty: str = Field(default="medium", description="easy, medium, hard")
     limit: int = Field(default=5, ge=1, le=10)
+    target: Optional[str] = Field(default=None, description="Target phoneme or concept")
+    performance_context: Optional[dict] = Field(default=None, description="Recent stats: {accuracy, avg_time, mistakes}")
 
 @app.post('/api/generate-levels')
 async def generate_levels(request: GenerateLevelRequest):
@@ -315,9 +317,17 @@ async def generate_levels(request: GenerateLevelRequest):
         Response must be ONLY valid JSON.
         """
     elif request.gameType == 'phoneme':
+        context_str = ""
+        if request.performance_context:
+            context_str = f" Recent results: {request.performance_context.get('accuracy')}% accuracy, {request.performance_context.get('avg_time')}s avg time."
+
+        target_instruction = f"Words MUST start with the letter '{request.target}'." if request.target else "Words should vary in starting letters."
+        
         prompt = f"""
-        Generate {request.limit} simple spanish words for a child learning to read.
-        The words should have clear visual representation.
+        Generate {request.limit} simple spanish words for a child learning to read.{context_str}
+        {target_instruction}
+        Mark words starting with '{request.target}' as "isTarget": true. Others as false.
+        CRITICAL: Only use icons from this list: frog, cat, sun, rose, rock, tree, star, house, car, flower, book, moon, dog, cloud, bird, fish.
         Format: JSON Array only.
         Example: [{{"word": "Gato", "icon": "cat", "isTarget": true}}]
         Response must be ONLY valid JSON.
@@ -377,6 +387,73 @@ async def generate_levels(request: GenerateLevelRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class SpeakingChatRequest(BaseModel):
+    message: str
+    context: Optional[str] = None
+
+@app.post('/api/speaking-chat')
+async def speaking_chat(request: SpeakingChatRequest):
+    """
+    Returns a short (max 4 words) conversational response to child's speech.
+    """
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=503, detail="Groq API key missing")
+
+    prompt = f"""
+    You are a friendly AI companion for a 5-year-old child. 
+    The child says: "{request.message}"
+    Respond in Spanish. 
+    CRITICAL RULES:
+    1. DO NOT repeat what the child said.
+    2. Respond with a maximum of 4 words.
+    3. Be encouraging and curious.
+    
+    Response:
+    """
+
+    try:
+        headers = {
+            'Authorization': f'Bearer {GROQ_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'model': 'llama-3.3-70b-versatile',
+            'messages': [{'role': 'user', 'content': prompt}],
+            'temperature': 0.8,
+            'max_tokens': 20
+        }
+
+        response = requests.post(f'{GROQ_API_URL}/chat/completions', headers=headers, json=payload, timeout=20)
+        
+        if not response.ok:
+             raise HTTPException(status_code=response.status_code, detail=response.text)
+
+        result = response.json()
+        content = result['choices'][0]['message']['content'].strip().strip('"')
+        
+        # Enforce 4 word limit just in case
+        words = content.split()
+        if len(words) > 4:
+            content = " ".join(words[:4]) + "!"
+
+        return {"reply": content}
+
+    except Exception as e:
+        print(f"Speaking Chat Error: {e}")
+        return {"reply": "¡Qué bien suena eso!"}
+
+@app.options("/api/speaking-chat")
+async def speaking_chat_options():
+    return Response(
+        status_code=200,
+        headers={
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+        }
+    )
 
 @app.options("/api/generate-levels")
 async def generate_levels_options():

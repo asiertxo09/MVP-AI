@@ -138,7 +138,7 @@ function renderSkillsChart(skills) {
 }
 
 // ZOOM / MODAL LOGIC
-window.openZoom = function(cardType) {
+window.openZoom = function (cardType) {
     const modal = document.getElementById('zoom-modal');
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
@@ -153,9 +153,17 @@ window.openZoom = function(cardType) {
                 <p><strong>Racha Actual:</strong> ${dashboardData.profile.streak} días</p>
                 <p><strong>Total Estrellas:</strong> ${dashboardData.profile.stars}</p>
                 <hr>
-                <h3>Historial</h3>
-                <p>Nivel Matemáticas: ${dashboardData.profile.math_level || 'N/A'}</p>
-                <p>Nivel Lectura: ${dashboardData.profile.reading_level || 'N/A'}</p>
+                <h3>Configuración de Tiempo</h3>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <label>Límite Diario (minutos):</label>
+                    <input type="number" id="time-limit-input" value="${Math.round(dashboardData.profile.daily_time_limit / 60)}" style="width: 80px; padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
+                    <button class="btn btn-primary" onclick="updateTimeLimit()" style="padding: 5px 15px; font-size: 0.9rem;">Guardar</button>
+                </div>
+                <p style="font-size: 0.8rem; color: #666;">El límite actual es de ${Math.round(dashboardData.profile.daily_time_limit / 60)} minutos.</p>
+                <hr>
+                <h3>Niveles Actuales</h3>
+                <p>Matemáticas: ${dashboardData.profile.math_level || 'N/A'}</p>
+                <p>Lectura: ${dashboardData.profile.reading_level || 'N/A'}</p>
             </div>
         `;
     } else if (cardType === 'activity') {
@@ -216,7 +224,7 @@ window.openZoom = function(cardType) {
     }
 }
 
-window.closeZoom = function(event) {
+window.closeZoom = function (event) {
     if (event.target.id === 'zoom-modal' || event.target.classList.contains('modal-close')) {
         document.getElementById('zoom-modal').classList.remove('active');
     }
@@ -250,7 +258,7 @@ function renderDetailedActivityChart(historyData) {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return context.parsed.y + ' min';
                         }
                     }
@@ -263,8 +271,48 @@ function renderDetailedActivityChart(historyData) {
     });
 }
 
+// Global function to update time limit
+window.updateTimeLimit = async function () {
+    const input = document.getElementById('time-limit-input');
+    const newMinutes = parseInt(input.value);
+    if (isNaN(newMinutes) || newMinutes < 1) {
+        alert("Por favor ingresa un número válido de minutos.");
+        return;
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const childId = urlParams.get('childId');
+    if (!childId) {
+        alert("No se pudo identificar al niño.");
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/parent/child-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                childId: parseInt(childId),
+                dailyTimeLimitSeconds: newMinutes * 60
+            })
+        });
+
+        if (response.ok) {
+            alert("Límite de tiempo actualizado correctamente.");
+            // Refresh data
+            initDashboard();
+        } else {
+            const err = await response.json();
+            alert("Error: " + (err.error || "No se pudo actualizar"));
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Error de conexión");
+    }
+}
+
 // Global logout function
-window.logout = async function() {
+window.logout = async function () {
     try {
         await fetch('/api/logout', { method: 'POST' });
         // Clear cookies/storage

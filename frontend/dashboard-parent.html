@@ -893,66 +893,34 @@
             window.currentChildId = childId;
 
             try {
-                // Parallel fetch of needed data
-                const [currentRes, dailyRes, activitiesRes] = await Promise.all([
-                    get(`/api/metrics?type=current&childId=${childId}`),
-                    get(`/api/metrics?type=daily&days=7&childId=${childId}`),
-                    get(`/api/metrics?type=activities&childId=${childId}`)
-                ]);
+                // Single optimized API call
+                const response = await get(`/api/parent/stats?childId=${childId}`);
+                const data = response.data;
 
-                const current = currentRes.data?.current || {};
-                const daily = dailyRes.data?.daily || [];
-                const recentActivities = activitiesRes.data?.activities || [];
-
-                // Calculate Skills (Mock Logic based on activity types)
-                const skills = { math: 0, reading: 0, writing: 0 };
-                recentActivities.forEach(a => {
-                    if (a.activity_type.includes('math')) skills.math += (a.stars_earned || 0) * 5;
-                    if (a.activity_type.includes('reading')) skills.reading += (a.stars_earned || 0) * 5;
-                    if (a.activity_type.includes('writing')) skills.writing += (a.stars_earned || 0) * 5;
-                });
-                // Cap at 100, min 20 for visuals
-                skills.math = Math.min(100, Math.max(20, skills.math));
-                skills.reading = Math.min(100, Math.max(20, skills.reading));
-                skills.writing = Math.min(100, Math.max(20, skills.writing));
-
-
-                // Construct Dashboard Data Object
-                const dashboardData = {
-                    profile: {
-                        username: childInfo?.username || 'Hijo',
-                        streak: current.current_streak || 0,
-                        stars: current.total_stars || 0,
-                        pcpm: 0
-                    },
-                    weekly_activity: daily.map(d => ({
-                        day: d.metric_date, // Correct key from API
-                        duration: d.total_time_seconds // Correct key from API
-                    })),
-                    skills: skills,
-                    recent_session: recentActivities.length > 0 ? recentActivities[0] : null,
-                    stats_24h: {
-                        total_time: current.total_time_played_seconds || 0,
-                        accuracy: 85 // Mock
-                    },
-                    history_30d: daily
-                };
-
-                // Heuristic for PCPM
-                const readingActs = recentActivities.filter(a => a.activity_type.includes('reading'));
-                if (readingActs.length > 0) {
-                    dashboardData.profile.pcpm = 45; // Baseline
-                    try {
-                        const meta = JSON.parse(readingActs[0].metadata || '{}');
-                        if (meta.wpm) dashboardData.profile.pcpm = meta.wpm;
-                    } catch (e) { }
+                if (!data || data.error) {
+                    throw new Error(data?.error || 'Error loading stats');
                 }
+
+                // Map API response to dashboard format
+                const dashboardData = {
+                    profile: data.profile,
+                    weekly_activity: data.weekly_activity || [],
+                    skills: data.skills || { math: 0, reading: 0, writing: 0 },
+                    recent_session: data.recent_session,
+                    stats_24h: data.stats_24h || { total_time: 0, accuracy: 0 },
+                    history_30d: data.history_30d || []
+                };
 
                 window.currentDashboardData = dashboardData;
                 renderBentoDashboard(dashboardData);
 
             } catch (error) {
                 console.error("Error loading stats:", error);
+                document.getElementById('statsContent').innerHTML = `
+                    <div class="status-message error" style="padding: 2rem; text-align: center;">
+                        Error al cargar estadísticas: ${error.message}
+                    </div>
+                `;
             } finally {
                 loading.style.display = 'none';
             }
@@ -1180,11 +1148,20 @@
             }
         };
 
-        window.playAsChild = (childId) => {
-            // Simply redirect to the app. The parent is already authenticated,
-            // but for a true "play as child" experience, we'd theoretically need a child token.
-            // For now, allow entry to the main game app.
-            window.location.href = '/app/index.html';
+        window.playAsChild = async (childId) => {
+            try {
+                const response = await post('/api/play-as-child', { childId });
+                if (response.data.ok) {
+                    const { token, redirectUrl } = response.data;
+                    // Append token to URL so child-app.js can pick it up
+                    window.location.href = `${redirectUrl}&child_token=${token}`;
+                } else {
+                    alert(response.data.error || "No se pudo iniciar sesión del niño");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error técnico al intentar jugar.");
+            }
         };
 
 

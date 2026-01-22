@@ -3,7 +3,9 @@ import { GameManager } from "./game-manager.js";
 import { GameEngine } from "./GameEngine.js";
 
 const engine = new GameEngine();
-engine.init();
+// engine.init is async now, but since it's at top level, we might want to wrap init in an async function
+// or just call it and let it run. But for UI rendering it should be fine.
+engine.init().then(() => console.log("Engine initialized with profile"));
 
 // --- Game State & Configuration ---
 const LEVELS = [

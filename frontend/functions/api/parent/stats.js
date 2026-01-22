@@ -1,52 +1,53 @@
-import { readSessionSecret, verifySessionToken, SESSION_COOKIE_NAME } from "../../lib/session";
+import { getSession } from "../../lib/session";
 
 export async function onRequestGet(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const childIdParam = url.searchParams.get("childId");
 
-  // 1. Security Check: Validate Session Token
-  const cookieHeader = request.headers.get("Cookie") || "";
-  const cookies = Object.fromEntries(cookieHeader.split('; ').map(c => c.split('=')));
-  const token = cookies[SESSION_COOKIE_NAME] ? decodeURIComponent(cookies[SESSION_COOKIE_NAME]) : null;
-
-  if (!token) {
+  // 1. Security Check: Validate Session using shared getSession
+  const session = await getSession(request, env);
+  if (!session) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 
-  let payload;
-  try {
-    const secret = readSessionSecret(env);
-    payload = await verifySessionToken(token, secret);
-  } catch (e) {
-    return new Response(JSON.stringify({ error: "Invalid token" }), { status: 401 });
-  }
-
-  if (!payload) {
-    return new Response(JSON.stringify({ error: "Invalid token" }), { status: 401 });
-  }
-
-  // 2. Authorization Check: Ensure parent has access to child
-  // The token payload contains `sub` (user_id of the child if child login, or childId if parent login?)
-  // Looking at parent-login.js: { sub: user.id, role: 'parent', childUsername: user.username }
-  // So `sub` is the child's user_id.
-
+  // 2. Authorization Check: Parent must provide childId and have a valid link
+  const db = env.DB;
   let targetChildId = childIdParam;
 
-  if (payload.role === 'parent') {
-      // Parent token is bound to a specific child (via sub)
-      // If childIdParam is provided, it must match sub.
-      if (childIdParam && childIdParam !== String(payload.sub)) {
-          return new Response(JSON.stringify({ error: "Forbidden: You can only access the child linked to this session" }), { status: 403 });
-      }
-      targetChildId = payload.sub;
-  } else {
-      // If it's not a parent role (maybe admin?), but strict requirement is parent dashboard.
-      // Or if it's a child token trying to access parent stats (should be blocked? prompt implies parent dashboard)
-      return new Response(JSON.stringify({ error: "Forbidden: Parent access required" }), { status: 403 });
+  // Check if the logged-in user is a parent/supervisor
+  const userRole = await db.prepare(
+    "SELECT r.role_name FROM users u JOIN user_roles r ON u.role_id = r.id WHERE u.id = ?"
+  ).bind(session.sub).first();
+
+  if (!userRole) {
+    return new Response(JSON.stringify({ error: "User not found" }), { status: 404 });
   }
 
-  const db = env.DB;
+  const roleName = userRole.role_name.toLowerCase();
+
+  if (roleName === 'padre' || roleName === 'parent' || roleName === 'médico' || roleName === 'medical') {
+    // Parent/Specialist: must specify childId and have a link
+    if (!childIdParam) {
+      return new Response(JSON.stringify({ error: "childId parameter required" }), { status: 400 });
+    }
+
+    // Verify the link exists
+    const link = await db.prepare(
+      "SELECT * FROM user_links WHERE supervisor_id = ? AND child_id = ?"
+    ).bind(session.sub, childIdParam).first();
+
+    if (!link) {
+      return new Response(JSON.stringify({ error: "Forbidden: No access to this child" }), { status: 403 });
+    }
+
+    targetChildId = parseInt(childIdParam, 10);
+  } else if (roleName === 'hijo' || roleName === 'child') {
+    // Child viewing their own stats
+    targetChildId = session.sub;
+  } else {
+    return new Response(JSON.stringify({ error: "Forbidden: Invalid role" }), { status: 403 });
+  }
 
   try {
     // 1. Fetch Streak & Profile
@@ -58,7 +59,8 @@ export async function onRequestGet(context) {
         sp.overall_pcpm,
         sp.math_level,
         sp.reading_level,
-        sp.writing_level
+        sp.writing_level,
+        sp.daily_time_limit_seconds
       FROM users u
       LEFT JOIN user_current_state ucs ON u.id = ucs.user_id
       LEFT JOIN student_profiles sp ON u.id = sp.user_id
@@ -80,16 +82,16 @@ export async function onRequestGet(context) {
 
     // Fill in missing days
     const weeklyActivity = [];
-    for(let i=6; i>=0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dayStr = d.toISOString().split('T')[0];
-        const found = rawWeeklyActivity.results.find(r => r.day === dayStr);
-        weeklyActivity.push({
-            day: dayStr,
-            duration: found ? found.duration : 0,
-            activities: found ? found.activities : 0
-        });
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dayStr = d.toISOString().split('T')[0];
+      const found = rawWeeklyActivity.results.find(r => r.day === dayStr);
+      weeklyActivity.push({
+        day: dayStr,
+        duration: found ? found.duration : 0,
+        activities: found ? found.activities : 0
+      });
     }
 
     // 3. Skills Radar (Aggregation)
@@ -149,13 +151,13 @@ export async function onRequestGet(context) {
     // Process Skills for Radar
     const skillsMap = { math: 0, reading: 0, writing: 0 };
     if (skillsData.results) {
-        skillsData.results.forEach(s => {
-            const type = s.activity_type.toLowerCase();
-            const score = Math.round(s.accuracy * 100);
-            if (type.includes('math') || type.includes('mate') || type.includes('cálculo')) skillsMap.math = score;
-            else if (type.includes('read') || type.includes('speak') || type.includes('lengu') || type.includes('lectura')) skillsMap.reading = score;
-            else if (type.includes('write') || type.includes('escri') || type.includes('dictado')) skillsMap.writing = score;
-        });
+      skillsData.results.forEach(s => {
+        const type = s.activity_type.toLowerCase();
+        const score = Math.round(s.accuracy * 100);
+        if (type.includes('math') || type.includes('mate') || type.includes('cálculo')) skillsMap.math = score;
+        else if (type.includes('read') || type.includes('speak') || type.includes('lengu') || type.includes('lectura')) skillsMap.reading = score;
+        else if (type.includes('write') || type.includes('escri') || type.includes('dictado')) skillsMap.writing = score;
+      });
     }
 
     return new Response(JSON.stringify({
@@ -163,7 +165,8 @@ export async function onRequestGet(context) {
         username: profileQuery?.username || "Child",
         streak: profileQuery?.current_streak || 0,
         stars: profileQuery?.total_stars || 0,
-        pcpm: profileQuery?.overall_pcpm || 0
+        pcpm: profileQuery?.overall_pcpm || 0,
+        daily_time_limit: profileQuery?.daily_time_limit_seconds || 900
       },
       weekly_activity: weeklyActivity,
       history_30d: historyData.results || [],

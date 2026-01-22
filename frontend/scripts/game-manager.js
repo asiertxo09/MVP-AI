@@ -49,6 +49,7 @@ const GAMES_DATA = {
 };
 
 import { AssetFactory } from './SvgFactory.js';
+import { apiFetch, post } from './api-client.js';
 
 export class GameManager {
     constructor(containerId, engine) {
@@ -60,7 +61,8 @@ export class GameManager {
             score: 0,
             mistakes: 0,
             selectedCards: new Set(),
-            isCompleted: false
+            isCompleted: false,
+            levelStartTime: null
         };
 
         // Bind methods
@@ -89,7 +91,8 @@ export class GameManager {
             selectedCards: new Set(),
             isCompleted: false,
             // Math specific
-            mathInput: ''
+            mathInput: '',
+            levelStartTime: null
         };
 
         this.currentGameConfig = gameConfig;
@@ -106,13 +109,37 @@ export class GameManager {
             this.container.classList.add('active');
 
             try {
+                // Fetch Performance Context
+                let performanceContext = null;
+                try {
+                    const metricsResponse = await apiFetch(`/api/metrics?type=activities&limit=10`);
+                    if (metricsResponse.ok) {
+                        const metricsData = metricsResponse.data;
+                        const relevant = metricsData.activities.filter(a => a.activity_type === (this.currentGameConfig.type === 'phoneme_hunt' ? 'phoneme' : 'math'));
+                        if (relevant.length > 0) {
+                            const correct = relevant.filter(a => a.is_correct).length;
+                            const total = relevant.length;
+                            const avgTime = relevant.reduce((acc, a) => acc + (a.duration_seconds || 0), 0) / total;
+                            performanceContext = {
+                                accuracy: Math.round((correct / total) * 100),
+                                avg_time: Math.round(avgTime),
+                                count: total
+                            };
+                        }
+                    }
+                } catch (me) {
+                    console.warn("Failed to fetch performance context", me);
+                }
+
                 const response = await fetch('http://localhost:5001/api/generate-levels', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         gameType: this.currentGameConfig.type === 'phoneme_hunt' ? 'phoneme' : 'math',
-                        difficulty: 'medium',
-                        limit: 5
+                        difficulty: this.engine ? (this.engine.difficultyMultiplier > 1.5 ? 'hard' : (this.engine.difficultyMultiplier > 1.2 ? 'medium' : 'easy')) : 'medium',
+                        limit: 5,
+                        target: this.currentGameConfig.targetPhoneme || 'r',
+                        performance_context: performanceContext
                     })
                 });
 
@@ -120,22 +147,30 @@ export class GameManager {
                     const data = await response.json();
                     if (data.levels && data.levels.length > 0) {
                         // Merge or Replace Levels
-                        // For math: Map simple objects {q, a} to level objects
                         if (this.currentGameConfig.type === 'math') {
                             this.currentGameConfig.levels = data.levels.map((item, idx) => ({
                                 id: idx + 1,
                                 q: item.q,
                                 a: item.a
                             }));
+                        } else if (this.currentGameConfig.type === 'phoneme_hunt') {
+                            // Phoneme hunt needs complex mapping: the AI returns a list of items for ONE level,
+                            // or multiple levels? Backend currently returns a list of {word, icon, isTarget}.
+                            // We'll wrap this into one level for now or split if limit > items.
+                            this.currentGameConfig.levels = [{
+                                id: 1,
+                                cards: data.levels.map((item, idx) => ({
+                                    id: `ai_${idx}`,
+                                    word: item.word,
+                                    icon: item.icon,
+                                    isTarget: item.isTarget
+                                }))
+                            }];
                         }
-                        // For Phoneme hunt, we need complex mapping?
-                        // Backend prompt for phoneme was: [{word, icon, isTarget}]
-                        // Frontend expects: level.cards = [...]
                     }
                 }
             } catch (e) {
                 console.error("AI Generation failed, using offline fallback", e);
-                // Fallback is usage of existing config or random generation
             }
         }
 
@@ -255,6 +290,7 @@ export class GameManager {
             return;
         }
 
+        this.state.levelStartTime = Date.now();
         const level = this.currentGameConfig.levels[index];
         const content = document.getElementById('gameContent');
 
@@ -474,14 +510,44 @@ export class GameManager {
                 feedback.innerText = "Escuchando...";
                 micBtn.disabled = true;
 
-                recognition.onresult = (event) => {
+                recognition.onresult = async (event) => {
                     const transcript = event.results[0][0].transcript;
                     feedback.innerText = `Dijiste: "${transcript}"`;
-                    this.speakWord(`¡Qué interesante! Dijiste ${transcript}`);
+
+                    // Conversational Reply
+                    try {
+                        const replyRes = await fetch('http://localhost:5001/api/speaking-chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: transcript })
+                        });
+                        if (replyRes.ok) {
+                            const replyData = await replyRes.json();
+                            this.speakWord(replyData.reply);
+                            feedback.innerText = replyData.reply;
+                        } else {
+                            this.speakWord("¡Qué bien!");
+                        }
+                    } catch (e) {
+                        this.speakWord("¡Interesante!");
+                    }
+
                     document.getElementById('btnAction').disabled = false;
                     micBtn.disabled = false;
-                    // Determine sentiment or keyword? For now just allow pass.
-                    if (this.engine) this.engine.reportResult(true, 'speaking', 'speaking_dojo');
+
+                    if (this.engine) {
+                        const duration = Math.round((Date.now() - this.state.levelStartTime) / 1000);
+                        const wordCount = transcript.trim().split(/\s+/).length;
+                        const pcpm = Math.round((wordCount / (duration || 1)) * 60);
+
+                        this.engine.reportResult(true, 'speaking', {
+                            activityName: 'speaking_dojo',
+                            durationSeconds: duration,
+                            starsEarned: 3,
+                            pcpm: pcpm,
+                            transcript: transcript
+                        });
+                    }
                 };
 
                 recognition.onerror = (event) => {
@@ -492,10 +558,36 @@ export class GameManager {
                 // Fallback
                 alert("Tu navegador no soporta reconocimiento de voz.");
                 feedback.innerText = "Simulando voz...";
-                setTimeout(() => {
-                    feedback.innerText = "Dijiste: 'Me gustan los gatos'";
+                setTimeout(async () => {
+                    const transcript = "Me gustan mucho los gatos";
+                    feedback.innerText = `Dijiste: "${transcript}"`;
+
+                    try {
+                        const replyRes = await fetch('http://localhost:5001/api/speaking-chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: transcript })
+                        });
+                        if (replyRes.ok) {
+                            const replyData = await replyRes.json();
+                            this.speakWord(replyData.reply);
+                            feedback.innerText = replyData.reply;
+                        }
+                    } catch (e) { }
+
                     document.getElementById('btnAction').disabled = false;
-                    if (this.engine) this.engine.reportResult(true, 'speaking', 'speaking_dojo');
+                    if (this.engine) {
+                        const duration = Math.round((Date.now() - this.state.levelStartTime) / 1000);
+                        const wordCount = transcript.trim().split(/\s+/).length;
+                        const pcpm = Math.round((wordCount / (duration || 1)) * 60);
+
+                        this.engine.reportResult(true, 'speaking', {
+                            activityName: 'speaking_dojo',
+                            durationSeconds: duration,
+                            starsEarned: 3,
+                            pcpm: pcpm
+                        });
+                    }
                 }, 1000);
             }
         };
@@ -606,7 +698,10 @@ export class GameManager {
             input.style.borderBottomColor = 'var(--color-success)';
             input.style.color = 'var(--color-success)';
 
-            if (this.engine) this.engine.reportResult(true, 'dictation', 'dictation_dojo');
+            if (this.engine) {
+                const duration = Math.round((Date.now() - this.state.levelStartTime) / 1000);
+                this.engine.reportResult(true, 'dictation', { activityName: 'dictation_dojo', durationSeconds: duration, starsEarned: 3 });
+            }
 
             setTimeout(() => {
                 this.state.currentLevelIndex++;
@@ -624,7 +719,10 @@ export class GameManager {
             input.style.borderBottomColor = 'var(--color-error)';
             input.classList.add('shake');
 
-            if (this.engine) this.engine.reportResult(false, 'dictation', 'dictation_dojo');
+            if (this.engine) {
+                const duration = Math.round((Date.now() - this.state.levelStartTime) / 1000);
+                this.engine.reportResult(false, 'dictation', { activityName: 'dictation_dojo', durationSeconds: duration });
+            }
 
             setTimeout(() => {
                 input.classList.remove('shake');
@@ -658,7 +756,10 @@ export class GameManager {
                     // Correct
                     document.getElementById('mathQuestion').style.color = 'var(--color-success)';
 
-                    if (this.engine) this.engine.reportResult(true, 'math', 'speed_math');
+                    if (this.engine) {
+                        const duration = Math.round((Date.now() - this.state.levelStartTime) / 1000);
+                        this.engine.reportResult(true, 'math', { activityName: 'speed_math', durationSeconds: duration, starsEarned: 3 });
+                    }
 
                     setTimeout(() => {
                         this.state.currentLevelIndex++;
@@ -676,7 +777,10 @@ export class GameManager {
                     // Wrong
                     document.getElementById('mathQuestion').style.color = 'var(--color-error)';
                     document.getElementById('mathQuestion').classList.add('shake');
-                    if (this.engine) this.engine.reportResult(false, 'math', 'speed_math');
+                    if (this.engine) {
+                        const duration = Math.round((Date.now() - this.state.levelStartTime) / 1000);
+                        this.engine.reportResult(false, 'math', { activityName: 'speed_math', durationSeconds: duration });
+                    }
 
                     setTimeout(() => {
                         document.getElementById('mathQuestion').classList.remove('shake');
@@ -754,7 +858,8 @@ export class GameManager {
 
             // Report to Engine
             if (this.engine) {
-                this.engine.reportResult(false, this.currentGameConfig.type, this.currentGameConfig.id);
+                const duration = Math.round((Date.now() - this.state.levelStartTime) / 1000);
+                this.engine.reportResult(false, this.currentGameConfig.type, { activityName: this.currentGameConfig.id, durationSeconds: duration });
             }
 
             // Play "Boing" sound (mock)
@@ -775,7 +880,9 @@ export class GameManager {
 
         // Report to Engine
         if (this.engine) {
-            this.engine.reportResult(true, this.currentGameConfig.type, this.currentGameConfig.id);
+            const duration = Math.round((Date.now() - this.state.levelStartTime) / 1000);
+            const stars = this.state.mistakes === 0 ? 3 : (this.state.mistakes === 1 ? 2 : 1);
+            this.engine.reportResult(true, this.currentGameConfig.type, { activityName: this.currentGameConfig.id, durationSeconds: duration, starsEarned: stars });
         }
 
         // Notify App to Unlock Next Level

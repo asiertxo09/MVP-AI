@@ -129,3 +129,150 @@ export class MapController {
         document.dispatchEvent(event);
     }
 }
+
+/**
+ * WorldScrollController
+ * Detects scroll position in the adventure map and smoothly
+ * transitions background gradients between worlds.
+ * 
+ * World Zones (based on scroll percentage):
+ * - Jungle: 0% - 33% (bottom of map)
+ * - Sky:    33% - 66% (middle of map)
+ * - Space:  66% - 100% (top of map)
+ */
+export class WorldScrollController {
+    constructor(viewportSelector = '.map-viewport') {
+        this.viewport = document.querySelector(viewportSelector);
+        this.currentWorld = null;
+        this.isActive = false;
+
+        // World thresholds (percentage of scroll)
+        this.thresholds = {
+            jungle: { min: 0, max: 0.33 },
+            sky: { min: 0.33, max: 0.66 },
+            space: { min: 0.66, max: 1.0 }
+        };
+
+        this.init();
+    }
+
+    init() {
+        if (!this.viewport) {
+            console.warn('WorldScrollController: viewport not found');
+            return;
+        }
+
+        // Bind scroll handler with throttle for performance
+        this.handleScroll = this.throttle(this.onScroll.bind(this), 50);
+        this.viewport.addEventListener('scroll', this.handleScroll);
+        this.isActive = true;
+
+        // Set initial world based on current scroll
+        this.onScroll();
+    }
+
+    /**
+     * Calculate scroll progress (0 = bottom, 1 = top)
+     * Note: We invert because scrollTop increases as you scroll down,
+     * but our map goes from bottom (jungle) to top (space)
+     */
+    getScrollProgress() {
+        const { scrollTop, scrollHeight, clientHeight } = this.viewport;
+        const maxScroll = scrollHeight - clientHeight;
+
+        if (maxScroll <= 0) return 0.5; // Default to sky if no scroll
+
+        // Invert: scrollTop 0 = bottom (jungle), max = top (space)
+        const progress = scrollTop / maxScroll;
+        return Math.min(1, Math.max(0, progress));
+    }
+
+    /**
+     * Determine world based on scroll progress
+     */
+    getWorldFromProgress(progress) {
+        // Map is scrolled from bottom to top, so:
+        // - When at top (scrollTop = max), progress = 1 → Space
+        // - When at bottom (scrollTop = 0), progress = 0 → Jungle
+        if (progress < this.thresholds.jungle.max) return 'jungle';
+        if (progress < this.thresholds.sky.max) return 'sky';
+        return 'space';
+    }
+
+    /**
+     * Handle scroll event
+     */
+    onScroll() {
+        const progress = this.getScrollProgress();
+        const newWorld = this.getWorldFromProgress(progress);
+
+        if (newWorld !== this.currentWorld) {
+            this.setWorld(newWorld);
+        }
+    }
+
+    /**
+     * Apply world theme to viewport
+     */
+    setWorld(world) {
+        if (!this.viewport) return;
+
+        // Remove old world classes
+        this.viewport.classList.remove('world-jungle', 'world-sky', 'world-space');
+
+        // Apply new world
+        this.viewport.classList.add(`world-${world}`);
+        this.viewport.setAttribute('data-world', world);
+
+        this.currentWorld = world;
+
+        // Dispatch event for external listeners
+        const event = new CustomEvent('world-changed', {
+            detail: { world, viewport: this.viewport }
+        });
+        document.dispatchEvent(event);
+
+        console.log(`🌍 World changed to: ${world}`);
+    }
+
+    /**
+     * Manually set a world (for testing or direct control)
+     */
+    forceWorld(world) {
+        if (['jungle', 'sky', 'space'].includes(world)) {
+            this.setWorld(world);
+        }
+    }
+
+    /**
+     * Throttle utility for scroll performance
+     */
+    throttle(fn, wait) {
+        let lastTime = 0;
+        return function (...args) {
+            const now = Date.now();
+            if (now - lastTime >= wait) {
+                lastTime = now;
+                fn.apply(this, args);
+            }
+        };
+    }
+
+    /**
+     * Cleanup
+     */
+    destroy() {
+        if (this.viewport && this.handleScroll) {
+            this.viewport.removeEventListener('scroll', this.handleScroll);
+        }
+        this.isActive = false;
+    }
+}
+
+/**
+ * Initialize world scroll controller when DOM is ready
+ * Can be called manually or auto-initialized
+ */
+export function initWorldScroll(viewportSelector = '.map-viewport') {
+    return new WorldScrollController(viewportSelector);
+}

@@ -39,49 +39,57 @@
         <section class="container hero" aria-labelledby="bienvenida">
             <div class="hero-content">
                 <div class="tagline animate-fade-in" role="note">
-                    <span aria-hidden="true">★</span>Diseñado para infancias neurodiversas
+                    <span aria-hidden="true">✨</span> Diseñado para infancias neurodiversas
                 </div>
                 <h1 id="bienvenida" class="animate-fade-in delay-100">
-                    Juegos que guían el progreso de cada niña y niño
+                    Scientific Magic for Learning
                 </h1>
                 <p class="animate-fade-in delay-200">
-                    EduPlay combina actividades sensoriales, lenguaje y movimiento para acompañar objetivos
-                    terapéuticos. Celebra cada pequeño gran logro.
+                    EduPlay transforma el aprendizaje en aventuras mágicas. Combinamos ciencia cognitiva
+                    con juegos interactivos para acompañar cada paso del desarrollo.
                 </p>
                 <div class="btn-row animate-fade-in delay-300" role="group" aria-label="Acciones principales">
-                    <a class="btn btn-primary" href="/register.html">Crear Cuenta</a>
-                    <a class="btn btn-secondary" href="#demo">Solicitar Demo</a>
+                    <a class="btn btn-primary" href="/register.html">Comenzar Aventura</a>
+                    <a class="btn btn-secondary" href="#demo">Ver Demo</a>
                 </div>
             </div>
-            <div class="hero-visual animate-float delay-200">
-                <img src="assets/logo.png" alt="Niño jugando con EduPlay" /> <!-- Placeholder for illustration -->
+            <div class="hero-visual">
+                <img src="assets/logo.png" alt="Mascota de EduPlay" class="float-mascot" />
             </div>
         </section>
 
-        <section class="container" style="margin-top: 2rem;">
-            <h2 class="text-center section-title">Elige tu perfil para entrar</h2>
-            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
-                <div class="glass-card text-center" onclick="window.location.href='/login.html?role=parent'"
-                    style="cursor: pointer;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">👨‍👩‍👧</div>
-                    <h3>Padres</h3>
-                    <p>Accede al panel de control, vincula cuentas y mira el progreso.</p>
-                    <a href="login.html?role=parent" class="btn btn-secondary">Entrar como Padre</a>
-                </div>
-                <div class="glass-card text-center" onclick="window.location.href='/login.html?role=specialist'"
-                    style="cursor: pointer;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">👩‍⚕️</div>
-                    <h3>Especialistas</h3>
-                    <p>Gestiona pacientes, asigna actividades y genera informes.</p>
-                    <a href="login.html?role=specialist" class="btn btn-secondary">Entrar como Especialista</a>
-                </div>
-                <div class="glass-card text-center" onclick="window.location.href='/login.html?role=child'"
-                    style="cursor: pointer;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">🚀</div>
-                    <h3>Niños</h3>
-                    <p>¡A jugar! Entra a tu espacio de aventuras y aprendizaje.</p>
+        <!-- Role Selection Grid -->
+        <section class="container role-selection-section" aria-labelledby="role-selection-title">
+            <h2 id="role-selection-title" class="text-center section-title animate-fade-in">¿Quién eres?</h2>
+            <div class="role-grid">
+                <!-- Kid Card - Adventure Theme -->
+                <article class="role-card glass-candy" onclick="window.location.href='/login.html?role=child'">
+                    <div class="role-icon role-icon-kid">🚀</div>
+                    <h3 class="role-title">Kid</h3>
+                    <p class="role-subtitle">Adventure</p>
+                    <p class="role-description">¡Embárcate en misiones épicas llenas de juegos y descubrimientos!</p>
                     <a href="login.html?role=child" class="btn btn-primary">¡A Jugar!</a>
-                </div>
+                </article>
+
+                <!-- Parent Card - Progress Theme -->
+                <article class="role-card glass-pro" onclick="window.location.href='/login.html?role=parent'">
+                    <div class="role-icon role-icon-parent">📊</div>
+                    <h3 class="role-title">Parent</h3>
+                    <p class="role-subtitle">Progress</p>
+                    <p class="role-description">Sigue el desarrollo de tu hijo con métricas claras y celebra cada logro.
+                    </p>
+                    <a href="login.html?role=parent" class="btn btn-secondary">Panel de Progreso</a>
+                </article>
+
+                <!-- Specialist Card - Tools Theme -->
+                <article class="role-card glass-pro" onclick="window.location.href='/login.html?role=specialist'">
+                    <div class="role-icon role-icon-specialist">🛠️</div>
+                    <h3 class="role-title">Specialist</h3>
+                    <p class="role-subtitle">Tools</p>
+                    <p class="role-description">Gestiona pacientes, asigna actividades personalizadas y genera informes.
+                    </p>
+                    <a href="login.html?role=specialist" class="btn btn-secondary">Herramientas Pro</a>
+                </article>
             </div>
         </section>
 
