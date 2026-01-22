@@ -29,6 +29,10 @@ export const onRequestPost = async ({ request, env }) => {
             return jsonResponse({ error: "Credenciales inválidas" }, 401);
         }
 
+        if (user.is_active === 0) {
+            return jsonResponse({ error: "Cuenta pendiente de aprobación" }, 403);
+        }
+
         const valid = await verifyPassword(password, user);
         if (!valid) {
             return jsonResponse({ error: "Credenciales inválidas" }, 401);

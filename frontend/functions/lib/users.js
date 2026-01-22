@@ -16,6 +16,10 @@ const CREATE_USERS_TABLE_SQL = `
                                          password_algo TEXT NOT NULL DEFAULT 'pbkdf2-sha256',
                                          role_id INTEGER NOT NULL,
                                          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                                         is_active INTEGER NOT NULL DEFAULT 0,
+                                         name TEXT,
+                                         surname TEXT,
+                                         age INTEGER,
         FOREIGN KEY (role_id) REFERENCES user_roles(id)
         )`;
 
@@ -28,18 +32,39 @@ export async function ensureUsersTable(db) {
         db.prepare(CREATE_USERS_TABLE_SQL),
         db.prepare(CREATE_USERS_INDEX_SQL)
     ]);
+
+    // Migrations for existing tables
+    try {
+        await db.prepare("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 0").run();
+        // If we are here, we added the column. Let's set existing users to active (since they were already using the app)
+        await db.prepare("UPDATE users SET is_active = 1").run();
+    } catch (e) {
+        // Column likely exists
+    }
+
+    try {
+        await db.prepare("ALTER TABLE users ADD COLUMN name TEXT").run();
+    } catch (e) { }
+
+    try {
+        await db.prepare("ALTER TABLE users ADD COLUMN surname TEXT").run();
+    } catch (e) { }
+
+    try {
+        await db.prepare("ALTER TABLE users ADD COLUMN age INTEGER").run();
+    } catch (e) { }
 }
 
 export async function findUserByUsername(db, username) {
     return db
         .prepare(
-            "SELECT u.id, u.username, u.password_hash, u.password_salt, u.password_iterations, u.password_algo, u.created_at, r.role_name FROM users u JOIN user_roles r ON u.role_id = r.id WHERE lower(u.username) = lower(?)"
+            "SELECT u.id, u.username, u.password_hash, u.password_salt, u.password_iterations, u.password_algo, u.created_at, u.is_active, u.name, u.surname, u.age, r.role_name FROM users u JOIN user_roles r ON u.role_id = r.id WHERE lower(u.username) = lower(?)"
         )
         .bind(username)
         .first();
 }
 
-export async function createUser(db, { username, passwordHash, passwordSalt, passwordIterations, passwordAlgo, role }) {
+export async function createUser(db, { username, passwordHash, passwordSalt, passwordIterations, passwordAlgo, role, isActive = 0, name = null, surname = null, age = null }) {
     console.log(role)
     const roleResult = await db.prepare("SELECT id FROM user_roles WHERE role_name = ?").bind(role).first();
     if (!roleResult) {
@@ -49,9 +74,9 @@ export async function createUser(db, { username, passwordHash, passwordSalt, pas
 
     return db
         .prepare(
-            "INSERT INTO users (username, password_hash, password_salt, password_iterations, password_algo, role_id) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO users (username, password_hash, password_salt, password_iterations, password_algo, role_id, is_active, name, surname, age) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
-        .bind(username.trim(), passwordHash, passwordSalt, passwordIterations, passwordAlgo, roleId)
+        .bind(username.trim(), passwordHash, passwordSalt, passwordIterations, passwordAlgo, roleId, isActive, name, surname, age)
         .run();
 }
 
@@ -78,6 +103,9 @@ export async function getLinkedChildren(db, supervisorId) {
             u.id, 
             u.username, 
             u.created_at,
+            u.name,
+            u.surname,
+            u.age,
             ucs.total_stars,
             ucs.energy_level,
             ucs.last_activity_date

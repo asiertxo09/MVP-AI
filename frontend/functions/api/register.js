@@ -49,6 +49,8 @@ export const onRequestPost = async ({ request, env }) => {
 
         const dbRole = roleMapping[role];
 
+        const isActive = (dbRole === 'Hijo') ? 1 : 0; // Parents/Specialists inactive by default
+
         const hashed = await hashPassword(password);
         await createUser(db, {
             username,
@@ -57,7 +59,12 @@ export const onRequestPost = async ({ request, env }) => {
             passwordIterations: hashed.iterations,
             passwordAlgo: hashed.algorithm,
             role: dbRole,
+            isActive: isActive
         });
+
+        if (isActive === 0) {
+            return jsonResponse({ ok: true, message: "Cuenta creada. Esperando aprobación del administrador." }, 201);
+        }
 
         return jsonResponse({ ok: true }, 201);
     } catch (err) {
