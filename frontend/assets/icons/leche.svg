@@ -1,0 +1,18 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Milk bottle -->
+  <path d="M196 380 L226 200 Q216 150 256 130 Q296 150 286 200 L316 380 Z"
+        fill="#FFFFFF"
+        stroke="#A0C4FF"
+        stroke-width="16"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+  <!-- Highlight -->
+  <ellipse cx="230" cy="170" rx="40" ry="20"
+           fill="#FFFFFF"
+           opacity="0.3"
+           transform="rotate(-30 230 170)"/>
+  <!-- Shadow -->
+  <path d="M300 340 Q310 350 300 360 L320 360 Q330 350 320 340 Z"
+        fill="#000000"
+        opacity="0.1"/>
+</svg>
