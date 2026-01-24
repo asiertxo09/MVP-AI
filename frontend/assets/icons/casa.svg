@@ -1,0 +1,15 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Roof -->
+  <polygon points="256,80 136,200 376,200" fill="#FF9F43" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- House body -->
+  <rect x="156" y="200" width="200" height="180" rx="20" fill="#00D2D3" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Door -->
+  <rect x="236" y="300" width="80" height="80" rx="12" fill="#FF6B6B" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Windows -->
+  <circle cx="200" cy="260" r="30" fill="#6C5CE7" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="312" cy="260" r="30" fill="#6C5CE7" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Highlight -->
+  <ellipse cx="180" cy="180" rx="80" ry="40" fill="#FFFFFF" opacity="0.3" transform="rotate(-30 180 180)"/>
+  <!-- Shadow -->
+  <path d="M376 380 L416 420 L376 460 L336 420 Z" fill="#2D3436" opacity="0.1"/>
+</svg>

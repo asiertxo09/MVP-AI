@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 from gtts import gTTS
 import requests
 from dotenv import load_dotenv
-
+import subprocess
+from generate_assets import generate_svg_with_llm
 # Cargar variables de entorno
 load_dotenv()
 
@@ -32,6 +33,20 @@ GROQ_API_URL = 'https://api.groq.com/openai/v1'
 if not GROQ_API_KEY:
     print("⚠️ WARNING: GROQ_API_KEY no configurada")
 
+def check_icon(word):
+    # Calculate absolute path to frontend/assets/icons
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    icons_dir = os.path.join(base_dir, 'frontend', 'assets', 'icons')
+    
+    if not os.path.exists(icons_dir):
+        os.makedirs(icons_dir, exist_ok=True)
+
+    file_path = os.path.join(icons_dir, f"{word}.svg")
+
+    if not os.path.exists(file_path):
+        print(f"🎨 Icon not found for '{word}', generating at: {file_path}")
+        generate_svg_with_llm(word, file_path)
+
 # ==================== MODELS ====================
 
 class TranscribeRequest(BaseModel):
@@ -46,13 +61,13 @@ class TTSRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list
-    model: str = Field(default='llama-3.3-70b-versatile')
+    model: str = Field(default='openai/gpt-oss-120b')
     temperature: float = Field(default=0.7, ge=0, le=2)
     max_tokens: int = Field(default=1024, ge=1, le=8000)
 
 class GenerateRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=2000)
-    model: str = Field(default='llama-3.3-70b-versatile')
+    model: str = Field(default='openai/gpt-oss-120b')
     temperature: float = Field(default=0.7, ge=0, le=2)
     max_tokens: int = Field(default=1024, ge=1, le=8000)
 
@@ -294,7 +309,7 @@ async def generate(request: GenerateRequest):
 
 class GenerateLevelRequest(BaseModel):
     gameType: str = Field(..., description="Type of game: math, phoneme, dictation")
-    difficulty: str = Field(default="medium", description="easy, medium, hard")
+    difficulty: str = Field(default="easy", description="easy, medium, hard")
     limit: int = Field(default=5, ge=1, le=10)
     target: Optional[str] = Field(default=None, description="Target phoneme or concept")
     performance_context: Optional[dict] = Field(default=None, description="Recent stats: {accuracy, avg_time, mistakes}")
@@ -321,16 +336,45 @@ async def generate_levels(request: GenerateLevelRequest):
         if request.performance_context:
             context_str = f" Recent results: {request.performance_context.get('accuracy')}% accuracy, {request.performance_context.get('avg_time')}s avg time."
 
-        target_instruction = f"Words MUST start with the letter '{request.target}'." if request.target else "Words should vary in starting letters."
+        target_phoneme = request.target
+        
+        # Priority 1: Explicit target from request
+        if not target_phoneme:
+            # Priority 2: Mistakes from context
+            mistakes = request.performance_context.get('mistakes', []) if request.performance_context else []
+            if mistakes:
+                import random
+                target_phoneme = random.choice(mistakes)
+                print(f"🎯 Creating remedial level for mistake: {target_phoneme}")
+        
+        # Priority 3: Random default (handled by AI if still None, or picking one here)
+        if not target_phoneme:
+             # Let's pick a common starter letter to be safe/consistent if AI decides bad
+             import random
+             target_phoneme = random.choice(['M', 'P', 'S', 'L', 'T'])
+
+        target_instruction = f"ALL correct words MUST start with the Spanish letter '{target_phoneme}'."
+        distractor_instruction = f"Generate 1-3 distractor words that do NOT start with '{target_phoneme}'."
         
         prompt = f"""
-        Generate {request.limit} simple spanish words for a child learning to read.{context_str}
+        Generate a phoneme identification game level in Spanish.
+        Target Phoneme: "{target_phoneme}"
         {target_instruction}
-        Mark words starting with '{request.target}' as "isTarget": true. Others as false.
-        CRITICAL: Only use icons from this list: frog, cat, sun, rose, rock, tree, star, house, car, flower, book, moon, dog, cloud, bird, fish.
-        Format: JSON Array only.
-        Example: [{{"word": "Gato", "icon": "cat", "isTarget": true}}]
-        Response must be ONLY valid JSON.
+        {distractor_instruction}
+        
+        Return exactly {request.limit} items total (including the distractor).
+        Structure:
+        [
+          {{ "word": "Mesa", "icon": "mesa", "isTarget": true }},
+          {{ "word": "Sol", "icon": "sol", "isTarget": false }}
+        ]
+        
+        CRITICAL: 
+        1. "isTarget" must be true ONLY for words starting with '{target_phoneme}'.
+        2. "isTarget" must be false for the distractor.
+        3. Simple vocabulary for a 5-7 year-old.
+        4. Do NOT use words containing the letter "Ñ" (e.g. avoid Niña, Piña).
+        5. Response must be ONLY valid JSON array.
         """
     else:
          raise HTTPException(status_code=400, detail="Unknown game type")
@@ -343,7 +387,7 @@ async def generate_levels(request: GenerateLevelRequest):
         
         # Enforce JSON mode if supported or just via prompt
         payload = {
-            'model': 'llama-3.3-70b-versatile',
+            'model': 'openai/gpt-oss-120b',
             'messages': [{'role': 'user', 'content': prompt}],
             'temperature': 0.7,
             'response_format': {"type": "json_object"} 
@@ -379,7 +423,21 @@ async def generate_levels(request: GenerateLevelRequest):
                      pass 
                 else: 
                      data = []
-
+            if isinstance(data, list):
+                valid_data = []
+                for item in data:
+                    word = item.get('word')
+                    # Validation: Filter out None, empty strings, string "None", or containing 'ñ'
+                    if not word or str(word).lower() == 'none' or str(word).lower() == 'null' or 'ñ' in str(word).lower():
+                        continue
+                    
+                    item['word'] = str(word) # Ensure string
+                    check_icon(item['word'].lower())
+                    valid_data.append(item)
+                
+                data = valid_data
+            
+            print(f"✅ Generated {len(data)} valid levels")
             return {"levels": data}
         except Exception as e:
             print(f"JSON Parse Error: {e} - Content: {content}")
@@ -419,7 +477,7 @@ async def speaking_chat(request: SpeakingChatRequest):
         }
         
         payload = {
-            'model': 'llama-3.3-70b-versatile',
+            'model': 'openai/gpt-oss-120b',
             'messages': [{'role': 'user', 'content': prompt}],
             'temperature': 0.8,
             'max_tokens': 20

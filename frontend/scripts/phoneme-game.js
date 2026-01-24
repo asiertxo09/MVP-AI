@@ -60,66 +60,80 @@ export function vibrate() {
     }
 }
 
-// Fetch game data from AI backend
-async function fetchGameDataFromAI(phoneme) {
-    const prompt = `Eres un tutor de fonética. Dame exactamente 3 palabras en español que empiecen con el sonido "${phoneme}" y 1 palabra distractora que NO empiece con ese sonido.
-Responde SOLO en formato JSON así:
-{
-  "targetPhoneme": "${phoneme}",
-  "correctWords": ["palabra1", "palabra2", "palabra3"],
-  "distractor": "palabra_distractora"
-}
-Usa palabras simples de objetos o animales que se puedan representar con imágenes.`;
-
+// Helper: Get user's weak phonemes from metrics
+async function getPhonemePerformance() {
     try {
-        const res = await fetch(API_URL, {
+        const res = await fetch('/api/metrics?type=activities&days=30');
+        if (!res.ok) return [];
+        const data = await res.json();
+        const activities = data.activities || [];
+
+        // Filter for phoneme_hunt and calculate failures
+        const mistakes = {};
+
+        activities
+            .filter(a => a.activity_type === 'phoneme_hunt' && a.is_correct === 0)
+            .forEach(a => {
+                let phoneme = null;
+                // Parse challenge data safely
+                try {
+                    const challenge = typeof a.challenge_data === 'string' ? JSON.parse(a.challenge_data) : a.challenge_data;
+                    phoneme = challenge?.phoneme;
+                } catch (e) { }
+
+                if (phoneme) {
+                    mistakes[phoneme] = (mistakes[phoneme] || 0) + 1;
+                }
+            });
+
+        // Return sorted list of phonemes by mistake count (descending)
+        return Object.entries(mistakes)
+            .sort(([, a], [, b]) => b - a)
+            .map(([phoneme]) => phoneme);
+    } catch (e) {
+        console.warn('Error fetching metrics', e);
+        return [];
+    }
+}
+
+// Fetch game data from AI backend (New Endpoint)
+async function fetchGameDataFromAI(forcePhoneme = null, mistakes = []) {
+    try {
+        const payload = {
+            gameType: 'phoneme',
+            difficulty: 'easy',
+            limit: 4, // 3 correct + 1 distractor
+            performance_context: {
+                mistakes: mistakes
+            }
+        };
+
+        if (forcePhoneme) {
+            payload.target = forcePhoneme;
+        }
+
+        const res = await fetch(API_URL.replace('/api/generate', '/api/generate-levels'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt })
+            body: JSON.stringify(payload)
         });
+
         if (!res.ok) throw new Error('API error');
         const data = await res.json();
-        return JSON.parse(data.text);
+
+        // Transform backend format to game format if needed
+        // Backend returns: { levels: [{ word, icon, isTarget }] }
+        // We need: { targetPhoneme, correctWords, distractor } 
+        // OR better: adapt the game to use the new list structure directly.
+
+        // Let's adapt the response to match what the 'init' function expects for now,
+        // OR better yet, let's just return the list and let init handle it.
+        return data.levels;
+
     } catch (e) {
         console.warn('AI fetch error, using fallback', e);
         return null;
     }
-}
-
-// Fallback data for demo
-function getFallbackData(phoneme) {
-    const fallbacks = {
-        'R': {
-            targetPhoneme: 'R',
-            correctWords: ['rana', 'rosa', 'roca'],
-            distractor: 'gato'
-        },
-        'S': {
-            targetPhoneme: 'S',
-            correctWords: ['sol', 'silla', 'sapo'],
-            distractor: 'perro'
-        },
-        'M': {
-            targetPhoneme: 'M',
-            correctWords: ['mano', 'mesa', 'mono'],
-            distractor: 'flor'
-        }
-    };
-    return fallbacks[phoneme.toUpperCase()] || fallbacks['R'];
-}
-
-// Map words to available assets (best effort)
-const wordToAsset = {
-    'rana': '../assets/gamification/animal_frog.png',
-    'gato': '../assets/gamification/animal_cat.png',
-    'rosa': '../assets/gamification/flower_rose.png',
-    'roca': '../assets/gamification/object_rock.png',
-    // Fallback for unknown words
-    'default': '../assets/gamification/map_node_locked.png'
-};
-
-function getAssetForWord(word) {
-    return wordToAsset[word.toLowerCase()] || wordToAsset['default'];
 }
 
 // Main Game Controller
@@ -132,24 +146,39 @@ export class PhonemeHuntGame {
         this.correctCount = 0;
     }
 
-    async init(phoneme = 'R') {
-        this.targetPhoneme = phoneme.toUpperCase();
-        this.container.innerHTML = '<p class="loading">🧠 Cargando ejercicio con IA...</p>';
+    async init(forcePhoneme = null) {
+        this.container.innerHTML = '<p class="loading">🧠 Analizando tu progreso...</p>';
 
-        // Try AI, fallback if fails
-        let data = await fetchGameDataFromAI(this.targetPhoneme);
-        if (!data) {
-            data = getFallbackData(this.targetPhoneme);
+        // 1. Get weak phonemes
+        const weakPhonemes = await getPhonemePerformance();
+        console.log('Detected weak phonemes:', weakPhonemes);
+
+        // 2. Fetch Level
+        this.container.innerHTML = '<p class="loading">✨ Creando ejercicio personalizado...</p>';
+        const levels = await fetchGameDataFromAI(forcePhoneme, weakPhonemes);
+
+        if (levels && levels.length > 0) {
+            this.items = levels.map(item => ({
+                word: item.word,
+                isCorrect: item.isTarget
+            }));
+
+            // Determine target phoneme from the correct items (first char of first correct word)
+            const firstCorrect = this.items.find(i => i.isCorrect);
+            if (firstCorrect) {
+                this.targetPhoneme = firstCorrect.word.charAt(0).toUpperCase();
+            }
+        } else {
+            // FALLBACK
+            this.targetPhoneme = forcePhoneme || (weakPhonemes[0] || 'R');
+            const data = getFallbackData(this.targetPhoneme);
+            this.items = [
+                ...data.correctWords.map(w => ({ word: w, isCorrect: true })),
+                { word: data.distractor, isCorrect: false }
+            ];
+            // Shuffle
+            this.items = this.items.sort(() => Math.random() - 0.5);
         }
-
-        // Build items array
-        this.items = [
-            ...data.correctWords.map(w => ({ word: w, isCorrect: true })),
-            { word: data.distractor, isCorrect: false }
-        ];
-
-        // Shuffle
-        this.items = this.items.sort(() => Math.random() - 0.5);
 
         this.render();
     }

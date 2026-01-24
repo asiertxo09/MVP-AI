@@ -139,9 +139,10 @@ export class AssetFactory {
 
         const icon = icons[name];
         if (!icon) {
-            console.warn(`Icon ${name} not found in AssetFactory.`);
-            // Return a placeholder or empty string
-            return `<svg width="${width}" height="${height}"></svg>`;
+            // Fallback: Try to load from generated assets
+            // Since we can't return async fetch result here easily, we return an IMG tag
+            // pointing to the generated file.
+            return `<img src="../assets/icons/${name}.svg" width="${width}" height="${height}" onerror="this.onerror=null; this.src='../assets/icons/icon-frog.svg';"/>`;
         }
         return icon;
     }

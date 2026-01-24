@@ -3,8 +3,8 @@ const GAMES_DATA = {
     phoneme_hunt: {
         id: 'phoneme_hunt',
         type: 'phoneme_hunt',
-        instruction: 'Toca las palabras que tienen la letra <span class="highlight-text">R</span>',
-        targetPhoneme: 'r',
+        instruction: 'Toca las palabras que empiezan igual',
+        targetPhoneme: null, // Dynamic
         levels: [
             {
                 id: 1,
@@ -125,6 +125,26 @@ export class GameManager {
                                 avg_time: Math.round(avgTime),
                                 count: total
                             };
+
+                            // Calculate Mistakes for Phoneme Hunt
+                            if (this.currentGameConfig.type === 'phoneme_hunt') {
+                                const mistakesMap = {};
+                                relevant.forEach(a => {
+                                    if (!a.is_correct && a.challenge_data) {
+                                        try {
+                                            const cData = typeof a.challenge_data === 'string' ? JSON.parse(a.challenge_data) : a.challenge_data;
+                                            if (cData.phoneme) {
+                                                mistakesMap[cData.phoneme] = (mistakesMap[cData.phoneme] || 0) + 1;
+                                            }
+                                        } catch (e) { }
+                                    }
+                                });
+                                const mistakesList = Object.entries(mistakesMap).sort(([, a], [, b]) => b - a).map(([p]) => p);
+                                if (mistakesList.length > 0) {
+                                    performanceContext.mistakes = mistakesList;
+                                    console.log("Found weak phonemes:", mistakesList);
+                                }
+                            }
                         }
                     }
                 } catch (me) {
@@ -138,7 +158,7 @@ export class GameManager {
                         gameType: this.currentGameConfig.type === 'phoneme_hunt' ? 'phoneme' : 'math',
                         difficulty: this.engine ? (this.engine.difficultyMultiplier > 1.5 ? 'hard' : (this.engine.difficultyMultiplier > 1.2 ? 'medium' : 'easy')) : 'medium',
                         limit: 5,
-                        target: this.currentGameConfig.targetPhoneme || 'r',
+                        target: this.currentGameConfig.targetPhoneme || null, // Allow null to let backend/mistakes decide
                         performance_context: performanceContext
                     })
                 });
@@ -157,6 +177,14 @@ export class GameManager {
                             // Phoneme hunt needs complex mapping: the AI returns a list of items for ONE level,
                             // or multiple levels? Backend currently returns a list of {word, icon, isTarget}.
                             // We'll wrap this into one level for now or split if limit > items.
+                            // Store the target phoneme from the first correct card to show in UI if needed
+                            const firstTarget = data.levels.find(l => l.isTarget);
+                            if (firstTarget) {
+                                this.currentGameConfig.targetPhoneme = firstTarget.word.charAt(0).toUpperCase();
+                                // Update instruction dynamically
+                                this.currentGameConfig.instruction = `Toca las palabras que empiezan con <span class="highlight-text">${this.currentGameConfig.targetPhoneme}</span>`;
+                            }
+
                             this.currentGameConfig.levels = [{
                                 id: 1,
                                 cards: data.levels.map((item, idx) => ({
@@ -171,7 +199,16 @@ export class GameManager {
                 }
             } catch (e) {
                 console.error("AI Generation failed, using offline fallback", e);
+                // Fallback to 'R' (matches default data)
+                this.currentGameConfig.targetPhoneme = 'R';
+                this.currentGameConfig.instruction = `Toca las palabras que empiezan con <span class="highlight-text">R</span>`;
             }
+        }
+
+        // Final Safety Check: Ensure instruction has a target if missing
+        if (!this.currentGameConfig.targetPhoneme && this.currentGameConfig.type === 'phoneme_hunt') {
+            this.currentGameConfig.targetPhoneme = 'R';
+            this.currentGameConfig.instruction = `Toca las palabras que empiezan con <span class="highlight-text">R</span>`;
         }
 
         if (this.currentGameConfig.type === 'math') {

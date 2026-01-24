@@ -9,7 +9,7 @@ engine.init().then(() => console.log("Engine initialized with profile"));
 
 // --- Game State & Configuration ---
 const LEVELS = [
-    { id: 1, type: 'phoneme_hunt', title: 'Caza-Fonemas', desc: '¡Encuentra las palabras con R!', icon: 'frog.svg' },
+    { id: 1, type: 'phoneme_hunt', title: 'Caza-Fonemas', desc: '¡Encuentra las palabras con el sonido secreto!', icon: 'frog.svg' },
     { id: 2, type: 'math', title: 'Bosque de Números', desc: 'Resuelve sumas para cruzar el bosque.', icon: 'icon-frog.svg' },
     { id: 3, type: 'dictation', title: 'Dojo de Escritura', desc: 'Escucha y escribe la palabra correcta.', icon: 'icon-frog.svg' },
     { id: 4, type: 'speaking', title: 'Montaña del Eco', desc: 'Habla con la montaña mágica.', icon: 'icon-frog.svg' }

@@ -6,17 +6,21 @@ import time
 import requests
 import re
 import json
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # --- CONFIGURATION ---
 # Points to your Unified Backend (ai-backend-groq)
 # Ensure this matches the port where your FastAPI backend is running (default usually 5001 or 8000)
-GROQ_API_URL = os.getenv('GROQ_API_URL', 'http://localhost:5001') 
+GROQ_API_URL = os.getenv('GROQ_API_URL', 'https://api.groq.com/openai/v1') 
 
 # Directory to save assets
 ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend', 'assets', 'generated')
 
-# The model to use for SVG coding (Llama 3 or Qwen are best)
-DEFAULT_SVG_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_SVG_MODEL = "openai/gpt-oss-120b"
+GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')
 
 # --- OPTIONAL IMPORTS FOR PIXEL GENERATION ---
 # This allows the script to work even if you don't have the heavy SDXL libraries installed
@@ -37,8 +41,7 @@ def ensure_dir(path):
 # --- SVG GENERATION LOGIC (NEW) ---
 def generate_svg_with_llm(prompt, output_path):
     print(f"🎨 Generating Premium SVG for: '{prompt}'...")
-    print(f"📡 Connecting to Backend at: {GROQ_API_URL}/chat")
-
+    
     # 1. EJEMPLO MAESTRO
     example_svg = """
     <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
@@ -52,18 +55,31 @@ def generate_svg_with_llm(prompt, output_path):
     # 2. PROMPT DE INGENIERÍA
     system_instruction = (
         "You are a Senior UI Designer specializing in SVG icons for children's apps. "
-        "Your goal is to create 'Kawaii', 'Flat', and 'Vibrant' icons.\n\n"
+        "Your goal is to create 'Flat' and 'Vibrant' icons. Keep it simple and flat.\n\n"
         
         "RULES:"
         "1. CANVAS: Always use viewBox='0 0 512 512'. Center the main subject at (256, 256).\n"
-        "2. STYLE: Use 'Geometric Constructivism'. Build complex shapes from simple circles and rounded rectangles.\n"
-        "3. PALETTE: Use ONLY these colors: Purple #6C5CE7, Orange #FF9F43, Teal #00D2D3, Green #2ECC71, Red #FF6B6B, White #FFFFFF, Dark #2D3436.\n"
-        "4. DEPTH: Add a 'Highlight' (white oval, opacity 0.3) on the top-left and a 'Shadow' (black path, opacity 0.1) on the bottom-right.\n"
-        "5. STROKE: Use thick, rounded strokes (stroke-width='16' stroke-linecap='round' stroke-linejoin='round') in darker shades or white.\n"
-        "6. OUTPUT: Return ONLY valid XML code within <svg> tags including xmlns.\n\n"
+        "2. STYLE: Build complex shapes from simple geometries.\n"
+        "3. DEPTH: Add a 'Highlight' (white oval, opacity 0.3) on the top-left and a 'Shadow' (black path, opacity 0.1) on the bottom-right.\n"
+        "4. STROKE: Use thick, rounded strokes (stroke-width='16' stroke-linecap='round' stroke-linejoin='round') in darker shades or white.\n"
+        "5. OUTPUT: Return ONLY valid XML code within <svg> tags including xmlns.\n\n"
 
         f"EXAMPLE OF GOOD CODE:\n{example_svg}"
     )
+    # Logic to toggle between Local and Direct Groq API
+    if GROQ_API_KEY and "api.groq.com" in GROQ_API_URL:
+        # Direct Call to Groq Cloud
+        url = f"{GROQ_API_URL}/chat/completions"
+        headers = {
+            'Authorization': f'Bearer {GROQ_API_KEY}',
+            'Content-Type': 'application/json'
+        }
+    else:
+        # Local Proxy (calls the currently running app.py if needed, BUT avoid if called from app.py)
+        # Note: If called from app.py, this script should have GROQ_API_KEY set.
+        # Fallback only
+        url = f"{GROQ_API_URL}/chat/completions"
+        headers = {'Content-Type': 'application/json'}
 
     payload = {
         "model": DEFAULT_SVG_MODEL,
@@ -74,9 +90,9 @@ def generate_svg_with_llm(prompt, output_path):
         "temperature": 0.2,
         "max_tokens": 4096
     }
-
+    
     try:
-        response = requests.post(f"{GROQ_API_URL}/chat", json=payload)
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
         
         if response.status_code == 200:
             data = response.json()
