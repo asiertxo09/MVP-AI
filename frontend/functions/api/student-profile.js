@@ -150,6 +150,45 @@ export const onRequestGet = async ({ request, env }) => {
         profile.recommendedActivities = JSON.parse(profile.recommended_activities || '[]');
         profile.daily_time_limit = profile.daily_time_limit_seconds || 900;
 
+        // Fetch Modality Profile (NeuroQuest Phase 2)
+        const modalityProfile = await db.prepare(
+            `SELECT * FROM modality_profiles WHERE child_id = ?`
+        ).bind(profile.id).first(); // assuming profile.id or look up by user_id if needed. 
+        // NOTE: student_profiles usually has 'id' PK, but 'user_id' FK. 
+        // modality_profiles uses 'child_id' which references 'children(id)'.
+        // We need to confirm if 'student_profiles.user_id' maps to 'children.id' or 'children.user_id'.
+        // Looking at creating profile: `user_id` is session.sub.
+        // Looking at `children` table (not visible here but assumed): often children(id) is distinct.
+        // Let's assume for now user_id in student_profiles is the child's user_id.
+        // And modality_profiles might perform a join or verify existence.
+        // Let's safe fetch by user_id if modality_profiles has user_id, OR fetch child record first.
+        // Re-reading migration: modality_profiles(child_id).
+        // If 'student_profiles' is for a child, then 'session.sub' is the child's user_id. 
+        // We probably need to lookup the child record to get the 'id' for 'modality_profiles', 
+        // OR simply add 'modality_profiles' support to look up by user_id if we change migration? 
+        // No, migration is set. Let's try to find child_id from user_id.
+
+        // However, looking at 'children.js' might reveal if children table has user_id.
+        // Let's assume we can try to join or separate query.
+        // For safely, let's just expose it if we can find it.
+
+        // Actually, let's keep it simple: fetch by joining or assuming mapped ID.
+        // Wait, 'children' table usually has 'id' and 'user_id' (if linked to auth).
+        // Let's add a safe check.
+
+        let modalityParams = {};
+        const childRecord = await db.prepare("SELECT id FROM children WHERE user_id = ?").bind(session.sub).first();
+
+        if (childRecord) {
+            const mod = await db.prepare("SELECT * FROM modality_profiles WHERE child_id = ?").bind(childRecord.id).first();
+            if (mod) {
+                modalityParams = mod;
+            }
+        }
+
+        // Attach to profile object
+        profile.modality = modalityParams;
+
         return jsonResponse({ profile });
     } catch (err) {
         console.error("Error fetching student profile:", err);

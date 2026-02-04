@@ -18,6 +18,16 @@ export class GameEngine {
         this.streak = 0;
         this.mistakesInRow = 0;
         this.difficultyMultiplier = 1.0;
+
+        // Initialize Phase 2 State
+        this.history = []; // Rolling window of last 10 trials
+        this.sessionStartRT = null; // Avg RT of first 10 trials
+        this.currentModalityState = {
+            enhanceVisuals: false,
+            slowTTS: false,
+            reduceDistractors: false
+        };
+        this.modalityProfile = null;
     }
 
     async init() {
@@ -32,13 +42,18 @@ export class GameEngine {
             const response = await apiFetch('/api/student-profile');
             if (response.ok && response.data.profile) {
                 const profile = response.data.profile;
-                this.activeChildId = profile.user_id;
+                this.activeChildId = profile.user_id; // Keeping legacy user_id map
                 if (profile.daily_time_limit) {
                     this.maxDailySeconds = profile.daily_time_limit;
                     console.log(`Setting maxDailySeconds to ${this.maxDailySeconds} for child ${this.activeChildId}`);
-
-                    // Profile loaded, now we can safely load state
                     this.loadState();
+                }
+
+                // Neuro-Engine: Load Modality Profile
+                if (profile.modality) {
+                    this.modalityProfile = profile.modality;
+                    this.updateModalityState();
+                    console.log("Neuro-Engine: Modality Profile Loaded", this.modalityProfile);
                 }
             }
         } catch (e) {
@@ -46,23 +61,52 @@ export class GameEngine {
         }
     }
 
+    // Neuro-Engine: Modality Adaptation
+    updateModalityState() {
+        if (!this.modalityProfile) return;
+
+        // Weakness Targeting: Auditory Deficit -> Enhance Visuals
+        // Assuming indices are 0.0 to 1.0 or normalized scores
+        // If auditory_index is significantly lower than visual_index or below threshold
+        const auditory = this.modalityProfile.auditory_index || 0.5;
+        if (auditory < 0.4) {
+            this.currentModalityState.enhanceVisuals = true;
+            this.currentModalityState.slowTTS = true;
+        }
+    }
+
     // API Support
     async saveMetric(activityType, isCorrect, details = {}) {
         try {
             const { post } = await import('./api-client.js');
-            await post('/api/metrics', {
+            // Legacy metric save
+            post('/api/metrics', {
                 activityType: activityType,
                 activityName: details.activityName || activityType,
                 isCorrect: isCorrect,
                 durationSeconds: details.durationSeconds || null,
                 starsEarned: details.starsEarned || 0,
+                energyChange: details.energyChange || 0,
                 metadata: {
                     ...details,
                     difficulty: this.difficultyMultiplier,
+                    neuroState: this.calculateNeuroMetrics(),
                     timestamp: Date.now()
                 }
-            });
+            }).catch(e => console.warn("Legacy metric failed", e));
+
             console.log("Metric saved:", activityType);
+
+            // Phase 1: High-Frequency Telemetry
+            if (window.telemetry) {
+                window.telemetry.logEvent('trial_complete', {
+                    activity_type: activityType,
+                    status: isCorrect ? 'correct' : 'incorrect',
+                    reaction_time_ms: details.reactionTimeMs || null,
+                    difficulty: this.difficultyMultiplier
+                });
+            }
+
         } catch (e) {
             console.warn("Failed to save metric:", e);
         }
@@ -227,37 +271,105 @@ export class GameEngine {
         }));
     }
 
-    // Adaptive Difficulty
+    // Neuro-Engine: Adaptive Difficulty (Phase 2)
     reportResult(isCorrect, activityType = 'unknown', details = {}) {
-        const activityName = details.activityName || activityType;
-        if (isCorrect) {
-            this.streak++;
-            this.mistakesInRow = 0;
-            if (this.streak >= 3) {
-                this.difficultyMultiplier += 0.1;
-                this.streak = 0; // Reset streak to require another 3 for next bump
-            }
-        } else {
-            this.streak = 0;
-            this.mistakesInRow++;
-            if (this.mistakesInRow >= 2) {
-                this.difficultyMultiplier = Math.max(0.5, this.difficultyMultiplier - 0.15);
-                this.mistakesInRow = 0;
-                // Show Hint (handled by game logic, but flagged here)
-                this.saveMetric(activityType, isCorrect, { ...details, action: 'show_hint' });
-                return { action: 'show_hint' };
-            }
+        const rt = details.reactionTimeMs || 0;
+
+        // Update Rolling Window
+        this.history.push({ isCorrect, rt, timestamp: Date.now() });
+        if (this.history.length > 10) this.history.shift();
+
+        // Initialize Baseline if needed
+        if (this.history.length === 10 && this.sessionStartRT === null) {
+            this.sessionStartRT = this.history.reduce((a, b) => a + b.rt, 0) / 10;
         }
 
-        // Save to backend
+        // Calculate Decision Matrix
+        const adaptations = this.calculateNeuroEngine();
+
+        // Apply Logic to Legacy Multiplier
+        if (adaptations.action === 'increase_load') {
+            this.difficultyMultiplier = Math.min(2.0, this.difficultyMultiplier + 0.1);
+        } else if (adaptations.action === 'increase_scaffolding') {
+            this.difficultyMultiplier = Math.max(0.5, this.difficultyMultiplier - 0.1);
+        }
+
+        // Save to backend with simplified method call
         this.saveMetric(activityType, isCorrect, details);
 
-        // Critical Failure Check
-        if (this.difficultyMultiplier < 0.6) {
-            return { action: 'breathing_exercise' };
+        // Return adaptations + legacy action map
+        if (adaptations.scaffolding.includes('show_hint')) {
+            return { action: 'show_hint', adaptations };
         }
 
-        return { difficulty: this.difficultyMultiplier };
+        return { difficulty: this.difficultyMultiplier, adaptations };
+    }
+
+    calculateNeuroMetrics() {
+        if (this.history.length === 0) return { accuracy: 0, consistency: 0, fatigue: 0 };
+
+        const correctCount = this.history.filter(h => h.isCorrect).length;
+        const accuracy = (correctCount / this.history.length) * 100;
+
+        // RT Stats
+        const rts = this.history.map(h => h.rt);
+        const meanRT = rts.reduce((a, b) => a + b, 0) / rts.length;
+        const variance = rts.reduce((a, b) => a + Math.pow(b - meanRT, 2), 0) / rts.length;
+        const consistency = Math.sqrt(variance); // Standard Deviation
+
+        // Fatigue Velocity
+        let fatigue = 0;
+        if (this.sessionStartRT) {
+            fatigue = (meanRT - this.sessionStartRT) / this.sessionStartRT; // >0 means slowing down
+        }
+
+        return { accuracy, consistency, fatigue, meanRT };
+    }
+
+    calculateNeuroEngine() {
+        const metrics = this.calculateNeuroMetrics();
+        const { accuracy, consistency, fatigue } = metrics;
+
+        // Decision Matrix (Flow Theory)
+        let decision = {
+            zone: 'B', // Flow
+            action: 'sustain_load',
+            scaffolding: [],
+            intrinsicLoad: 'medium',
+            visuals: this.currentModalityState // Inherit modality base
+        };
+
+        // Zone A: Boredom/Mastery (>80%)
+        if (accuracy >= 80) {
+            decision.zone = 'A';
+            decision.action = 'increase_load';
+            decision.intrinsicLoad = 'high';
+            // Increase speed or complexity
+        }
+        // Zone C: Anxiety/Frustration (<50%)
+        else if (accuracy < 50) {
+            decision.zone = 'C';
+            decision.action = 'increase_scaffolding';
+            decision.intrinsicLoad = 'low';
+            decision.scaffolding.push('show_hint');
+
+            if (fatigue > 0.3) {
+                // High fatigue
+                decision.scaffolding.push('breathing_break');
+            }
+        }
+
+        // Check Consistency (Attention)
+        if (consistency > 1000) { // e.g. > 1s variance
+            decision.scaffolding.push('attention_check');
+        }
+
+        return decision;
+    }
+
+    // Helper for games to check current state
+    getAdaptations() {
+        return this.calculateNeuroEngine();
     }
 
     // Parental Gate

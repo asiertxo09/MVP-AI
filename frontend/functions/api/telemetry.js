@@ -1,6 +1,6 @@
 // API endpoint for High-Frequency Clinical Data Architecture (NeuroQuest Phase 1)
-import { requireDb } from "../../lib/d1";
-import { getSession } from "../../lib/session";
+import { requireDb } from "../lib/d1";
+import { getSession } from "../lib/session";
 
 // POST: Ingest batch of telemetry events
 export const onRequestPost = async ({ request, env }) => {
