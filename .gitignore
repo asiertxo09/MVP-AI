@@ -7,3 +7,4 @@ frontend/.env
 frontend/node_modules
 ai-backend-groq/.venv
 ai-services-local/.venv
+frontend/assets/icons/*.svg

@@ -1,0 +1,1 @@
+npx wrangler d1 execute DB --local --command "UPDATE users SET is_Active=1 WHERE username='[EMAIL_ADDRESS]'"
