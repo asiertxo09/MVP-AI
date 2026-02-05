@@ -637,10 +637,92 @@
                         </div>
                     </div>
                 </div>
-                <!-- PDF Export Button -->
-                <div style="margin-top: 2rem; text-align: center;"><button class="btn btn-primary" id="exportPdfBtn"
-                        onclick="exportToPDF()">📄 Exportar Informe PDF</button>
+            </div>
+
+            <!-- CLINICAL INSIGHTS PANEL (Phase 6) -->
+            <div class="clinical-panel"
+                style="margin-top: 3rem; background: #f8f9fa; padding: 2rem; border-radius: 20px; border: 1px solid #e9ecef;">
+                <h3
+                    style="color: var(--color-navy); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px;">
+                    🧠 Panel de Insights Clínicos <span
+                        style="font-size: 0.8rem; background: #6C5CE7; color: white; padding: 2px 8px; border-radius: 12px;">BETA</span>
+                </h3>
+
+                <div class="clinical-grid"
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                    <!-- 1. Modality Radar -->
+                    <div class="clinical-card"
+                        style="background: white; padding: 1.5rem; border-radius: 16px; box-shadow: var(--shadow-sm);">
+                        <h4
+                            style="margin-bottom: 1rem; color: var(--color-muted); font-size: 0.9rem; text-transform: uppercase;">
+                            Pasaporte Sensorial</h4>
+                        <div style="height: 250px; position: relative;">
+                            <canvas id="modalityRadarChart"></canvas>
+                        </div>
+                        <p style="font-size: 0.85rem; color: #666; margin-top: 1rem; text-align: center;">
+                            Equilibrio Visual / Auditivo / Kinestésico
+                        </p>
+                    </div>
+
+                    <!-- 2. Learning Curve -->
+                    <div class="clinical-card"
+                        style="background: white; padding: 1.5rem; border-radius: 16px; box-shadow: var(--shadow-sm);">
+                        <h4
+                            style="margin-bottom: 1rem; color: var(--color-muted); font-size: 0.9rem; text-transform: uppercase;">
+                            Curva de Aprendizaje</h4>
+                        <div style="height: 250px; position: relative;">
+                            <canvas id="learningCurveChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 3. Risk Gauge & Recs -->
+                    <div class="clinical-card"
+                        style="background: white; padding: 1.5rem; border-radius: 16px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;">
+                        <h4
+                            style="margin-bottom: 1rem; color: var(--color-muted); font-size: 0.9rem; text-transform: uppercase;">
+                            Indicadores de Riesgo</h4>
+
+                        <!-- Traffic Light -->
+                        <div style="display: flex; justify-content: space-around; margin-bottom: 1.5rem;">
+                            <div class="risk-light" id="risk-dyslexia" style="text-align: center; opacity: 0.3;">
+                                <div
+                                    style="width: 40px; height: 40px; border-radius: 50%; background: #FF7675; margin: 0 auto 5px;">
+                                </div>
+                                <span style="font-size: 0.8rem; font-weight: 700;">Dislexia</span>
+                            </div>
+                            <div class="risk-light" id="risk-adhd" style="text-align: center; opacity: 0.3;">
+                                <div
+                                    style="width: 40px; height: 40px; border-radius: 50%; background: #FDCB6E; margin: 0 auto 5px;">
+                                </div>
+                                <span style="font-size: 0.8rem; font-weight: 700;">TDAH</span>
+                            </div>
+                            <div class="risk-light" id="risk-ok" style="text-align: center; opacity: 1;">
+                                <div
+                                    style="width: 40px; height: 40px; border-radius: 50%; background: #00B894; margin: 0 auto 5px;">
+                                </div>
+                                <span style="font-size: 0.8rem; font-weight: 700;">Típico</span>
+                            </div>
+                        </div>
+
+                        <div
+                            style="background: #FFF3CD; padding: 1rem; border-radius: 8px; border-left: 4px solid #FDCB6E; font-size: 0.85rem; color: #856404; margin-bottom: 1rem;">
+                            ⚠️ <strong>Nota:</strong> Estos indicadores son solo para detección temprana (screening) y
+                            NO constituyen un diagnóstico médico.
+                        </div>
+
+                        <div id="clinical-recommendations"
+                            style="flex: 1; background: #f1f3f5; padding: 1rem; border-radius: 8px; font-size: 0.9rem;">
+                            <strong style="display: block; margin-bottom: 0.5rem;">Recomendación IA:</strong>
+                            <p id="ai-advice-text">Analizando patrones de juego...</p>
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- PDF Export Button -->
+            <div style="margin-top: 2rem; text-align: center;"><button class="btn btn-primary" id="exportPdfBtn"
+                    onclick="exportToPDF()">📄 Exportar Informe PDF</button>
+            </div>
             </div>
         </section>
     </main>
@@ -877,8 +959,8 @@
             // Inject Actions
             if (statsActions) {
                 statsActions.innerHTML = `
-                <button onclick="window.playAsChild(${childId})" class="btn btn-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
-                    🎮 Jugar
+                <button onclick="window.playAsChild(${childId})" class="btn btn-primary" style="font-size: 0.9rem; padding: 0.5rem 1rem; background: linear-gradient(135deg, #6C5CE7, #a29bfe); border: none;">
+                    🏰 Jugar a los Reinos
                 </button>
                 <button onclick="window.unlinkChild(${childId})" class="btn btn-secondary" style="background: var(--color-error); color: white; border: none; font-size: 0.9rem;">
                     💔
@@ -1152,9 +1234,12 @@
             try {
                 const response = await post('/api/play-as-child', { childId });
                 if (response.data.ok) {
-                    const { token, redirectUrl } = response.data;
-                    // Append token to URL so child-app.js can pick it up
-                    window.location.href = `${redirectUrl}&child_token=${token}`;
+                    const { token } = response.data;
+                    // Redirect to Kingdoms Map with the child token
+                    // Assuming kingdoms.html can handle query params or we set a cookie/session storage
+                    // The backend sets a cookie usually, but let's pass token just in case or rely on session.
+                    // If the backend `play-as-child` sets the session cookie, a simple redirect works.
+                    window.location.href = `kingdoms.html?child_token=${token}`;
                 } else {
                     alert(response.data.error || "No se pudo iniciar sesión del niño");
                 }

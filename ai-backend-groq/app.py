@@ -305,24 +305,53 @@ async def generate(request: GenerateRequest):
             detail=f"Error en generate: {str(e)}"
         )
 
-# ==================== DYNAMIC LEVEL GENERATION ====================
+# ... imports ...
+from longitudinal_logic import SpiralingEngine, SkillGraph
+
+# ... existing code ...
 
 class GenerateLevelRequest(BaseModel):
-    gameType: str = Field(..., description="Type of game: math, phoneme, dictation")
+    gameType: str = Field(..., description="Type of game: math, phoneme, dictation, fluency")
     difficulty: str = Field(default="easy", description="easy, medium, hard")
     limit: int = Field(default=5, ge=1, le=10)
     target: Optional[str] = Field(default=None, description="Target phoneme or concept")
-    performance_context: Optional[dict] = Field(default=None, description="Recent stats: {accuracy, avg_time, mistakes}")
+    # New Context Fields
+    phoneme_history: Optional[dict] = Field(default=None, description="{ 'm': timestamp }")
+    mistakes: Optional[list] = Field(default=None, description="['p', 'b']")
+    skill_mastery: Optional[dict] = Field(default=None, description="{ 'decoding': true }")
+    target_skill: Optional[str] = Field(default=None, description="The specific skill being trained e.g. 'fluency'")
 
 @app.post('/api/generate-levels')
 async def generate_levels(request: GenerateLevelRequest):
     """
-    Generates dynamic game levels using Groq
+    Generates dynamic game levels using Groq with Longitudinal Logic
     """
     if not GROQ_API_KEY:
         raise HTTPException(status_code=503, detail="Groq API key missing")
 
+    # 1. Longitudinal Gatekeeping (Skill Graph)
+    if request.target_skill and request.skill_mastery:
+        graph = SkillGraph()
+        check = graph.validate_level_request(request.target_skill, request.skill_mastery)
+        if not check['allowed']:
+            # BLOCKED: Return a bridge level instead?
+            # ideally we return a special response code, but to be safe for frontend, 
+            # let's just generate the BRIDGE skill instead and notify.
+            print(f"🔒 Skill Gate: Blocked '{request.target_skill}' due to missing '{check['missing']}'. Swapped to Bridge Level.")
+            request.gameType = 'phoneme' # Bridge usually phonemics
+            request.target_skill = check['bridge_skill']
+            # We continue generation but for the bridge skill
+            
+    # 2. Spiraling Engine (Review Injection)
+    review_items = []
+    if request.gameType == 'phoneme':
+        engine = SpiralingEngine(high_decay_days=14)
+        review_items = engine.get_review_items(request.phoneme_history, request.mistakes)
+        # Limit review items to max 2 to not overwhelm
+        review_items = review_items[:2]
+
     prompt = ""
+    # ... (existing math logic) ...
     if request.gameType == 'math':
         prompt = f"""
         Generate {request.limit} {request.difficulty} math problems for a 5-7 year old. 
@@ -332,37 +361,36 @@ async def generate_levels(request: GenerateLevelRequest):
         Response must be ONLY valid JSON.
         """
     elif request.gameType == 'phoneme':
-        context_str = ""
-        if request.performance_context:
-            context_str = f" Recent results: {request.performance_context.get('accuracy')}% accuracy, {request.performance_context.get('avg_time')}s avg time."
-
+        # ... logic ...
         target_phoneme = request.target
         
-        # Priority 1: Explicit target from request
+        # Priority Logic: 
+        # If no explicit target, try to use a Review Item as the MAIN target
+        if not target_phoneme and review_items:
+             target_phoneme = review_items[0]
+             print(f"🔄 Spiraling: Selected Review Item '{target_phoneme}' as main target.")
+             review_items = review_items[1:] # Remove used one
+
         if not target_phoneme:
-            # Priority 2: Mistakes from context
-            mistakes = request.performance_context.get('mistakes', []) if request.performance_context else []
-            if mistakes:
-                import random
-                target_phoneme = random.choice(mistakes)
-                print(f"🎯 Creating remedial level for mistake: {target_phoneme}")
-        
-        # Priority 3: Random default (handled by AI if still None, or picking one here)
-        if not target_phoneme:
-             # Let's pick a common starter letter to be safe/consistent if AI decides bad
+             # Random fallback logic (existing)
              import random
              target_phoneme = random.choice(['M', 'P', 'S', 'L', 'T'])
 
         target_instruction = f"ALL correct words MUST start with the Spanish letter '{target_phoneme}'."
         distractor_instruction = f"Generate 1-3 distractor words that do NOT start with '{target_phoneme}'."
         
+        review_instruction = ""
+        if review_items:
+             review_instruction = f"ALSO, inject 1-2 questions testing these specific review phonemes: {', '.join(review_items)}."
+
         prompt = f"""
         Generate a phoneme identification game level in Spanish.
         Target Phoneme: "{target_phoneme}"
         {target_instruction}
         {distractor_instruction}
+        {review_instruction}
         
-        Return exactly {request.limit} items total (including the distractor).
+        Return exactly {request.limit} items total.
         Structure:
         [
           {{ "word": "Mesa", "icon": "mesa", "isTarget": true }},
@@ -370,22 +398,21 @@ async def generate_levels(request: GenerateLevelRequest):
         ]
         
         CRITICAL: 
-        1. "isTarget" must be true ONLY for words starting with '{target_phoneme}'.
-        2. "isTarget" must be false for the distractor.
-        3. Simple vocabulary for a 5-7 year-old.
-        4. Do NOT use words containing the letter "Ñ" (e.g. avoid Niña, Piña).
-        5. Response must be ONLY valid JSON array.
+        1. "isTarget" must be true ONLY for words starting with '{target_phoneme}' (OR the review phonemes if included).
+        2. Simple vocabulary for a 5-7 year-old.
+        3. Do NOT use words containing the letter "Ñ".
+        4. Response must be ONLY valid JSON array.
         """
     else:
          raise HTTPException(status_code=400, detail="Unknown game type")
 
     try:
+        # ... existing Groq call ...
         headers = {
             'Authorization': f'Bearer {GROQ_API_KEY}',
             'Content-Type': 'application/json'
         }
         
-        # Enforce JSON mode if supported or just via prompt
         payload = {
             'model': 'openai/gpt-oss-120b',
             'messages': [{'role': 'user', 'content': prompt}],
@@ -395,50 +422,53 @@ async def generate_levels(request: GenerateLevelRequest):
 
         response = requests.post(f'{GROQ_API_URL}/chat/completions', headers=headers, json=payload, timeout=30)
         
+        # ... (rest of existing error handling and parsing) ...
         if not response.ok:
              raise HTTPException(status_code=response.status_code, detail=response.text)
 
         result = response.json()
         content = result['choices'][0]['message']['content']
         
-        # Parse JSON from content
+        # ... JSON Parsing (Reusing existing logic slightly modified/cleaned if needed, 
+        # but for replace_file_content we assume keeping the existing block structure below) ...
+        
+        # (This block is just context for where we are, not full replacement yet)
+        # We need to render the parsing logic too since we replaced the whole function signature
+        
         import json
         try:
-            # Llama sometimes wraps in ```json ... ```
             clean_content = content.replace("```json", "").replace("```", "").strip()
             data = json.loads(clean_content)
             
-            # If wrapped in object key usually "levels" or "items"
             if isinstance(data, dict):
-                # Try to find list values
                 for k, v in data.items():
                     if isinstance(v, list):
                         data = v
                         break
-            
-            # If still dict and no list found, might be single object?
             if not isinstance(data, list):
-                if isinstance(data, dict):
-                     # Maybe raw wrapper?
-                     pass 
-                else: 
-                     data = []
+                 if isinstance(data, dict): pass 
+                 else: data = []
+            
             if isinstance(data, list):
                 valid_data = []
                 for item in data:
                     word = item.get('word')
-                    # Validation: Filter out None, empty strings, string "None", or containing 'ñ'
                     if not word or str(word).lower() == 'none' or str(word).lower() == 'null' or 'ñ' in str(word).lower():
                         continue
-                    
-                    item['word'] = str(word) # Ensure string
+                    item['word'] = str(word)
                     check_icon(item['word'].lower())
                     valid_data.append(item)
-                
                 data = valid_data
             
-            print(f"✅ Generated {len(data)} valid levels")
-            return {"levels": data}
+            # Inject metadata about why this level was generated
+            return {
+                "levels": data, 
+                "meta": {
+                    "target": target_phoneme if request.gameType == 'phoneme' else None,
+                    "spiraled_items": review_items if request.gameType == 'phoneme' else [],
+                    "gate_status": "open" if not (request.target_skill and request.skill_mastery) else "checked"
+                }
+            }
         except Exception as e:
             print(f"JSON Parse Error: {e} - Content: {content}")
             return {"levels": [], "error": "Failed to parse AI response"}
@@ -560,6 +590,38 @@ async def chat_options():
 
 @app.options("/api/generate")
 async def generate_options():
+    return Response(
+        status_code=200,
+        headers={
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+        }
+    )
+
+# ==================== DIAGNOSTIC BRAIN ENDPOINT ====================
+
+from diagnostic_brain import DiagnosticBrain
+
+class DiagnosticRequest(BaseModel):
+    session_logs: list
+    total_sessions: int = 1
+
+@app.post("/api/diagnostic/analyze")
+async def analyze_diagnostic_session(request: DiagnosticRequest):
+    """
+    Analyzes raw session logs to detect learning risks (Dyslexia, ADHD).
+    """
+    try:
+        brain = DiagnosticBrain()
+        result = brain.analyze_session(request.session_logs, request.total_sessions)
+        return result
+    except Exception as e:
+        print(f"Diagnostic Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.options("/api/diagnostic/analyze")
+async def diagnostic_options():
     return Response(
         status_code=200,
         headers={

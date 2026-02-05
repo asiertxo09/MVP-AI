@@ -68,6 +68,127 @@ function renderDashboard(data) {
     const totalMinutes = Math.round((data.stats_24h.total_time || 0) / 60);
     document.getElementById('total-time-24h').innerText = `${totalMinutes}m`;
     document.getElementById('accuracy-24h').innerText = `${data.stats_24h.accuracy}%`;
+
+    // 6. Clinical Insights (Phase 6)
+    renderClinicalInsights(data);
+}
+
+function renderClinicalInsights(data) {
+    // A. Modality Radar
+    const modalityWrapper = document.getElementById('modalityRadarChart');
+    if (modalityWrapper && data.modality_profile) {
+        new Chart(modalityWrapper.getContext('2d'), {
+            type: 'radar',
+            data: {
+                labels: ['Visual', 'Auditivo', 'Kinestésico'],
+                datasets: [{
+                    label: 'Preferencia Sensorial',
+                    // Default values if missing. 
+                    // Expected format: { visual_index: 0.8, auditory_index: 0.5, kinesthetic_index: 0.6 }
+                    data: [
+                        (data.modality_profile.visual_index || 0.5) * 100,
+                        (data.modality_profile.auditory_index || 0.5) * 100,
+                        (data.modality_profile.kinesthetic_index || 0.5) * 100
+                    ],
+                    backgroundColor: 'rgba(46, 204, 113, 0.2)', // Greenish
+                    borderColor: '#2ECC71',
+                    pointBackgroundColor: '#2ECC71',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    r: {
+                        angleLines: { color: '#dfe6e9' },
+                        grid: { color: '#dfe6e9' },
+                        pointLabels: { font: { family: 'Baloo 2', size: 14 } },
+                        suggestedMin: 0,
+                        suggestedMax: 100
+                    }
+                }
+            }
+        });
+    }
+
+    // B. Learning Curve
+    const learningWrapper = document.getElementById('learningCurveChart');
+    if (learningWrapper && data.learning_curve) {
+        // Expected data.learning_curve = [{ day: '2023-10-01', mastery: 40 }, ...]
+        const dates = data.learning_curve.map(d => new Date(d.day).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+        const mastery = data.learning_curve.map(d => d.mastery);
+
+        new Chart(learningWrapper.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Nivel de Maestría',
+                    data: mastery,
+                    borderColor: '#0984e3',
+                    backgroundColor: 'rgba(9, 132, 227, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Maestría (%)' }
+                    }
+                }
+            }
+        });
+    }
+
+    // C. Risk Gauge & Advice
+    if (data.diagnostic_flags) {
+        // Reset lights
+        document.getElementById('risk-dyslexia').style.opacity = '0.3';
+        document.getElementById('risk-adhd').style.opacity = '0.3';
+        document.getElementById('risk-ok').style.opacity = '0.3';
+
+        let hasRisk = false;
+
+        // Check flags: ["Dyslexia Risk", "ADHD Risk"]
+        if (data.diagnostic_flags.some(f => f.includes('Dyslexia'))) {
+            document.getElementById('risk-dyslexia').style.opacity = '1';
+            hasRisk = true;
+        }
+        if (data.diagnostic_flags.some(f => f.includes('ADHD'))) {
+            document.getElementById('risk-adhd').style.opacity = '1';
+            hasRisk = true;
+        }
+        if (!hasRisk) {
+            document.getElementById('risk-ok').style.opacity = '1';
+        }
+
+        // Recommendations
+        const recBox = document.getElementById('ai-advice-text');
+        if (recBox) {
+            if (hasRisk) {
+                // Determine dominant advice
+                if (data.diagnostic_flags.some(f => f.includes('RT Variability'))) {
+                    recBox.innerHTML = "Hemos notado fluctuaciones en la atención. <strong>Pruebe sesiones más cortas (10-15 min)</strong> para reducir la fatiga cognitiva.";
+                } else if (data.diagnostic_flags.some(f => f.includes('Lateral Confusion'))) {
+                    recBox.innerHTML = "Hay confusión frecuente entre letras espejo (b/d). <strong>Active el modo 'Entrenamiento Dislexia'</strong> en la configuración para ejercicios de refuerzo visual.";
+                } else {
+                    recBox.innerText = "Se han detectado patrones atípicos. Recomendamos supervisar las próximas sesiones para obtener más datos.";
+                }
+            } else {
+                recBox.innerHTML = "¡Todo se ve genial! Mantenga la rutina actual para consolidar el aprendizaje.";
+            }
+        }
+    }
 }
 
 function renderWeeklyChart(activityData) {
