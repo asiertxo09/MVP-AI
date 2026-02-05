@@ -28,12 +28,17 @@ export class GameEngine {
             reduceDistractors: false
         };
         this.modalityProfile = null;
+
+        // Frustration Detection (Phase 9)
+        this.lastTaps = [];
+        this.isFrozen = false;
     }
 
     async init() {
         await this.fetchProfile();
         this.startTimer();
         this.checkTimeLimit();
+        this.setupFrustrationDetector();
     }
 
     async fetchProfile() {
@@ -491,5 +496,70 @@ export class GameEngine {
 
         document.body.appendChild(modal);
         input.focus();
+        document.body.appendChild(modal);
+        input.focus();
+    }
+
+    // --- Frustration Detection (Rage Tap) ---
+    setupFrustrationDetector() {
+        document.addEventListener('click', (e) => this.handleGlobalTap(e), true);
+        // Use capture phase to intercept before game logic if needed
+    }
+
+    handleGlobalTap(e) {
+        if (this.isFrozen) {
+            e.stopPropagation();
+            e.preventDefault();
+            return;
+        }
+
+        const now = Date.now();
+        const tap = { x: e.clientX, y: e.clientY, time: now };
+
+        // Remove old taps (>500ms)
+        this.lastTaps = this.lastTaps.filter(t => now - t.time < 500);
+        this.lastTaps.push(tap);
+
+        // Check Count
+        if (this.lastTaps.length >= 5) {
+            // Check clustering (distance)
+            const first = this.lastTaps[0];
+            const isCluster = this.lastTaps.every(t => Math.hypot(t.x - first.x, t.y - first.y) < 100);
+
+            if (isCluster) {
+                this.triggerFrustrationProtocol();
+            }
+        }
+    }
+
+    triggerFrustrationProtocol() {
+        console.log("Rage Tap Detected!");
+        this.isFrozen = true;
+        this.lastTaps = []; // Reset
+
+        // 1. Soften UI
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.background = 'rgba(255,255,255,0.5)';
+        overlay.style.zIndex = '9000';
+        overlay.style.transition = 'opacity 0.5s';
+        document.body.appendChild(overlay);
+
+        // 2. Pet Intervention
+        if (window.petSystem) {
+            window.petSystem.setEmotion('thinking'); // Or calm
+            window.petSystem.say("¡Respira! Escucha de nuevo.", 3000);
+        }
+
+        // 3. Unfreeze after delay
+        setTimeout(() => {
+            this.isFrozen = false;
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.remove(), 500);
+        }, 2000);
     }
 }

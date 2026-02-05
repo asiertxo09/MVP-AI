@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="styles/base.css">
     <link rel="stylesheet" href="styles/game.css">
     <link rel="stylesheet" href="styles/gamification.css">
+    <link rel="stylesheet" href="styles/accessibility.css">
     <style>
         body {
             background-color: #F0F4F8;
@@ -132,16 +133,19 @@
         import { ComprehensionCavernsGame } from './scripts/comprehension-caverns.js';
         import { PetSystem } from './scripts/PetSystem.js';
         import { RewardSystem } from './scripts/RewardSystem.js';
+        import { AccessibilityManager } from './scripts/AccessibilityManager.js';
 
         // Check for level param
         window.addEventListener('DOMContentLoaded', async () => {
-            // Init Engagement Layer
+            // Init Engagement & Accessibility
             const pet = new PetSystem('pet-container');
             const rewards = new RewardSystem();
+            const accessibility = new AccessibilityManager();
 
             // Expose for debugging/usage
             window.petSystem = pet;
             window.rewardSystem = rewards;
+            window.accessibility = accessibility;
 
             const urlParams = new URLSearchParams(window.location.search);
             const level = urlParams.get('level');
