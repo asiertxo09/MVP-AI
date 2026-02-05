@@ -1,6 +1,3 @@
-// =========================================================
-// Fluency Falls - Reading Fluency Game
-// =========================================================
 
 import { GameEngine } from './GameEngine.js';
 
@@ -8,169 +5,192 @@ export class FluencyFallsGame {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.engine = new GameEngine();
-        this.text = "El rápido zorro marrón salta sobre el perro perezoso.";
-        this.targetWPM = 60; // Words Per Minute
-        this.words = this.text.split(' ');
-        this.karaokeInterval = null;
-        this.mediaRecorder = null;
-        this.audioChunks = [];
-        this.isPlayingReference = false;
+        this.text = `
+            Había una vez un pequeño barco
+            que no sabía, que no sabía navegar.
+            Pasaron una, dos, tres, cuatro,
+            cinco, seis, siete semanas.
+            Y el barco, y el barco,
+            comenzó a navegar.`;
+
+        this.lines = this.text.split('\n').map(l => l.trim()).filter(l => l);
+        this.isFlowing = false;
+        this.scrollSpeed = 0;
+        this.baseSpeed = 1; // Pixels per frame
+        this.micLevel = 0;
+
+        this.audioCtx = null;
+        this.analyser = null;
+        this.dataArray = null;
     }
 
     async init() {
         this.render();
+        // Ask for mic permission immediately for the visualizer
+        await this.setupMic();
+    }
 
-        // Neuro-Engine: Check Modality to adjust WPM or text size
-        const adaptations = this.engine.getAdaptations();
-        if (adaptations.visuals && adaptations.visuals.enhanceVisuals) {
-            this.container.classList.add('high-contrast');
+    async setupMic() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = this.audioCtx.createMediaStreamSource(stream);
+            this.analyser = this.audioCtx.createAnalyser();
+            this.analyser.fftSize = 256;
+            source.connect(this.analyser);
+            this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+
+            this.startLoop();
+        } catch (e) {
+            console.error("Mic access denied", e);
+            alert("Necesitamos el micrófono para que el río fluya.");
+        }
+    }
+
+    startLoop() {
+        const loop = () => {
+            if (!this.analyser) return;
+
+            this.analyser.getByteFrequencyData(this.dataArray);
+
+            // Calculate average volume
+            let sum = 0;
+            for (let i = 0; i < this.dataArray.length; i++) {
+                sum += this.dataArray[i];
+            }
+            const average = sum / this.dataArray.length;
+            this.micLevel = average;
+
+            // Adjust Speed based on volume (Voice Activation)
+            // Threshold ~ 10-20 to start moving
+            if (this.micLevel > 15) {
+                // Smooth acceleration
+                this.scrollSpeed += 0.05;
+                if (this.scrollSpeed > 2.5) this.scrollSpeed = 2.5;
+            } else {
+                // Deceleration (Friction)
+                this.scrollSpeed *= 0.95;
+                if (this.scrollSpeed < 0.1) this.scrollSpeed = 0;
+            }
+
+            this.updateScroll();
+            this.updateVisuals();
+
+            requestAnimationFrame(loop);
+        };
+        loop();
+    }
+
+    updateScroll() {
+        const scrollContainer = document.getElementById('river-scroll');
+        if (scrollContainer) {
+            scrollContainer.scrollTop += this.scrollSpeed;
+
+            // Check end
+            if (scrollContainer.scrollTop + scrollContainer.clientHeight >= scrollContainer.scrollHeight - 50) {
+                // End of river
+                if (!this.finished) {
+                    this.finished = true;
+                    this.showWin();
+                }
+            }
+        }
+    }
+
+    updateVisuals() {
+        // Update Raft animation/particles based on speed
+        const raft = document.getElementById('raft-avatar');
+        if (raft) {
+            if (this.scrollSpeed > 1) {
+                raft.classList.add('moving-fast');
+                raft.style.transform = `scale(1.05) rotate(${Math.sin(Date.now() / 100) * 2}deg)`;
+            } else {
+                raft.classList.remove('moving-fast');
+                raft.style.transform = `scale(1) rotate(${Math.sin(Date.now() / 500) * 1}deg)`;
+            }
         }
 
-        // Adjust WPM based on difficulty/profile
-        if (adaptations.intrinsicLoad === 'low') {
-            this.targetWPM = 40;
-        } else if (adaptations.intrinsicLoad === 'high') {
-            this.targetWPM = 80;
+        // Update Mic Orb
+        const orb = document.getElementById('mic-orb');
+        if (orb) {
+            const scale = 1 + (this.micLevel / 100);
+            orb.style.transform = `scale(${scale})`;
+            orb.style.opacity = 0.5 + (this.micLevel / 200);
         }
     }
 
     render() {
         this.container.innerHTML = '';
-        this.container.className = 'fluency-container';
+        this.container.className = 'game-container river-theme';
 
-        // Header
-        const header = document.createElement('div');
-        header.innerHTML = `<h2>🌊 Cataratas de Fluidez</h2>`;
-        this.container.appendChild(header);
+        // 1. River Background setup in CSS
 
-        // Waterfall Visual (Flow Interaction)
-        const waterfall = document.createElement('div');
-        waterfall.className = 'waterfall';
-        // Speed depends on WPM
-        waterfall.style.animationDuration = `${60 / this.targetWPM}s`;
-        this.container.appendChild(waterfall);
+        // 2. Scroll Area (The River)
+        const scrollArea = document.createElement('div');
+        scrollArea.id = 'river-scroll';
+        scrollArea.className = 'river-scroll-area';
 
-        // Text Display
-        const textDisplay = document.createElement('div');
-        textDisplay.className = 'text-display';
-        textDisplay.id = 'karaoke-text';
+        // Spacer top
+        const spacerTop = document.createElement('div');
+        spacerTop.style.height = '50vh';
+        scrollArea.appendChild(spacerTop);
 
-        this.words.forEach((word, idx) => {
-            const span = document.createElement('span');
-            span.innerText = word + ' ';
-            span.id = `word-${idx}`;
-            textDisplay.appendChild(span);
+        // Lines
+        this.lines.forEach((line, idx) => {
+            const lineEl = document.createElement('div');
+            lineEl.className = 'river-line';
+            lineEl.innerText = line;
+            scrollArea.appendChild(lineEl);
         });
 
-        this.container.appendChild(textDisplay);
+        // Spacer bottom
+        const spacerBottom = document.createElement('div');
+        spacerBottom.style.height = '50vh';
+        scrollArea.appendChild(spacerBottom);
 
-        // Controls
-        const controls = document.createElement('div');
-        controls.className = 'controls';
+        this.container.appendChild(scrollArea);
 
-        const btnListen = document.createElement('button');
-        btnListen.innerText = "👂 Escuchar (Modelo)";
-        btnListen.onclick = () => this.playReferenceAudio();
+        // 3. The Raft (Fixed Overlay)
+        const raft = document.createElement('div');
+        raft.id = 'raft-avatar';
+        raft.className = 'raft';
+        raft.innerHTML = '🚣'; // Placeholder or Image
+        this.container.appendChild(raft);
 
-        const btnRecord = document.createElement('button');
-        btnRecord.innerText = "🎤 Grabar Lectura";
-        btnRecord.onclick = () => this.toggleRecording(btnRecord);
+        // 4. Mic Indicator
+        const orb = document.createElement('div');
+        orb.id = 'mic-orb';
+        orb.className = 'mic-orb';
+        this.container.appendChild(orb);
 
-        controls.appendChild(btnListen);
-        controls.appendChild(btnRecord);
-        this.container.appendChild(controls);
-
-        // Back Button
-        const backBtn = document.createElement('button');
-        backBtn.className = 'back-btn';
-        backBtn.innerText = '← Volver';
-        backBtn.onclick = () => window.location.href = 'index.html';
-        this.container.appendChild(backBtn);
+        // Sidebar / Start Msg
+        const hud = document.createElement('div');
+        hud.className = 'game-hud';
+        hud.innerHTML = '<p>¡Lee en voz alta para mover la balsa!</p>';
+        this.container.appendChild(hud);
     }
 
-    playReferenceAudio() {
-        if (this.isPlayingReference) return;
-        this.isPlayingReference = true;
+    showWin() {
+        // Call backend or existing flow
+        const modal = document.createElement('div');
+        modal.className = 'win-modal';
+        modal.innerHTML = `
+            <div class="win-content">
+                <h2>🎉 ¡Llegaste a la meta!</h2>
+                <button id="finishLevelBtn">Completar Nivel</button>
+            </div>
+        `;
+        this.container.appendChild(modal);
 
-        // Simulate TTS and Karaoke Animation
-        const perWordTime = (60 / this.targetWPM) * 1000;
-        let currentWordIndex = 0;
-
-        // Reset Styles
-        this.words.forEach((_, idx) => {
-            document.getElementById(`word-${idx}`).classList.remove('active');
-        });
-
-        this.karaokeInterval = setInterval(() => {
-            if (currentWordIndex >= this.words.length) {
-                clearInterval(this.karaokeInterval);
-                this.isPlayingReference = false;
-                return;
+        document.getElementById('finishLevelBtn').onclick = () => {
+            // Find the "Completer Nivel" button from parent or trigger it
+            // Try to click the hidden Complete button in demo-mechanics overlay
+            const btn = document.querySelector('.btn-primary'); // The one we added in demo-mechanics
+            if (btn && btn.innerText.includes('Completar')) {
+                btn.click();
+            } else {
+                alert("¡Nivel Completado!");
             }
-
-            // Highlight current word
-            if (currentWordIndex > 0) {
-                document.getElementById(`word-${currentWordIndex - 1}`).classList.remove('active');
-            }
-            document.getElementById(`word-${currentWordIndex}`).classList.add('active');
-
-            // Play sound (Beep for prototype, real TTS in prod)
-            this.playPip();
-
-            currentWordIndex++;
-        }, perWordTime);
-    }
-
-    playPip() {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.setValueAtTime(440, ctx.currentTime);
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.1);
-    }
-
-    async toggleRecording(btn) {
-        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
-            this.mediaRecorder.stop();
-            btn.innerText = "🎤 Grabar Lectura";
-            btn.classList.remove('recording');
-        } else {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                this.mediaRecorder = new MediaRecorder(stream);
-                this.audioChunks = [];
-
-                this.mediaRecorder.ondataavailable = (event) => {
-                    this.audioChunks.push(event.data);
-                };
-
-                this.mediaRecorder.onstop = () => {
-                    // Playback (Echo Reading)
-                    const audioBlob = new Blob(this.audioChunks, { type: 'audio/wav' });
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    const audio = new Audio(audioUrl);
-                    audio.play();
-
-                    this.engine.reportResult(true, 'fluency_reading', {
-                        durationSeconds: this.audioChunks.length, // rough proxy
-                        wpm: this.targetWPM // Ideally calculated from audio duration
-                    });
-
-                    alert("¡Bien hecho! Ahora escúchate a ti mismo (Eco).");
-                };
-
-                this.mediaRecorder.start();
-                btn.innerText = "⏹ Detener";
-                btn.classList.add('recording');
-            } catch (e) {
-                console.error("Error accessing microphone", e);
-                alert("Necesitamos acceso al micrófono para esta actividad.");
-            }
-        }
+        };
     }
 }

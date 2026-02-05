@@ -1,6 +1,3 @@
-// =========================================================
-// Auditory Station - Processing & Noise Filtering
-// =========================================================
 
 import { GameEngine } from './GameEngine.js';
 
@@ -8,14 +5,12 @@ export class AuditoryGame {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.engine = new GameEngine();
-        this.ctx = null;
-        this.noiseNode = null;
-        this.targetNode = null;
-        this.noiseGain = null;
-        this.targetGain = null;
+        this.audioCtx = null;
         this.isPlaying = false;
-
-        this.SNR_Level = 0.5; // Signal-to-Noise Ratio (0.0 to 1.0)
+        this.currentSide = null; // 'left' or 'right'
+        this.analyser = null;
+        this.dataArray = null;
+        this.canvasCtx = null;
     }
 
     init() {
@@ -24,135 +19,164 @@ export class AuditoryGame {
 
     render() {
         this.container.innerHTML = '';
-        this.container.className = 'auditory-container';
+        this.container.className = 'game-container auditory-theme';
 
         // Header
         const header = document.createElement('div');
         header.innerHTML = `<h2>🔊 Estación Auditiva</h2>`;
         this.container.appendChild(header);
 
-        // Visual Anchor Display (Shape Morphing)
-        const anchorDisplay = document.createElement('div');
-        anchorDisplay.className = 'visual-anchor';
-        anchorDisplay.style.width = '200px';
-        anchorDisplay.style.height = '200px';
-        anchorDisplay.style.backgroundColor = '#6C5CE7';
-        anchorDisplay.style.margin = '20px auto';
-        anchorDisplay.style.borderRadius = '50%'; // Starts as Circle (Low Pitch)
-        anchorDisplay.style.transition = 'all 0.5s ease';
-        anchorDisplay.id = 'visual-anchor-shape';
-        this.container.appendChild(anchorDisplay);
+        // Speakers Area
+        const speakersRow = document.createElement('div');
+        speakersRow.className = 'speakers-row';
+
+        // Left Speaker
+        const leftSpeaker = document.createElement('div');
+        leftSpeaker.className = 'speaker left';
+        leftSpeaker.id = 'speaker-left';
+        leftSpeaker.onclick = () => this.checkAnswer('left');
+        leftSpeaker.innerHTML = `<div class="speaker-cone"></div>`;
+        speakersRow.appendChild(leftSpeaker);
+
+        // Waveform Canvas (Middle)
+        const canvasContainer = document.createElement('div');
+        canvasContainer.className = 'waveform-display';
+        const canvas = document.createElement('canvas');
+        canvas.id = 'wave-canvas';
+        canvas.width = 300;
+        canvas.height = 100;
+        canvasContainer.appendChild(canvas);
+        speakersRow.appendChild(canvasContainer);
+
+        // Right Speaker
+        const rightSpeaker = document.createElement('div');
+        rightSpeaker.className = 'speaker right';
+        rightSpeaker.id = 'speaker-right';
+        rightSpeaker.onclick = () => this.checkAnswer('right');
+        rightSpeaker.innerHTML = `<div class="speaker-cone"></div>`;
+        speakersRow.appendChild(rightSpeaker);
+
+        this.container.appendChild(speakersRow);
 
         // Controls
         const controls = document.createElement('div');
+        controls.className = 'game-hud';
 
-        const btnPlayLow = document.createElement('button');
-        btnPlayLow.innerText = "▶ Tono Bajo (Oso)";
-        btnPlayLow.onclick = () => this.playSound('low');
+        const btnPlay = document.createElement('button');
+        btnPlay.className = 'btn-primary-action';
+        btnPlay.innerText = "▶ Reproducir Sonido";
+        btnPlay.onclick = () => this.playStimulus();
 
-        const btnPlayHigh = document.createElement('button');
-        btnPlayHigh.innerText = "▶ Tono Alto (Pájaro)";
-        btnPlayHigh.onclick = () => this.playSound('high');
+        controls.appendChild(btnPlay);
 
-        // Noise Slider
-        const sliderContainer = document.createElement('div');
-        sliderContainer.style.marginTop = '20px';
-        sliderContainer.innerHTML = '<label>Nivel de Ruido (Cafetería): </label>';
+        const info = document.createElement('p');
+        info.innerText = "¿De qué lado vino el sonido?";
+        info.style.marginTop = '10px';
+        controls.appendChild(info);
 
-        const slider = document.createElement('input');
-        slider.type = 'range';
-        slider.min = 0;
-        slider.max = 100;
-        slider.value = 50;
-        slider.oninput = (e) => {
-            this.SNR_Level = 1 - (e.target.value / 100);
-            if (this.noiseGain) {
-                this.noiseGain.gain.setValueAtTime((1 - this.SNR_Level) * 0.5, this.ctx.currentTime);
-            }
-        };
-        sliderContainer.appendChild(slider);
-
-        controls.appendChild(btnPlayLow);
-        controls.appendChild(btnPlayHigh);
         this.container.appendChild(controls);
-        this.container.appendChild(sliderContainer);
 
-        // Back Button
-        const backBtn = document.createElement('button');
-        backBtn.className = 'back-btn';
-        backBtn.innerText = '← Volver';
-        backBtn.onclick = () => window.location.href = 'index.html';
-        this.container.appendChild(backBtn);
+        // Prepare Canvas
+        this.canvasCtx = canvas.getContext('2d');
     }
 
     initAudio() {
-        if (!this.ctx) {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-            // Create Noise Generator (Pink Noise approximation)
-            const bufferSize = this.ctx.sampleRate * 2; // 2 seconds
-            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                const white = Math.random() * 2 - 1;
-                data[i] = (lastOut + (0.02 * white)) / 1.02;
-                lastOut = data[i];
-                data[i] *= 3.5;
-            }
-            let lastOut = 0;
-
-            this.noiseBuffer = buffer;
+        if (!this.audioCtx) {
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            this.analyser = this.audioCtx.createAnalyser();
+            this.analyser.fftSize = 256;
+            this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+            this.draw();
         }
-        if (this.ctx.state === 'suspended') this.ctx.resume();
+        if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
     }
 
-    playSound(type) {
+    draw() {
+        if (!this.canvasCtx) return;
+        requestAnimationFrame(() => this.draw());
+
+        this.analyser.getByteTimeDomainData(this.dataArray);
+
+        const canvas = document.getElementById('wave-canvas');
+        if (!canvas) return; // Unmounted
+
+        const ctx = this.canvasCtx;
+        const width = canvas.width;
+        const height = canvas.height;
+
+        ctx.fillStyle = '#2d3436';
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#00cec9';
+        ctx.beginPath();
+
+        const sliceWidth = width * 1.0 / this.dataArray.length;
+        let x = 0;
+
+        for (let i = 0; i < this.dataArray.length; i++) {
+            const v = this.dataArray[i] / 128.0;
+            const y = v * height / 2;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+            x += sliceWidth;
+        }
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.stroke();
+    }
+
+    playStimulus() {
         this.initAudio();
 
-        // 1. Play Noise Background
-        if (!this.isPlaying) {
-            this.noiseNode = this.ctx.createBufferSource();
-            this.noiseNode.buffer = this.noiseBuffer;
-            this.noiseNode.loop = true;
-            this.noiseGain = this.ctx.createGain();
-            this.noiseNode.connect(this.noiseGain);
-            this.noiseGain.connect(this.ctx.destination);
-            // Set initial volume based on SNR
-            this.noiseGain.gain.setValueAtTime((1 - this.SNR_Level) * 0.5, this.ctx.currentTime);
-            this.noiseNode.start();
+        // Pick Side
+        this.currentSide = Math.random() > 0.5 ? 'right' : 'left';
+        const panVal = this.currentSide === 'left' ? -1 : 1;
+
+        const osc = this.audioCtx.createOscillator();
+        const panner = this.audioCtx.createStereoPanner();
+        const gain = this.audioCtx.createGain();
+
+        osc.frequency.setValueAtTime(440, this.audioCtx.currentTime);
+        // Slide pitch
+        osc.frequency.exponentialRampToValueAtTime(880, this.audioCtx.currentTime + 0.3);
+
+        panner.pan.value = panVal;
+
+        osc.connect(panner);
+        panner.connect(gain);
+        gain.connect(this.analyser); // For visual
+        this.analyser.connect(this.audioCtx.destination);
+
+        gain.gain.setValueAtTime(0, this.audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.5, this.audioCtx.currentTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.5);
+
+        osc.start();
+        osc.stop(this.audioCtx.currentTime + 0.5);
+
+        // Animate Speaker
+        const spk = document.getElementById(this.currentSide === 'left' ? 'speaker-left' : 'speaker-right');
+        spk.classList.add('pumping');
+        setTimeout(() => spk.classList.remove('pumping'), 500);
+    }
+
+    checkAnswer(side) {
+        if (!this.currentSide) {
+            alert("¡Dale a reproducir primero!");
+            return;
         }
 
-        // 2. Play Target Sound
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-
-        const shape = document.getElementById('visual-anchor-shape');
-
-        if (type === 'high') {
-            osc.frequency.setValueAtTime(800, this.ctx.currentTime); // High pitch
-            shape.style.borderRadius = '0%'; // Triangle/Square (Sharp)
-            shape.style.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)'; // Triangle
-            shape.style.backgroundColor = '#FF7675'; // Red-ish
+        if (side === this.currentSide) {
+            alert("✅ ¡Correcto!");
+            // Complete
+            const btn = document.querySelector('button.btn-primary');
+            if (btn) btn.click();
+            else {
+                // Reset
+                this.currentSide = null;
+            }
         } else {
-            osc.frequency.setValueAtTime(200, this.ctx.currentTime); // Low pitch
-            shape.style.borderRadius = '50%'; // Circle (Round)
-            shape.style.clipPath = 'none';
-            shape.style.backgroundColor = '#6C5CE7'; // Blue-ish
+            alert("❌ Inténtalo de nuevo. Escucha con atención.");
         }
-
-        gain.gain.setValueAtTime(0, this.ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(1, this.ctx.currentTime + 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 1.0);
-
-        osc.start(this.ctx.currentTime);
-        osc.stop(this.ctx.currentTime + 1.0);
-
-        // Report telemetry
-        this.engine.reportResult(true, 'auditory_discrimination', {
-            target: type,
-            snr_level: this.SNR_Level
-        });
     }
 }

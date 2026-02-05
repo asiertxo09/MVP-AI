@@ -7,11 +7,14 @@
   height: 100vh;
   background-color: var(--bg-app);
   background-image: radial-gradient(var(--color-secondary) 2px, transparent 2px);
-  background-size: 30px 30px; /* Polka dots */
-  z-index: 3000; /* Above modal and HUD */
+  background-size: 30px 30px;
+  /* Polka dots */
+  z-index: 3000;
+  /* Above modal and HUD */
   display: flex;
   flex-direction: column;
-  display: none; /* Hidden by default */
+  display: none;
+  /* Hidden by default */
   opacity: 0;
   transition: opacity 0.3s ease-in-out;
 }
@@ -33,7 +36,7 @@
 .progress-bar-container {
   flex: 1;
   margin: 0 2rem;
-  background: rgba(0,0,0,0.1);
+  background: rgba(0, 0, 0, 0.1);
   height: 12px;
   border-radius: 6px;
   overflow: hidden;
@@ -45,9 +48,11 @@
   background: #dfe6e9;
   border-right: 2px solid var(--bg-app);
 }
+
 .progress-segment:last-child {
   border-right: none;
 }
+
 .progress-segment.filled {
   background: var(--color-success);
 }
@@ -104,10 +109,11 @@
   transform: translateY(4px);
   box-shadow: 0 2px 0 #4834d4;
 }
+
 .btn-primary-action:disabled {
-    background: #bdc3c7;
-    box-shadow: 0 6px 0 #95a5a6;
-    cursor: not-allowed;
+  background: #bdc3c7;
+  box-shadow: 0 6px 0 #95a5a6;
+  cursor: not-allowed;
 }
 
 /* --- GAME A: Phoneme Hunt --- */
@@ -118,8 +124,9 @@
   text-align: center;
   font-weight: 700;
 }
+
 .highlight-text {
-    color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .grid-cards {
@@ -128,10 +135,11 @@
   gap: 1.5rem;
   width: 100%;
 }
+
 @media(min-width: 600px) {
-    .grid-cards {
-        grid-template-columns: repeat(3, 1fr);
-    }
+  .grid-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .game-card {
@@ -142,7 +150,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   border: 4px solid transparent;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -180,47 +188,561 @@
 
 /* Animations */
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px) rotate(-5deg); }
-  75% { transform: translateX(5px) rotate(5deg); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px) rotate(-5deg);
+  }
+
+  75% {
+    transform: translateX(5px) rotate(5deg);
+  }
 }
 
 @keyframes slide-in-right {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 @keyframes slide-out-left {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(-100%); opacity: 0; }
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
 }
 
 /* Level Complete Overlay */
 .level-complete-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(255,255,255,0.95);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  display: none;
 }
+
 .level-complete-overlay.active {
-    display: flex;
-    animation: slide-up 0.5s ease-out;
+  display: flex;
+  animation: slide-up 0.5s ease-out;
 }
+
 .stars-container {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
 }
+
 .star {
-    font-size: 60px;
-    color: #dfe6e9;
+  font-size: 60px;
+  color: #dfe6e9;
 }
+
 .star.filled {
-    color: var(--color-warning);
-    animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  color: var(--color-warning);
+  animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* --- GAME: Phoneme Forest --- */
+
+.game-container.forest-theme {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, #1e3c72, #2a5298);
+  /* Night sky */
+  position: relative;
+  overflow: hidden;
+  color: white;
+}
+
+/* Lantern (Target) */
+.lantern-row {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding-top: 50px;
+}
+
+.lantern {
+  width: 100px;
+  height: 140px;
+  background: #5d4037;
+  border-radius: 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s;
+}
+
+.lantern::before {
+  /* String/Rope */
+  content: '';
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  width: 4px;
+  height: 100px;
+  background: #3e2723;
+  transform: translateX(-50%);
+}
+
+.lantern-glow {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  background: #ffeb3b;
+  border-radius: 50%;
+  filter: blur(20px);
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+
+.lantern.hover-active {
+  transform: scale(1.1);
+}
+
+.lantern.hover-active .lantern-glow {
+  opacity: 0.8;
+}
+
+.lantern-label {
+  font-size: 3rem;
+  font-weight: 800;
+  z-index: 2;
+  color: #ffd54f;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Firefly (Draggable) */
+.firefly-field {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* Let clicks pass to fireflies */
+}
+
+.firefly {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  cursor: grab;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s;
+  touch-action: none;
+  /* Prevent scroll on touch */
+}
+
+.firefly:active,
+.firefly.dragging {
+  cursor: grabbing;
+  transform: scale(1.2);
+  z-index: 100;
+}
+
+.firefly-body {
+  width: 20px;
+  height: 20px;
+  background: #ffeb3b;
+  border-radius: 50%;
+  box-shadow: 0 0 15px #ffeb3b, 0 0 30px #fdd835;
+  animation: pulse 1.5s infinite alternate;
+}
+
+.firefly-wings {
+  position: absolute;
+  width: 40px;
+  height: 15px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  top: 22px;
+  animation: flutter 0.1s infinite;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes flutter {
+  from {
+    transform: scaleY(1);
+  }
+
+  to {
+    transform: scaleY(0.2);
+  }
+}
+
+.firefly.matched {
+  transition: all 0.5s;
+  opacity: 0;
+  transform: scale(2);
+}
+
+
+.game-hud {
+  position: absolute;
+  bottom: 20px;
+  width: 100%;
+  text-align: center;
+  font-size: 1.2rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* --- GAME: Fluency Falls --- */
+
+.game-container.river-theme {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, #4fc3f7, #0288d1);
+  /* River Blue */
+  position: relative;
+  overflow: hidden;
+  color: white;
+  font-family: 'Baloo 2', cursive;
+}
+
+.river-scroll-area {
+  width: 60%;
+  height: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  /* No scrollbars visually, but we scroll element via JS */
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  /* Hide scrollbar */
+  scrollbar-width: none;
+}
+
+.river-scroll-area::-webkit-scrollbar {
+  display: none;
+}
+
+.river-line {
+  font-size: 2rem;
+  padding: 2rem 0;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  min-height: 100px;
+}
+
+.raft {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 4rem;
+  z-index: 2;
+  transition: transform 0.1s;
+}
+
+.raft.moving-fast {
+  filter: drop-shadow(0 0 10px white);
+}
+
+.mic-orb {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(#ff5252, #d32f2f);
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(255, 82, 82, 0.6);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s;
+}
+
+.mic-orb::after {
+  content: '🎤';
+  font-size: 1.5rem;
+}
+
+/* --- GAME: Comprehension Caverns --- */
+
+.game-container.cavern-theme {
+  width: 100%;
+  height: 100%;
+  background: #2d3436;
+  color: #dfe6e9;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Left: Scroll */
+.story-scroll {
+  flex: 1;
+  background: #f7f1e3;
+  /* Parchment */
+  color: #2d3436;
+  padding: 2rem;
+  overflow-y: auto;
+  font-family: 'Book Antiqua', serif;
+  font-size: 1.2rem;
+  line-height: 1.6;
+  box-shadow: 10px 0 20px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+
+.story-line {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: all 0.5s;
+}
+
+.story-line.dimmed {
+  opacity: 0.3;
+}
+
+.story-line.spotlight {
+  background: #ffeaa7;
+  box-shadow: 0 0 15px #ffeaa7;
+  color: #d35400;
+  font-weight: bold;
+  transform: scale(1.05);
+}
+
+/* Right: Cave */
+.cave-panel {
+  flex: 1;
+  background: radial-gradient(circle at center, #636e72, #2d3436);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+}
+
+.cave-question {
+  font-size: 1.5rem;
+  margin-bottom: 2rem;
+  text-align: center;
+  color: #ecf0f1;
+}
+
+.torch-container {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.torch-btn {
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #b2bec3;
+  padding: 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.3s;
+}
+
+.torch-flame {
+  width: 20px;
+  height: 20px;
+  background: #555;
+  /* Unlit */
+  border-radius: 50% 50% 5px 5px;
+  transition: all 0.3s;
+}
+
+.torch-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.torch-btn.lit {
+  border-color: #f1c40f;
+  background: rgba(241, 196, 15, 0.2);
+}
+
+.torch-btn.lit .torch-flame {
+  background: radial-gradient(#f1c40f, #e67e22);
+  box-shadow: 0 -5px 10px #e67e22, 0 -10px 20px #f1c40f;
+  animation: flicker 0.1s infinite alternate;
+}
+
+.torch-btn.extinguished {
+  border-color: #555;
+  opacity: 0.5;
+}
+
+.torch-btn.extinguished .torch-label {
+  text-decoration: line-through;
+}
+
+@keyframes flicker {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+
+  to {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+
+.cave-art-reveal {
+  text-align: center;
+  animation: fade-in 2s;
+}
+
+/* --- GAME: Spelling Sanctuaries --- */
+
+.game-container.sanctuary-theme {
+  width: 100%;
+  height: 100%;
+  background: #6c5ce7;
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%239c88ff' fill-opacity='0.2' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.magic-tablet {
+  position: relative;
+  width: 400px;
+  height: 400px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 20px;
+  border: 4px solid #a29bfe;
+  box-shadow: 0 0 30px rgba(162, 155, 254, 0.5);
+  margin: 20px;
+}
+
+.letter-guide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 300px;
+  font-family: 'Baloo 2', cursive;
+  color: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+  user-select: none;
+}
+
+.magic-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* --- GAME: Auditory Station --- */
+
+.game-container.auditory-theme {
+  width: 100%;
+  height: 100%;
+  background: #222;
+  color: #00cec9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.speakers-row {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  margin: 40px 0;
+}
+
+.speaker {
+  width: 120px;
+  height: 200px;
+  background: #333;
+  border: 4px solid #555;
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.1s;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.speaker:active {
+  transform: scale(0.95);
+}
+
+.speaker-cone {
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(#444, #111);
+  border-radius: 50%;
+  border: 2px solid #666;
+}
+
+.speaker.pumping {
+  transform: scale(1.1);
+  border-color: #00cec9;
+  box-shadow: 0 0 20px #00cec9;
+}
+
+.waveform-display {
+  width: 300px;
+  height: 100px;
+  background: #000;
+  border: 2px solid #00cec9;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#wave-canvas {
+  width: 100%;
+  height: 100%;
 }

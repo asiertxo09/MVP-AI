@@ -104,6 +104,10 @@
             <h3>🔊 Auditory Station</h3>
             <p>Noise Filtering & Anchors</p>
         </div>
+        <div class="demo-card" onclick="loadGame('comprehension')">
+            <h3>🕯️ Comprehension Caverns</h3>
+            <p>Inference & Logic</p>
+        </div>
     </div>
 
     <div id="game-container">
@@ -118,10 +122,11 @@
     </script>
 
     <script type="module">
-        import { PhonemeHuntGame } from './scripts/phoneme-game.js';
+        import { PhonemeForestGame } from './scripts/phoneme-forest.js';
         import { FluencyFallsGame } from './scripts/fluency-game.js';
         import { SpellingGame } from './scripts/spelling-game.js';
         import { AuditoryGame } from './scripts/auditory-game.js';
+        import { ComprehensionCavernsGame } from './scripts/comprehension-caverns.js';
 
         // Check for level param
         window.addEventListener('DOMContentLoaded', async () => {
@@ -138,9 +143,10 @@
                 // 1, 5, 9... -> Phoneme
                 // 2, 6, 10... -> Fluency
                 // 3, 7, 11... -> Spelling
-                // 4, 8, 12... -> Auditory
-                const typeMap = ['phoneme', 'fluency', 'spelling', 'auditory'];
-                const gameType = typeMap[(level - 1) % 4];
+                // 4, 9, 14... -> Auditory
+                // 5, 10, 15... -> Comprehension
+                const typeMap = ['phoneme', 'fluency', 'spelling', 'auditory', 'comprehension'];
+                const gameType = typeMap[(level - 1) % 5];
 
                 await window.loadGame(gameType);
 
@@ -213,8 +219,8 @@
             let game;
             switch (type) {
                 case 'phoneme':
-                    game = new PhonemeHuntGame('game-container');
-                    await game.init(); // Mock data inside
+                    game = new PhonemeForestGame('game-container');
+                    await game.init();
                     break;
                 case 'fluency':
                     game = new FluencyFallsGame('game-container');
@@ -226,6 +232,10 @@
                     break;
                 case 'auditory':
                     game = new AuditoryGame('game-container');
+                    game.init();
+                    break;
+                case 'comprehension':
+                    game = new ComprehensionCavernsGame('game-container');
                     game.init();
                     break;
             }
