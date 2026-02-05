@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/base.css">
+    <link rel="stylesheet" href="styles/gamification.css">
     <style>
         :root {
             --world-jungle-start: #2ecc71;
@@ -219,6 +220,30 @@
             alert("No has iniciado sesión. Volviendo...");
             window.location.href = 'index.html';
         }
+
+        // Import Reward System (Dynamic or Script tag - using module script here)
+    </script>
+    <script type="module">
+        import { RewardSystem } from './scripts/RewardSystem.js';
+        window.RewardSystem = RewardSystem;
+    </script>
+    <script>
+        // --- 1. Auth & Setup ---
+        // (Existing Auth code...)
+        // We need to wait for module to load if we use it immediately. 
+        // Better to treat the rest as module type or just load it.
+
+        // Let's defer main logic
+        window.addEventListener('load', () => {
+            const rs = window.RewardSystem ? new window.RewardSystem() : null;
+            if (urlParams.get('completed') === 'true' && rs) {
+                rs.triggerCoinShower(20);
+                rs.triggerStreak(1); // Generic "Job Done" sound
+                // Remove param to avoid replay on reload
+                window.history.replaceState({}, document.title, window.location.pathname + window.location.search.replace('&completed=true', '').replace('?completed=true', ''));
+            }
+        });
+
 
         // --- 2. Map Generation Config ---
         const TOTAL_LEVELS = 30;

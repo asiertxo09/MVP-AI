@@ -1,240 +1,238 @@
-/* Gamification Styles */
+/* --- Gamification Layer --- */
 
-/* HUD (Heads-Up Display) */
-.hud-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+/* 1. Pet System */
+.pet-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 120px;
+    height: 120px;
+    z-index: 5000;
+}
+
+.pet-character {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transition: transform 0.3s;
+}
+
+/* Base Body (Frog-ish) */
+.pet-body {
+    width: 100px;
+    height: 80px;
+    background: #00b894;
+    border-radius: 50% 50% 20% 20%;
+    position: absolute;
+    bottom: 0;
+    left: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.pet-face {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    width: 100%;
+    height: 60px;
+}
+
+.pet-eye {
+    width: 25px;
+    height: 25px;
     background: white;
-    padding: 12px 16px;
-    border-radius: 20px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
-    border: 2px solid #f0e9d9;
-}
-
-.hud-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 700;
-    font-size: 1.1rem;
-}
-
-.hud-icon {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.hud-icon img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
-/* Map Container */
-.map-viewport {
-    width: 100%;
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    border-radius: 20px;
-    position: relative;
-    display: flex;
-    justify-content: center;
-
-    /* Smooth gradient transition */
-    transition: background 0.8s ease-in-out;
-
-    /* Default: Sky World */
-    background: linear-gradient(180deg, #87CEEB 0%, #E0F4FF 50%, #ffffff 100%);
-}
-
-/* ========================================
-   World Theme Gradients
-   ======================================== */
-
-/* World 1: Jungle - Green/Brown (Bottom of map) */
-.map-viewport[data-world="jungle"],
-.map-viewport.world-jungle {
-    background: linear-gradient(180deg,
-            #2D5016 0%,
-            /* Deep forest canopy */
-            #4A7C23 25%,
-            /* Lush green */
-            #6B8E23 50%,
-            /* Olive transition */
-            #8B7355 75%,
-            /* Earthy brown */
-            #A0826D 100%
-            /* Light soil */
-        );
-}
-
-/* World 2: Sky - Blue/White (Middle of map) */
-.map-viewport[data-world="sky"],
-.map-viewport.world-sky {
-    background: linear-gradient(180deg,
-            #1E90FF 0%,
-            /* Dodger blue */
-            #87CEEB 30%,
-            /* Sky blue */
-            #B0E0E6 50%,
-            /* Powder blue */
-            #E0F4FF 75%,
-            /* Light sky */
-            #FFFFFF 100%
-            /* White clouds */
-        );
-}
-
-/* World 3: Space - Dark Purple (Top of map) */
-.map-viewport[data-world="space"],
-.map-viewport.world-space {
-    background: linear-gradient(180deg,
-            #0D0221 0%,
-            /* Deep space black */
-            #1A0533 20%,
-            /* Dark nebula */
-            #2D1B4E 40%,
-            /* Deep purple */
-            #6C5CE7 70%,
-            /* Nebula Purple (brand) */
-            #A29BFE 100%
-            /* Light purple glow */
-        );
-}
-
-/* Stars overlay for Space world */
-.map-viewport[data-world="space"]::before,
-.map-viewport.world-space::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image:
-        radial-gradient(2px 2px at 20% 30%, white, transparent),
-        radial-gradient(2px 2px at 40% 70%, white, transparent),
-        radial-gradient(1px 1px at 50% 50%, white, transparent),
-        radial-gradient(2px 2px at 60% 20%, white, transparent),
-        radial-gradient(1px 1px at 70% 60%, white, transparent),
-        radial-gradient(2px 2px at 80% 40%, white, transparent),
-        radial-gradient(1px 1px at 90% 80%, white, transparent),
-        radial-gradient(1px 1px at 10% 90%, white, transparent),
-        radial-gradient(2px 2px at 30% 10%, white, transparent);
-    pointer-events: none;
-    opacity: 0.6;
-    z-index: 0;
-}
-
-.map-svg-container {
-    position: relative;
-    width: 100%;
-    max-width: 600px;
-    /* Limit width for mobile feel on desktop */
-    height: 800px;
-    /* Arbitrary long height for scrolling */
-    padding: 40px 20px;
-}
-
-/* Map Path SVG */
-.map-path-svg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-}
-
-.map-path-line {
-    fill: none;
-    stroke: #d7eaff;
-    stroke-width: 20px;
-    stroke-linecap: round;
-    stroke-dasharray: 40 20;
-}
-
-/* Nodes */
-.map-node {
-    position: absolute;
-    width: 64px;
-    height: 64px;
-    transform: translate(-50%, -50%);
-    z-index: 2;
-    cursor: pointer;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.map-node:hover {
-    transform: translate(-50%, -50%) scale(1.1);
-}
-
-.map-node:active {
-    transform: translate(-50%, -50%) scale(0.95);
-}
-
-.map-node img {
-    width: 100%;
-    height: 100%;
-    display: block;
-}
-
-/* Node States */
-.node-locked {
-    filter: grayscale(1);
-    opacity: 0.8;
-    cursor: not-allowed;
-}
-
-.node-current {
-    position: relative;
-    /* Required for ::after pseudo-element */
-}
-
-/* Current Node Pulse Animation */
-.map-node.node-current::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(241, 196, 15, 0.4);
     border-radius: 50%;
-    z-index: -1;
-    animation: pulse-ring 2s infinite;
+    position: absolute;
+    top: -10px;
+    border: 3px solid #00b894;
+    overflow: hidden;
 }
 
-@keyframes pulse-ring {
+.pet-eye::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: black;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.pet-eye.left {
+    left: 15px;
+}
+
+.pet-eye.right {
+    right: 15px;
+}
+
+.pet-mouth {
+    width: 40px;
+    height: 10px;
+    border-bottom: 3px solid #2d3436;
+    border-radius: 0 0 50% 50%;
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: all 0.2s;
+}
+
+/* States */
+.pet-character.blink .pet-eye {
+    height: 2px;
+    border-width: 0;
+    background: #00b894;
+    top: 10px;
+}
+
+.pet-character.happy {
+    animation: jump 0.5s infinite alternate;
+}
+
+.pet-character.happy .pet-mouth {
+    height: 20px;
+    background: #fab1a0;
+}
+
+.pet-character.sad {
+    transform: rotate(-10deg);
+}
+
+.pet-character.sad .pet-mouth {
+    border-bottom: none;
+    border-top: 3px solid #2d3436;
+    border-radius: 50% 50% 0 0;
+    bottom: 10px;
+}
+
+.pet-character.thinking {
+    animation: sway 2s infinite ease-in-out;
+}
+
+.pet-speech-bubble {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border-radius: 15px;
+    padding: 10px;
+    font-family: 'Baloo 2', cursive;
+    font-size: 1rem;
+    color: #2d3436;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+    opacity: 1;
+    transition: opacity 0.3s;
+}
+
+.pet-speech-bubble.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.pet-speech-bubble::after {
+    content: '';
+    border: 10px solid transparent;
+    border-top-color: white;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+@keyframes jump {
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(-20px);
+    }
+}
+
+@keyframes sway {
     0% {
-        transform: scale(0.8);
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(5deg);
+    }
+
+    75% {
+        transform: rotate(-5deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+/* 2. Streak & Coins */
+
+.coin-shower-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 6000;
+}
+
+.coin {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: #fdcb6e;
+    border-radius: 50%;
+    border: 2px solid #e17055;
+    box-shadow: 0 4px 0 #b71540;
+}
+
+.streak-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    padding: 2.5rem;
+    background: #6c5ce7;
+    color: white;
+    font-size: 3rem;
+    font-weight: 800;
+    border-radius: 30px;
+    z-index: 6000;
+    box-shadow: 0 20px 50px rgba(108, 92, 231, 0.5);
+    animation: pop-in-out 2s forwards;
+    text-align: center;
+}
+
+@keyframes pop-in-out {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+
+    20% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 1;
+    }
+
+    30% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    80% {
+        transform: translate(-50%, -50%) scale(1);
         opacity: 1;
     }
 
     100% {
-        transform: scale(1.6);
+        transform: translate(-50%, -50%) scale(0);
         opacity: 0;
     }
-}
-
-/* Level Indicator / Floating labels */
-.node-label {
-    position: absolute;
-    bottom: -24px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
-    pointer-events: none;
 }

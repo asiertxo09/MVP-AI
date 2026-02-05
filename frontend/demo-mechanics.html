@@ -10,6 +10,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="styles/base.css">
     <link rel="stylesheet" href="styles/game.css">
+    <link rel="stylesheet" href="styles/gamification.css">
     <style>
         body {
             background-color: #F0F4F8;
@@ -114,6 +115,8 @@
         <p style="text-align: center; color: #aaa; margin-top: 200px;">Select a game above to start</p>
     </div>
 
+    <div id="pet-container" class="pet-container"></div>
+
     <!-- Telemetry Mock -->
     <script>
         window.telemetry = {
@@ -127,9 +130,19 @@
         import { SpellingGame } from './scripts/spelling-game.js';
         import { AuditoryGame } from './scripts/auditory-game.js';
         import { ComprehensionCavernsGame } from './scripts/comprehension-caverns.js';
+        import { PetSystem } from './scripts/PetSystem.js';
+        import { RewardSystem } from './scripts/RewardSystem.js';
 
         // Check for level param
         window.addEventListener('DOMContentLoaded', async () => {
+            // Init Engagement Layer
+            const pet = new PetSystem('pet-container');
+            const rewards = new RewardSystem();
+
+            // Expose for debugging/usage
+            window.petSystem = pet;
+            window.rewardSystem = rewards;
+
             const urlParams = new URLSearchParams(window.location.search);
             const level = urlParams.get('level');
 
@@ -178,6 +191,12 @@
                     btnComplete.disabled = true;
                     btnComplete.innerText = "Guardando...";
 
+                    // Trigger Engagement
+                    window.petSystem.setEmotion('happy');
+                    window.petSystem.say("¡Increíble!");
+                    window.rewardSystem.triggerStreak(Math.floor(Math.random() * 5) + 1);
+                    window.rewardSystem.triggerCoinShower(20);
+
                     try {
                         const token = urlParams.get('child_token');
                         const headers = { 'Content-Type': 'application/json' };
@@ -193,8 +212,10 @@
 
                         if (res.ok) {
                             alert("¡Nivel Completado! +3 Estrellas ⭐");
-                            // Redirect back to map
-                            btnBack.click();
+                            // Redirect back to map with completed flag
+                            const returnToken = urlParams.get('child_token');
+                            const target = `kingdoms.html?child_token=${returnToken || ''}&completed=true`;
+                            window.location.href = target;
                         } else {
                             alert("Error al guardar progreso.");
                             btnComplete.disabled = false;
