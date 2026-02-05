@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reinos del Saber - EduPlay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/base.css">
+    <style>
+        :root {
+            --world-jungle-start: #2ecc71;
+            --world-jungle-end: #27ae60;
+            --world-sky-start: #3498db;
+            --world-sky-end: #2980b9;
+            --world-space-start: #8e44ad;
+            --world-space-end: #2c3e50;
+        }
+
+        body {
+            background: linear-gradient(180deg,
+                    var(--world-space-end) 0%,
+                    var(--world-space-start) 30%,
+                    var(--world-sky-end) 50%,
+                    var(--world-sky-start) 70%,
+                    var(--world-jungle-end) 90%,
+                    var(--world-jungle-start) 100%);
+            min-height: 400vh;
+            /* Long scroll for the map */
+            margin: 0;
+            font-family: 'Baloo 2', cursive;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+        }
+
+        .map-container {
+            width: 100%;
+            max-width: 600px;
+            position: relative;
+            padding-bottom: 100px;
+        }
+
+        /* SVG Path */
+        .path-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .level-node {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            border: 6px solid #fff;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--color-navy);
+            cursor: pointer;
+            z-index: 2;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .level-node:hover {
+            transform: scale(1.1);
+        }
+
+        .level-node.locked {
+            background: #bdc3c7;
+            border-color: #95a5a6;
+            color: #7f8c8d;
+            cursor: not-allowed;
+            transform: scale(0.9);
+        }
+
+        .level-node.locked::after {
+            content: '🔒';
+            font-size: 1.5rem;
+        }
+
+        .level-node.locked span {
+            display: none;
+        }
+
+        .level-node.completed {
+            background: var(--color-accent-gold);
+            border-color: #f1c40f;
+            color: #fff;
+        }
+
+        .level-node.completed::after {
+            content: '⭐';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 1.5rem;
+        }
+
+        .level-node.active {
+            border-color: var(--color-primary);
+            animation: pulse 2s infinite;
+        }
+
+        .level-node.active::before {
+            content: '🚀';
+            position: absolute;
+            top: -30px;
+            font-size: 2.5rem;
+            animation: bounce 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(108, 92, 231, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 20px rgba(108, 92, 231, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
+            }
+        }
+
+        @keyframes bounce {
+            from {
+                transform: translateY(0);
+            }
+
+            to {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* HUD */
+        .hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 100;
+            pointer-events: none;
+            /* Let clicks pass through */
+        }
+
+        .hud-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem 1rem;
+            border-radius: 99px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+        }
+
+        .back-btn {
+            background: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Heads Up Display -->
+    <div class="hud">
+        <button class="back-btn" onclick="goBack()">⬅️</button>
+        <div class="hud-panel">
+            <span>⭐</span>
+            <span id="star-count">0</span>
+        </div>
+    </div>
+
+    <div class="map-container" id="map-container">
+        <!-- SVG Path will be injected here -->
+        <svg class="path-svg" id="path-svg">
+            <path id="connection-line" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="8"
+                stroke-dasharray="15 15" stroke-linecap="round" />
+        </svg>
+
+        <!-- Nodes will be injected here via JS -->
+    </div>
+
+    <script>
+        // --- 1. Auth & Setup ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlToken = urlParams.get('child_token');
+
+        if (urlToken) {
+            sessionStorage.setItem('child_session_token', urlToken);
+        }
+
+        const token = sessionStorage.getItem('child_session_token');
+        if (!token) {
+            alert("No has iniciado sesión. Volviendo...");
+            window.location.href = 'index.html';
+        }
+
+        // --- 2. Map Generation Config ---
+        const TOTAL_LEVELS = 30;
+        const SCREEN_HEIGHT_PER_LEVEL = 150; // px spacing
+
+        // Use document height to make sure we fit everything
+        // Or rather, set body height based on levels
+        document.body.style.minHeight = `${TOTAL_LEVELS * SCREEN_HEIGHT_PER_LEVEL + 500}px`;
+
+        const mapContainer = document.getElementById('map-container');
+        const pathSvg = document.getElementById('path-svg');
+        const connectionLine = document.getElementById('connection-line');
+
+        // --- 3. Progress Data Fetch ---
+        async function loadProgress() {
+            try {
+                const token = sessionStorage.getItem('child_session_token');
+                const headers = {};
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                const response = await fetch('/api/child/progress', { headers });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    renderMap(data.current_level || 1, data.stars_total || 0);
+                } else {
+                    console.warn("Could not fetch progress, using defaults.");
+                    renderMap(1, 0); // Default to Level 1
+                }
+            } catch (e) {
+                console.error("Error loading progress:", e);
+                renderMap(1, 0);
+            }
+        }
+
+        // --- 4. Render Nodes ---
+        function renderMap(currentLevel, stars) {
+            document.getElementById('star-count').innerText = stars;
+            const mapContainer = document.getElementById('map-container');
+
+            // Clear existing nodes if any
+            document.querySelectorAll('.level-node').forEach(n => n.remove());
+
+            for (let i = 1; i <= TOTAL_LEVELS; i++) {
+                const node = document.createElement('div');
+                node.className = 'level-node';
+
+                // Logic for status
+                if (i < currentLevel) {
+                    node.classList.add('completed');
+                    node.innerHTML = `<span>${i}</span>`;
+                } else if (i === currentLevel) {
+                    node.classList.add('active');
+                    node.innerHTML = `<span>${i}</span>`;
+                    node.onclick = () => startLevel(i);
+                } else {
+                    node.classList.add('locked');
+                }
+
+                // Positioning (Zig Zag)
+                const yPos = (TOTAL_LEVELS - i) * SCREEN_HEIGHT_PER_LEVEL + 100;
+                const xOffset = Math.sin(i * 0.8) * 120; // Sine wave for zig zag
+
+                node.style.bottom = `${yPos}px`;
+                node.style.left = `calc(50% + ${xOffset}px - 40px)`; // Center - half width
+
+                mapContainer.appendChild(node);
+            }
+
+            // Scroll to active
+            setTimeout(() => {
+                const activeNode = document.querySelector('.level-node.active');
+                // Ensure smoothness
+                if (activeNode) {
+                    activeNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 500);
+        }
+
+        // --- 6. Actions ---
+        function startLevel(levelId) {
+            const token = sessionStorage.getItem('child_session_token');
+            window.location.href = `demo-mechanics.html?level=${levelId}&child_token=${token}`;
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        // Init
+        loadProgress();
+
+    </script>
+</body>
+
+</html>

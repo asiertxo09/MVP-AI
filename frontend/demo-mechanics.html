@@ -123,6 +123,89 @@
         import { SpellingGame } from './scripts/spelling-game.js';
         import { AuditoryGame } from './scripts/auditory-game.js';
 
+        // Check for level param
+        window.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const level = urlParams.get('level');
+
+            if (level) {
+                // Auto-start for Map Integration
+                document.querySelector('.demo-nav').style.display = 'none';
+                document.querySelector('h1').innerText = `Nivel ${level}`;
+                document.querySelector('p').innerText = "¡Buena suerte!";
+
+                // Simple logic: Cycles through game types for demo
+                // 1, 5, 9... -> Phoneme
+                // 2, 6, 10... -> Fluency
+                // 3, 7, 11... -> Spelling
+                // 4, 8, 12... -> Auditory
+                const typeMap = ['phoneme', 'fluency', 'spelling', 'auditory'];
+                const gameType = typeMap[(level - 1) % 4];
+
+                await window.loadGame(gameType);
+
+                // Add Controls Container
+                const container = document.getElementById('game-container');
+                const controls = document.createElement('div');
+                controls.style.display = "flex";
+                controls.style.gap = "10px";
+                controls.style.marginTop = "20px";
+
+                // Back Button
+                const btnBack = document.createElement('button');
+                btnBack.innerText = "🔙 Volver al Mapa";
+                btnBack.className = "btn btn-secondary";
+                btnBack.onclick = () => {
+                    const returnToken = urlParams.get('child_token');
+                    if (returnToken) {
+                        window.location.href = `kingdoms.html?child_token=${returnToken}`;
+                    } else {
+                        window.location.href = "kingdoms.html";
+                    }
+                };
+
+                // Complete Level Button (Simulation)
+                const btnComplete = document.createElement('button');
+                btnComplete.innerText = "✨ Completar Nivel";
+                btnComplete.className = "btn btn-primary";
+                btnComplete.onclick = async () => {
+                    btnComplete.disabled = true;
+                    btnComplete.innerText = "Guardando...";
+
+                    try {
+                        const token = urlParams.get('child_token');
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                        // Call Backend
+                        const res = await fetch('/api/child/progress', {
+                            method: 'POST',
+                            headers: headers,
+                            // Send stars earned (simulated 3 stars)
+                            body: JSON.stringify({ action: 'complete_level', stars: 3 })
+                        });
+
+                        if (res.ok) {
+                            alert("¡Nivel Completado! +3 Estrellas ⭐");
+                            // Redirect back to map
+                            btnBack.click();
+                        } else {
+                            alert("Error al guardar progreso.");
+                            btnComplete.disabled = false;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert("Error de conexión");
+                        btnComplete.disabled = false;
+                    }
+                };
+
+                controls.appendChild(btnBack);
+                controls.appendChild(btnComplete);
+                container.appendChild(controls);
+            }
+        });
+
         window.loadGame = async (type) => {
             const container = document.getElementById('game-container');
             container.innerHTML = ''; // Clear
