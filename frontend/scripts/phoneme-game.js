@@ -63,7 +63,13 @@ export function vibrate() {
 // Helper: Get user's weak phonemes from metrics
 async function getPhonemePerformance() {
     try {
+        // Validation for Demo Mode: Skip fetch if no token to avoid 401 console errors
+        // (This helps the demo page look cleaner)
+        const hasToken = sessionStorage.getItem('child_session_token') || sessionStorage.getItem('eduplay_token');
+        if (!hasToken) return [];
+
         const res = await fetch('/api/metrics?type=activities&days=30');
+        if (res.status === 401 || res.status === 403) return []; // Silent fail for unauthenticated demo
         if (!res.ok) return [];
         const data = await res.json();
         const activities = data.activities || [];
@@ -136,7 +142,38 @@ async function fetchGameDataFromAI(forcePhoneme = null, mistakes = []) {
     }
 }
 
+// Helper to get assets (Mock for Demo)
+function getAssetForWord(word) {
+    // Return a placeholder image based on the word
+    // In production, this would map to actual asset paths
+    const assets = {
+        'Ratón': 'https://img.icons8.com/color/96/mouse-animal.png',
+        'Rosa': 'https://img.icons8.com/color/96/rose.png',
+        'Río': 'https://img.icons8.com/color/96/river.png',
+        'Regalo': 'https://img.icons8.com/color/96/gift.png',
+        'Pato': 'https://img.icons8.com/color/96/duck.png',
+        'Perro': 'https://img.icons8.com/color/96/dog.png'
+    };
+    return assets[word] || `https://placehold.co/96x96?text=${word}`;
+}
+
+// Fallback Data Generator
+function getFallbackData(phoneme) {
+    if (phoneme === 'R') {
+        return {
+            correctWords: ['Ratón', 'Rosa', 'Río'],
+            distractor: 'Pato'
+        };
+    }
+    return {
+        correctWords: ['Sol', 'Silla', 'Sapo'],
+        distractor: 'Gato'
+    };
+}
+
 // Main Game Controller
+import { GameEngine } from './GameEngine.js'; // Ensure correct path
+
 export class PhonemeHuntGame {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
@@ -220,10 +257,54 @@ export class PhonemeHuntGame {
         this.container.appendChild(header);
         this.container.appendChild(grid);
         this.container.appendChild(backBtn);
+
+        // Phase 3: Visual Mode Check
+        const engine = new GameEngine();
+        const adaptations = engine.getAdaptations();
+        if (adaptations.visuals && adaptations.visuals.enhanceVisuals) {
+            this.container.classList.add('visual-mode');
+        }
+
+        // Phase 3: Auditory Mode (Spatial Audio)
+        if (adaptations.visuals && adaptations.visuals.slowTTS) {
+            // We can use this flag to slow down audio playback later
+        }
+    }
+
+    // Phase 3: Auditory Mode - Spatial Audio
+    playPhonemeSound(pan = 0) {
+        const ctx = getAudioContext();
+        if (ctx.state === 'suspended') ctx.resume();
+
+        const osc = ctx.createOscillator();
+        const panner = ctx.createStereoPanner();
+        const gain = ctx.createGain();
+
+        osc.connect(panner);
+        panner.connect(gain);
+        gain.connect(ctx.destination);
+
+        panner.pan.value = pan; // -1 (Left) to 1 (Right)
+
+        // Simple "Phoneme-like" sound synthesis (Formant synthesis approximation)
+        // This is a placeholder for actual phoneme audio files
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, ctx.currentTime);
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
     }
 
     handleClick(item, cardElement) {
         if (cardElement.classList.contains('disabled')) return;
+
+        // Phase 3: Auditory Feedback (Spatial based on screen position)
+        const rect = cardElement.getBoundingClientRect();
+        const screenCenter = window.innerWidth / 2;
+        const pan = (rect.left + rect.width / 2 - screenCenter) / screenCenter;
+        this.playPhonemeSound(Math.max(-1, Math.min(1, pan)));
 
         if (item.isCorrect) {
             playDing();
@@ -231,13 +312,16 @@ export class PhonemeHuntGame {
             this.correctCount++;
             document.getElementById('score').textContent = this.correctCount;
 
+            // Phase 3: Kinesthetic Feedback
+            vibrate();
+
             // Check win condition
             if (this.correctCount === this.items.filter(i => i.isCorrect).length) {
                 setTimeout(() => this.showWin(), 500);
             }
         } else {
             playBoing();
-            vibrate();
+            vibrate(); // Error vibration
             cardElement.classList.add('wrong');
             setTimeout(() => cardElement.classList.remove('wrong'), 400);
         }

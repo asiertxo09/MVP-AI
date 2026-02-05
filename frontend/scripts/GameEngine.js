@@ -78,6 +78,13 @@ export class GameEngine {
     // API Support
     async saveMetric(activityType, isCorrect, details = {}) {
         try {
+            // Demo Mode Check: Prevent 401 errors if not logged in
+            const hasAuth = sessionStorage.getItem('child_session_token') || sessionStorage.getItem('eduplay_token');
+            if (!hasAuth) {
+                console.log(`[Demo] Mock Save Metric: ${activityType}`, { isCorrect, ...details });
+                return;
+            }
+
             const { post } = await import('./api-client.js');
             // Legacy metric save
             post('/api/metrics', {
