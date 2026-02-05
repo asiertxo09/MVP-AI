@@ -1,0 +1,211 @@
+/* --- Narrative Onboarding --- */
+
+body.story-mode {
+    margin: 0;
+    overflow: hidden;
+    background: #2d3436;
+    color: white;
+    font-family: 'Baloo 2', cursive;
+}
+
+.story-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Backgrounds */
+.bg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transition: filter 2s ease, opacity 1s ease;
+    z-index: 1;
+    background-size: cover;
+    background-position: center;
+}
+
+.bg-forest {
+    background-image: linear-gradient(#2ecc71, #27ae60);
+    /* Placeholder for forest-bg */
+}
+
+.bg-forest.gray {
+    filter: grayscale(100%) brightness(50%);
+}
+
+/* Character Guide */
+.guide-container {
+    position: absolute;
+    bottom: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 1s;
+}
+
+.guide-container.active {
+    opacity: 1;
+}
+
+.guide-bubble {
+    background: white;
+    color: #2d3436;
+    padding: 20px;
+    border-radius: 20px;
+    font-size: 1.5rem;
+    max-width: 80%;
+    text-align: center;
+    position: relative;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.guide-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 10px solid transparent;
+    border-top-color: white;
+}
+
+/* CTAs */
+.btn-hero {
+    background: linear-gradient(135deg, #f1c40f 0%, #f39c12 100%);
+    border: none;
+    padding: 1rem 3rem;
+    font-size: 2rem;
+    color: white;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 10px 20px rgba(243, 156, 18, 0.4);
+    font-family: inherit;
+    font-weight: 800;
+    transition: transform 0.2s;
+    animation: pulse-btn 2s infinite;
+}
+
+.btn-hero:active {
+    transform: scale(0.95);
+}
+
+@keyframes pulse-btn {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Avatar Creator */
+.avatar-creator {
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #6c5ce7 0%, #a29bfe 100%);
+    padding: 20px;
+}
+
+.avatar-preview {
+    width: 200px;
+    height: 200px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 5px solid white;
+    border-radius: 20px;
+    margin: 20px;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.avatar-preview .avatar-base {
+    font-size: 100px;
+}
+
+/* Customizer UI */
+.customizer-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin: 10px 0;
+}
+
+.customizer-btn {
+    background: rgba(255, 255, 255, 0.3);
+    border: none;
+    color: white;
+    font-size: 2rem;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.customizer-label {
+    font-size: 1.5rem;
+    width: 150px;
+    text-align: center;
+}
+
+.archetype-cards {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.archetype-card {
+    background: white;
+    color: #2d3436;
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+    opacity: 0.7;
+}
+
+.archetype-card.selected {
+    transform: scale(1.1);
+    opacity: 1;
+    border: 4px solid #f1c40f;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.fade-in {
+    animation: fadeIn 1s forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

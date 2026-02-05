@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Aventura Comienza - EduPlay</title>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/story.css">
+    <link rel="stylesheet" href="styles/gamification.css">
+</head>
+
+<body class="story-mode">
+
+    <!-- Scene 1: The Call -->
+    <div id="scene-intro" class="story-container">
+        <div class="bg-layer bg-forest" id="forest-bg"></div>
+
+        <div class="guide-container" id="guide-intro">
+            <div id="pet-guide-container"></div> <!-- PetSystem mounts here -->
+            <div class="guide-bubble">
+                <p id="guide-text">...</p>
+            </div>
+            <button id="btn-hero" class="btn-hero hidden">¡Yo Ayudaré!</button>
+        </div>
+    </div>
+
+    <!-- Scene 2: Avatar Creator -->
+    <div id="scene-avatar" class="story-container hidden avatar-creator">
+        <h1>Crea tu Identidad Secreta</h1>
+
+        <div class="archetype-cards">
+            <div class="archetype-card selected" data-type="explorer">
+                <div style="font-size: 3rem;">🧭</div>
+                <h3>Explorador</h3>
+            </div>
+            <div class="archetype-card" data-type="wizard">
+                <div style="font-size: 3rem;">✨</div>
+                <h3>Mago</h3>
+            </div>
+            <div class="archetype-card" data-type="ranger">
+                <div style="font-size: 3rem;">🏹</div>
+                <h3>Guardia</h3>
+            </div>
+        </div>
+
+        <div class="avatar-preview" id="avatar-preview">
+            <div class="avatar-base">😐</div>
+        </div>
+
+        <div class="customizer-ui">
+            <div class="customizer-row">
+                <button class="customizer-btn" onclick="cycleOption('hat', -1)">◀</button>
+                <div class="customizer-label" id="lbl-hat">Sin Gorro</div>
+                <button class="customizer-btn" onclick="cycleOption('hat', 1)">▶</button>
+            </div>
+            <div class="customizer-row">
+                <button class="customizer-btn" onclick="cycleOption('color', -1)">◀</button>
+                <div class="customizer-label" id="lbl-color">Azul</div>
+                <button class="customizer-btn" onclick="cycleOption('color', 1)">▶</button>
+            </div>
+        </div>
+
+        <button id="btn-finish-avatar" class="btn-hero" style="margin-top: 30px;">¡Listo!</button>
+    </div>
+
+    <script type="module">
+        import { PetSystem } from './scripts/PetSystem.js';
+        import { OnboardingManager } from './scripts/OnboardingManager.js';
+
+        window.pet = new PetSystem('pet-guide-container');
+        window.manager = new OnboardingManager(window.pet);
+
+        // Expose cycling for HTML onclicks
+        window.cycleOption = (type, dir) => window.manager.cycleOption(type, dir);
+    </script>
+</body>
+
+</html>
